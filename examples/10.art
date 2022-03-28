@@ -1,0 +1,7 @@
+fn main() {
+	x : Int = if True {
+		1;
+	} else {
+		0;
+	};
+}
