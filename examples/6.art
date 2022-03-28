@@ -1,0 +1,4 @@
+fn main() {
+	x : mut Int = 5;
+	x += 1;
+}

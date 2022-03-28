@@ -1,0 +1,6 @@
+fn main() {
+	x : Int = 5;
+	y : Int = 2;
+	z : Int = x + y;
+}
+

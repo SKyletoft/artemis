@@ -8,4 +8,7 @@ edition = "2021"
 [dependencies]
 rayon = "1.5.1"
 variantly = "0.2.0"
+bnf = "0.3.4"
+smallstr = "0.3.0"
+smallvec = "1.8.0"
 
