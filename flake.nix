@@ -8,7 +8,10 @@
 
 	outputs = { self, nixpkgs, flake-utils }:
 		flake-utils.lib.eachDefaultSystem(system:
-			let pkgs = nixpkgs.legacyPackages.${system};
+			let
+				pkgs = nixpkgs.legacyPackages.${system};
+				LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+				BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.llvmPackages.clang}/include";
 			in rec {
 				artemis = pkgs.rustPlatform.buildRustPackage {
 					pname              = "artemis";
@@ -24,16 +27,20 @@
 						llvmPackages.libclang.dev
 						stdenv.cc.libc
 					];
+
+					inherit LIBCLANG_PATH;
+					inherit BINDGEN_EXTRA_CLANG_ARGS;
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
 					shellHook = ''
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
 					'';
-					LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-					BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.llvmPackages.clang}/include";
 					buildInputs       = artemis.buildInputs;
 					nativeBuildInputs = with pkgs; [ rustup ] ++ artemis.nativeBuildInputs;
+
+					inherit LIBCLANG_PATH;
+					inherit BINDGEN_EXTRA_CLANG_ARGS;
 				};
 			}
 		);
