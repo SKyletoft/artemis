@@ -16,12 +16,22 @@
 					src                = self;
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
-					nativeBuildInputs  = with pkgs; [ pkg-config ];
-					buildInputs        = with pkgs; [ haskellPackages.BNFC ];
+					buildInputs        = with pkgs; [ ];
+					nativeBuildInputs  = with pkgs; [
+						haskellPackages.BNFC
+						llvmPackages.clang
+						llvmPackages.libclang.lib
+						llvmPackages.libclang.dev
+						stdenv.cc.libc
+					];
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
-					shellHook         = ''PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "'';
+					shellHook = ''
+						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
+					'';
+					LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+					BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.llvmPackages.clang}/include";
 					buildInputs       = artemis.buildInputs;
 					nativeBuildInputs = with pkgs; [ rustup ] ++ artemis.nativeBuildInputs;
 				};
