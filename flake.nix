@@ -22,6 +22,8 @@
 					buildInputs        = with pkgs; [ ];
 					nativeBuildInputs  = with pkgs; [
 						haskellPackages.BNFC
+						flex
+						bison
 						llvmPackages.clang
 						llvmPackages.libclang.lib
 						llvmPackages.libclang.dev
@@ -37,7 +39,7 @@
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
 					'';
 					buildInputs       = artemis.buildInputs;
-					nativeBuildInputs = with pkgs; [ rustup ] ++ artemis.nativeBuildInputs;
+					nativeBuildInputs = with pkgs; [ rustup gnumake ] ++ artemis.nativeBuildInputs;
 
 					inherit LIBCLANG_PATH;
 					inherit BINDGEN_EXTRA_CLANG_ARGS;
