@@ -1,0 +1,9 @@
+hard_tabs = true
+tab_spaces = 4
+reorder_impl_items = true
+reorder_imports = true
+group_imports = "StdExternalCrate"
+condense_wildcard_suffixes = true
+format_strings = true
+imports_granularity = "Crate"
+newline_style = "Unix"
