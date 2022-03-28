@@ -17,7 +17,7 @@
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
 					nativeBuildInputs  = with pkgs; [ pkg-config ];
-					buildInputs        = with pkgs; [];
+					buildInputs        = with pkgs; [ haskellPackages.BNFC ];
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
