@@ -2,12 +2,19 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::{convert::AsRef, ffi::CStr, fs, io, os::unix::prelude::AsRawFd, path::Path, fmt::{Debug, Display}};
+use std::{
+	convert::AsRef,
+	ffi::CStr,
+	fmt::{Debug, Display},
+	fs, io,
+	os::unix::prelude::AsRawFd,
+	path::Path,
+};
 
 use anyhow::Result;
-use smallstr::SmallString;
-use parking_lot::Mutex;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use smallstr::SmallString;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -50,26 +57,25 @@ impl Drop for AST {
 }
 
 impl Display for AST {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let _lock = C_PRINTING_LOCK.lock();
-	// Safety: C_PRINTING_LOCK accquired, pointer is RAII guarded
-	unsafe {
-		let cstr = CStr::from_ptr(showExp(self.0));
-		let string = cstr.to_string_lossy();
-		write!(f, "{string}")
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		let _lock = C_PRINTING_LOCK.lock();
+		// Safety: C_PRINTING_LOCK accquired, pointer is RAII guarded
+		unsafe {
+			let cstr = CStr::from_ptr(showExp(self.0));
+			let string = cstr.to_string_lossy();
+			write!(f, "{string}")
+		}
 	}
-    }
 }
 
 impl Debug for AST {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let _lock = C_PRINTING_LOCK.lock();
-	// Safety: C_PRINTING_LOCK accquired, pointer is RAII guarded
-	unsafe {
-		let cstr = CStr::from_ptr(printExp(self.0));
-		let string = cstr.to_string_lossy();
-		write!(f, "{string}")
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		let _lock = C_PRINTING_LOCK.lock();
+		// Safety: C_PRINTING_LOCK accquired, pointer is RAII guarded
+		unsafe {
+			let cstr = CStr::from_ptr(printExp(self.0));
+			let string = cstr.to_string_lossy();
+			write!(f, "{string}")
+		}
 	}
-    }
 }
-

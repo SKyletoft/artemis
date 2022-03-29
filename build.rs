@@ -1,4 +1,5 @@
-use std::{process::Command, path::PathBuf, env, fs};
+use std::{env, fs, path::PathBuf, process::Command};
+
 use bindgen::{Builder, CargoCallbacks};
 use cc::Build;
 
