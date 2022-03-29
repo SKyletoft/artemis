@@ -14,6 +14,7 @@ smallstr = "0.3.0"
 smallvec = "1.8.0"
 anyhow = "1.0"
 parking_lot = "0.12"
+once_cell = "1.10.0"
 
 [build-dependencies]
 cc = "1.0.73"
