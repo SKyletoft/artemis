@@ -37,6 +37,25 @@ fn main() {
 	fs::copy("Bison.h", "parser/Bison.h").expect("Failed to copy Bison.h");
 	fs::remove_file("Bison.h").expect("Failed to remove Bison.h");
 
+	// Make generated code readable
+	Command::new("clang-format")
+		.current_dir(env!("PWD"))
+		.arg("-i")
+		.arg("parser/Absyn.c")
+		.arg("parser/Buffer.c")
+		.arg("parser/Printer.c")
+		.arg("parser/Lexer.c")
+		.arg("parser/Parser.c")
+		.arg("parser/Absyn.h")
+		.arg("parser/Buffer.h")
+		.arg("parser/Parser.h")
+		.arg("parser/Printer.h")
+		.arg("parser/Skeleton.h")
+		.spawn()
+		.expect("Failed to spawn clang-format")
+		.wait()
+		.expect("Failed to format generated C code");
+
 	// Compile parser
 	Build::new()
 		// Absyn.o Buffer.o Lexer.o Parser.o Printer.o

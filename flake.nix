@@ -27,6 +27,7 @@
 						llvmPackages.clang
 						llvmPackages.libclang.lib
 						llvmPackages.libclang.dev
+						clang-tools
 						stdenv.cc.libc
 					];
 
@@ -39,7 +40,11 @@
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
 					'';
 					buildInputs       = artemis.buildInputs;
-					nativeBuildInputs = with pkgs; [ rustup gnumake ] ++ artemis.nativeBuildInputs;
+					nativeBuildInputs = with pkgs; [
+						rustup
+						gnumake
+						valgrind
+					] ++ artemis.nativeBuildInputs;
 
 					inherit LIBCLANG_PATH;
 					inherit BINDGEN_EXTRA_CLANG_ARGS;
