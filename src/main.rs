@@ -1,8 +1,13 @@
-pub mod bindings;
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
 
-use bindings::AST;
+use pest::Parser;
+
+#[derive(Parser)]
+#[grammar = "artemis.pest"]
+struct GeneratedParser;
 
 fn main() {
-	let parse_tree = AST::from_stdin();
-	println!("{0}\n{0:?}", &parse_tree);
+	println!("Hi");
 }

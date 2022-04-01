@@ -10,8 +10,6 @@
 		flake-utils.lib.eachDefaultSystem(system:
 			let
 				pkgs = nixpkgs.legacyPackages.${system};
-				LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-				BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.llvmPackages.clang}/include";
 			in rec {
 				artemis = pkgs.rustPlatform.buildRustPackage {
 					pname              = "artemis";
@@ -20,19 +18,7 @@
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
 					buildInputs        = with pkgs; [ ];
-					nativeBuildInputs  = with pkgs; [
-						haskellPackages.BNFC
-						flex
-						bison
-						llvmPackages.clang
-						llvmPackages.libclang.lib
-						llvmPackages.libclang.dev
-						clang-tools
-						stdenv.cc.libc
-					];
-
-					inherit LIBCLANG_PATH;
-					inherit BINDGEN_EXTRA_CLANG_ARGS;
+					nativeBuildInputs  = with pkgs; [ ];
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
@@ -42,12 +28,8 @@
 					buildInputs       = artemis.buildInputs;
 					nativeBuildInputs = with pkgs; [
 						rustup
-						gnumake
 						valgrind
 					] ++ artemis.nativeBuildInputs;
-
-					inherit LIBCLANG_PATH;
-					inherit BINDGEN_EXTRA_CLANG_ARGS;
 				};
 			}
 		);
