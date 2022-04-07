@@ -1,4 +1,4 @@
 fn main() {
-	x : int = 5;
-	y : int = x;
+	x : Int = 5;
+	y : Int = x;
 }
