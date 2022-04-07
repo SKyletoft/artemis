@@ -1,3 +1,56 @@
-lower_case = { 'a'..'z' | "å" | "ä" | "ö" }
-upper_case = { 'A'..'Z' | "Å" | "Ä" | "Ö" }
-digit      = { '0'..'9' }
+lower_case =  { 'a'..'z' | "å" | "ä" | "ö" }
+upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
+digit      =  { '0'..'9' }
+whitespace = _{ " " | "\t" | "\r" | "\n" }
+
+ws = _{ whitespace* }
+
+var_name  = { lower_case ~ (lower_case | digit | "_")* }
+type_name = {
+	"mut "? ~
+	(
+		(upper_case ~ (upper_case | lower_case | digit)*) |
+		"ℕ" |
+		"ℝ" |
+		"ℤ"
+	)
+}
+
+dot   = { "." }
+plus  = { "+" }
+minus = { "-" }
+delta = { "δ" }
+times = { "*" | "×"}
+div   = { "/" | "÷" }
+exp   = { "^" }
+not   = { "¬" }
+and   = { "Λ" | "∧" | "⋀" }
+or    = { "V" | "∨" | "⋁" }
+
+integer = { (plus | minus)? ~ digit+ }
+float   = { (plus | minus)? ~ digit+ ~ dot ~ digit* }
+
+true_lit  = { "true" }
+false_lit = { "false" }
+
+declaration = { var_name ~ ws ~ ":" ~ type_name? ~ "=" ~ subexpr }
+assignment  = { var_name ~ ws ~ "=" ~ ws ~ subexpr }
+
+function_call = { var_name ~ "(" ~ ((subexpr ~ ",")* ~ subexpr)* ~ ")" }
+
+term     = { var_name | float | integer | "(" ~ subexpr ~ ")" }
+operator = { exp | times | div | plus | minus | delta }
+
+subexpr = { ws ~ ( term ~ (ws ~ operator ~ ws ~ term)* ) }
+expr    = { declaration | assignment | subexpr }
+
+fn_keyword = { "fn " | "\\" | "λ" | "function " | "lambda " }
+argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
+
+function_definition = {
+	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~
+	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~
+	")" ~ ws ~ ("->" | "→") ~ ws ~ type_name ~ ws ~ block
+}
+block = { "{" ~ ws ~ (expr ~ (("\n" | ";"+) ~ expr)*) ~ ws ~ "}" }
+
