@@ -1,9 +1,9 @@
 lower_case =  { 'a'..'z' | "å" | "ä" | "ö" }
 upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
 digit      =  { '0'..'9' }
-whitespace = _{ " " | "\t" | "\r" | "\n" }
+whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
 
-ws = _{ whitespace* }
+ws = _{ whitespace? }
 
 var_name  = { lower_case ~ (lower_case | digit | "_")* }
 type_name = {
@@ -51,4 +51,4 @@ function_definition = {
 	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~
 	")" ~ ws ~ ("->" | "→") ~ ws ~ type_name ~ ws ~ block
 }
-block = { "{" ~ ws ~ (expr ~ (("\n" | ";"+) ~ expr)*) ~ ws ~ "}" }
+block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
