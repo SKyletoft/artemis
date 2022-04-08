@@ -29,18 +29,17 @@ or    = { "V" | "∨" | "⋁" }
 
 integer = { (plus | minus)? ~ digit+ }
 float   = { (plus | minus)? ~ digit+ ~ dot ~ digit* }
-
-true_lit  = { "true" }
-false_lit = { "false" }
+boolean = { "true" | "false" }
 
 declaration = { var_name ~ ws ~ ":" ~ type_name? ~ "=" ~ subexpr }
 assignment  = { var_name ~ ws ~ "=" ~ ws ~ subexpr }
 
 function_call = { var_name ~ "(" ~ ((subexpr ~ ",")* ~ subexpr)* ~ ")" }
 
-term     = { var_name | float | integer | "(" ~ subexpr ~ ")" }
+term     = { float | integer | boolean | "(" ~ subexpr ~ ")" | block | if_expr | var_name }
 operator = { exp | times | div | plus | minus | delta }
 
+if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_expr) }
 subexpr = { ws ~ ( term ~ (ws ~ operator ~ ws ~ term)* ) }
 expr    = { declaration | assignment | subexpr }
 
@@ -53,4 +52,3 @@ function_definition = {
 	")" ~ ws ~ ("->" | "→") ~ ws ~ type_name ~ ws ~ block
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | ";"+) ~ expr)*) ~ ws ~ "}" }
-
