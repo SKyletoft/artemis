@@ -43,7 +43,7 @@ if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_ex
 subexpr = { ws ~ ( term ~ (ws ~ operator ~ ws ~ term)* ) }
 expr    = { declaration | assignment | subexpr }
 
-fn_keyword = { "fn " | "\\" | "λ" | "function " | "lambda " }
+fn_keyword = { "\\" | "λ" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 
 function_definition = {
