@@ -17,4 +17,6 @@ parking_lot = "0.12"
 once_cell = "1.10.0"
 pest = "2.1.3"
 pest_derive = "2.1.0"
+log = "0.4.16"
+simple_logger = { version = "2.1.0", default-features = false, features = [ "colors" ] }
 

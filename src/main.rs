@@ -11,6 +11,7 @@ use pest::{
 	prec_climber::{Assoc, Operator, PrecClimber},
 	Parser,
 };
+use simple_logger::SimpleLogger;
 
 mod ordered;
 
@@ -29,6 +30,9 @@ static PREC_CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
 struct GeneratedParser;
 
 fn main() -> Result<()> {
+	SimpleLogger::new().init().expect("Logging init failure");
+	log::warn!("Logging initialised");
+
 	let source_file_name = env::args().skip(1).next().expect("No source file provided");
 	let source = fs::read_to_string(&source_file_name)?;
 	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
@@ -39,3 +43,4 @@ fn main() -> Result<()> {
 
 	Ok(())
 }
+
