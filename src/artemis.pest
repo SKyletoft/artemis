@@ -31,17 +31,18 @@ integer = { (plus | minus)? ~ digit+ }
 float   = { (plus | minus)? ~ digit+ ~ dot ~ digit* }
 boolean = { "true" | "false" }
 unit    = { "(" ~ ws ~ ")" }
+tuple   = { "(" ~ ws ~ expr ~ (ws ~ "," ~ ws ~ expr)* ~ ws ~ ")" }
 
 declaration = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ subexpr }
 assignment  = { var_name ~ ws ~ "=" ~ ws ~ subexpr }
 
-function_call = { var_name ~ "(" ~ ((subexpr ~ ",")* ~ subexpr)* ~ ")" }
+function_call = { var_name ~ "(" ~ ws ~ ((subexpr ~ ",")* ~ ws ~ subexpr)* ~ ws ~ ")" }
 
-term     = { float | integer | boolean | unit | "(" ~ subexpr ~ ")" | block | if_expr | var_name }
+term     = { float | integer | boolean | unit | tuple | "(" ~ ws ~ subexpr ~ ws ~ ")" | block | if_expr | var_name }
 operator = { exp | times | div | plus | minus | delta }
 
 if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_expr) }
-subexpr = { ws ~ ( term ~ (ws ~ operator ~ ws ~ term)* ) }
+subexpr = { term ~ (ws ~ operator ~ ws ~ term)* }
 expr    = { declaration | assignment | subexpr }
 
 fn_keyword = { "\\" | "λ" }
