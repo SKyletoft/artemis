@@ -1,0 +1,12 @@
+λf () {
+	a:mut T=1
+	b:mut T =2
+	c: mut T=3
+	d: mut T =4
+	e :mut T =5
+	f : mut T=6
+	g : mut T =7
+	h :mut T = 8
+	i : mut T= 9
+	j : mut T = 10
+}
