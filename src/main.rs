@@ -1,33 +1,10 @@
-extern crate pest;
-#[macro_use]
-extern crate pest_derive;
-
 use std::{env, fs};
 
 use anyhow::Result;
-use once_cell::sync::Lazy;
-use pest::{
-	iterators::Pair,
-	prec_climber::{Assoc, Operator, PrecClimber},
-	Parser,
-};
+use pest::{iterators::Pair, Parser};
 use simple_logger::SimpleLogger;
 
-mod ordered;
-
-static PREC_CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
-	use Assoc::*;
-	use Rule::*;
-	PrecClimber::new(vec![
-		Operator::new(plus, Left) | Operator::new(minus, Left),
-		Operator::new(times, Left) | Operator::new(div, Left),
-		Operator::new(exp, Right),
-	])
-});
-
-#[derive(Parser)]
-#[grammar = "artemis.pest"]
-struct GeneratedParser;
+use artemis::{GeneratedParser, Rule, PREC_CLIMBER};
 
 fn main() -> Result<()> {
 	SimpleLogger::new().init().expect("Logging init failure");
@@ -43,4 +20,3 @@ fn main() -> Result<()> {
 
 	Ok(())
 }
-
