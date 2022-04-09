@@ -48,8 +48,8 @@ fn_keyword = { "\\" | "λ" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 
 function_definition = {
-	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~
-	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~
+	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~
+	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~ ws ~
 	")" ~ ws ~ (("->" | "→") ~ ws ~ type_name)? ~ ws ~ block
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
