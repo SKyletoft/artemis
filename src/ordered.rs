@@ -3,6 +3,7 @@ use smallvec::SmallVec;
 type SmallString = smallstr::SmallString<[u8; 16]>;
 type Block = SmallVec<[Expr; 4]>;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
 	name: SmallString,
 	arguments: SmallVec<[Argument; 4]>,
@@ -10,23 +11,27 @@ pub struct Function {
 	block: Block,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
 	name: SmallString,
 	type_name: Type,
 	value: Subexpr,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
 	type_name: Type,
 	name: SmallString,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
 	Subexpr(Box<Subexpr>),
 	Declaration,
 	Assignment,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Subexpr {
 	BinOp(BinOp),
 	If(IfExpr),
@@ -35,24 +40,28 @@ pub enum Subexpr {
 	Variable(SmallString),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
 	Integer(u64),
 	Float(f64),
 	Boolean(bool),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
 	lhs: Box<Subexpr>,
 	op: Op,
 	rhs: Box<Subexpr>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
 	condition: Box<Subexpr>,
 	lhs: Block,
 	rhs: Block,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Op {
 	Plus,
 	Minus,
@@ -66,6 +75,7 @@ pub enum Op {
 	Xor,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum RawType {
 	Integer,
 	Natural,
@@ -74,11 +84,13 @@ pub enum RawType {
 	Struct(SmallString),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
 	Const(RawType),
 	Mutable(RawType),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelConstruct {
 	Function(Function),
 	Declaration(Declaration),
