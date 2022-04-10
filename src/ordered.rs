@@ -45,6 +45,7 @@ pub enum Literal {
 	Integer(u64),
 	Float(f64),
 	Boolean(bool),
+	Unit,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,6 +83,7 @@ pub enum RawType {
 	Real,
 	Boolean,
 	Struct(SmallString),
+	Inferred,
 }
 
 #[derive(Debug, Clone, PartialEq)]
