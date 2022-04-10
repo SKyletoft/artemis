@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
-type Block = SmallVec<[Expr; 4]>;
+type Block = Vec<Expr>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
