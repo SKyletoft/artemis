@@ -102,6 +102,22 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
+#[derive(Debug, Clone, PartialEq, Variantly)]
+pub enum AST {
+	Declaration(Declaration),
+	Function(Function),
+	Argument(Argument),
+	Expr(Expr),
+	Subexpr(Subexpr),
+	IfExpr(IfExpr),
+	#[variantly(rename = "TypeLiteral")]
+	Type(Type),
+	TopLevelConstruct(TopLevelConstruct),
+	Literal(Literal),
+	Block(Block),
+	RawToken(SmallString),
+}
+
 fn parse_raw_type(s: &str) -> RawType {
 	match s {
 		"ℕ" | "Nat" => RawType::Natural,
