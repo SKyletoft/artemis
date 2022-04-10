@@ -4,6 +4,7 @@ use std::error;
 #[derive(Debug, Copy, Clone)]
 pub enum Error {
 	A,
+	Internal,
 }
 
 impl fmt::Display for Error {
