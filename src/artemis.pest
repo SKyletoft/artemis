@@ -7,7 +7,7 @@ ws = _{ whitespace? }
 
 var_name  = { lower_case ~ (lower_case | digit | "_")* }
 type_name = {
-	"mut "? ~
+	("mut" ~ whitespace)? ~
 	(
 		(upper_case ~ (upper_case | lower_case | digit)*) |
 		"ℕ" |
