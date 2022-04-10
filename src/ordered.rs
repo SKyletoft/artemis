@@ -113,6 +113,7 @@ pub enum TopLevelConstruct {
 #[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum AST {
 	Declaration(Declaration),
+	Assignment(Assignment),
 	Function(Function),
 	Argument(Argument),
 	Expr(Expr),
