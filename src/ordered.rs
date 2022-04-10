@@ -86,7 +86,9 @@ pub enum RawType {
 	Natural,
 	Real,
 	Boolean,
+	Unit,
 	Struct(SmallString),
+	Tuple(Vec<Type>),
 	Inferred,
 }
 
