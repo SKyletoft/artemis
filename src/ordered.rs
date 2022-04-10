@@ -23,6 +23,12 @@ pub struct Declaration {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Assignment {
+	name: SmallString,
+	value: Subexpr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
 	type_name: Type,
 	name: SmallString,
