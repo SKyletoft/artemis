@@ -5,16 +5,13 @@ whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
 
 ws = _{ whitespace? }
 
-var_name  = { lower_case ~ (lower_case | digit | "_")* }
-type_name = {
-	("mut" ~ whitespace)? ~
-	(
-		(upper_case ~ (upper_case | lower_case | digit)*) |
-		"ℕ" |
-		"ℝ" |
-		"ℤ"
-	)
-}
+var_name     = { lower_case ~ (lower_case | digit | "_")* }
+type_name    = { (mutable ~ whitespace)? ~ raw_type }
+mutable      = { "mut" }
+raw_type     = { native_types | struct_name | unit | tuple_type }
+native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" }
+struct_name  = { upper_case ~ (upper_case | lower_case | digit)* }
+tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ type_name)* ~ ws ~ ")" }
 
 dot   = { "." }
 plus  = { "+" }
