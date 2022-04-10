@@ -36,9 +36,9 @@ pub struct Argument {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-	Subexpr(Box<Subexpr>),
-	Declaration,
-	Assignment,
+	Subexpr(Subexpr),
+	Declaration(Declaration),
+	Assignment(Assignment),
 }
 
 #[derive(Debug, Clone, PartialEq)]
