@@ -5,7 +5,8 @@ extern crate pest_derive;
 use once_cell::sync::Lazy;
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 
-mod ordered;
+pub mod error;
+pub mod ordered;
 
 pub static PREC_CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
 	use Assoc::*;
