@@ -148,3 +148,24 @@ fn parse_type(s: &str) -> Type {
 		Type::Const(raw)
 	}
 }
+
+macro_rules! remove_by_pattern {
+	($e:expr, $p:pat, $a:expr) => {
+		// Poor man's try block
+		(|| {
+			let e: &mut SmallVec<[AST; 8]> = $e;
+
+			// Find the last one for minor performance improvements
+			#[allow(unused_variables)] // Unused variable is named so the pattern can be used twice
+			let idx = e.iter().rev().position(|n| matches!(n, $p))?;
+			let wrapped = e.remove(e.len() - idx - 1);
+
+			if let $p = wrapped {
+				Some($a)
+			} else {
+				unreachable!()
+			}
+		})()
+	};
+}
+
