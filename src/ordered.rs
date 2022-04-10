@@ -121,6 +121,7 @@ pub enum AST {
 	IfExpr(IfExpr),
 	#[variantly(rename = "TypeLiteral")]
 	Type(Type),
+	RawType(RawType),
 	TopLevelConstruct(TopLevelConstruct),
 	Literal(Literal),
 	Block(Block),
