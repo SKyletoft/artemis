@@ -29,6 +29,7 @@
 					nativeBuildInputs = with pkgs; [
 						rustup
 						valgrind
+						rr
 					] ++ artemis.nativeBuildInputs;
 				};
 			}
