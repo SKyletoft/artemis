@@ -128,27 +128,6 @@ pub enum AST {
 	RawToken(SmallString),
 }
 
-fn parse_raw_type(s: &str) -> RawType {
-	match s {
-		"ℕ" | "Nat" => RawType::Natural,
-		"ℤ" | "Int" => RawType::Integer,
-		"ℝ" | "Real" => RawType::Real,
-		"𝔹" | "Bool" => RawType::Boolean,
-		_ => RawType::Struct(s.into()),
-	}
-}
-
-fn parse_type(s: &str) -> Type {
-	if let Some(rest) = s.strip_prefix("mut") {
-		let rest = rest.trim_start();
-		let raw = parse_raw_type(rest);
-		Type::Mutable(raw)
-	} else {
-		let raw = parse_raw_type(s);
-		Type::Const(raw)
-	}
-}
-
 macro_rules! remove_by_pattern {
 	($e:expr, $p:pat, $a:expr) => {
 		// Poor man's try block
