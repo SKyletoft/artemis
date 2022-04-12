@@ -11,7 +11,7 @@ type Block = Vec<Expr>;
 pub struct Function {
 	name: SmallString,
 	arguments: SmallVec<[Argument; 4]>,
-	return_type: Type,
+	return_type: RawType,
 	block: Block,
 }
 
