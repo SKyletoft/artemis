@@ -35,7 +35,18 @@ assignment  = { var_name ~ ws ~ "=" ~ ws ~ subexpr }
 
 function_call = { var_name ~ "(" ~ ws ~ ((subexpr ~ ",")* ~ ws ~ subexpr)* ~ ws ~ ")" }
 
-term     = { float | integer | boolean | unit | tuple | "(" ~ ws ~ subexpr ~ ws ~ ")" | block | if_expr | var_name }
+term = {
+	float
+	| integer
+	| boolean
+	| unit
+	| tuple
+	| "(" ~ ws ~ subexpr ~ ws ~ ")"
+	| block
+	| if_expr
+	| function_call
+	| var_name
+}
 operator = { exp | times | div | plus | minus | delta }
 
 if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_expr) }
