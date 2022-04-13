@@ -5,10 +5,7 @@ use pest::Parser;
 use simple_logger::SimpleLogger;
 use smallvec::SmallVec;
 
-use artemis::{
-	ordered::AST,
-	GeneratedParser, Rule,
-};
+use artemis::{ordered::AST, GeneratedParser, Rule};
 
 fn main() -> Result<()> {
 	SimpleLogger::new().init().expect("Logging init failure");
