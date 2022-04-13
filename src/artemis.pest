@@ -23,6 +23,7 @@ exp   = { "^" }
 not   = { "¬" }
 and   = { "Λ" | "∧" | "⋀" }
 or    = { "V" | "∨" | "⋁" }
+xor   = { "⊕" | "⊻" | "⨁" }
 
 integer = { (plus | minus)? ~ digit+ }
 float   = { (plus | minus)? ~ digit+ ~ dot ~ digit* }
