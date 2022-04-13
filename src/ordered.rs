@@ -94,6 +94,7 @@ pub enum Op {
 	And,
 	Or,
 	Xor,
+	Dot,
 }
 
 #[derive(Debug, Clone, PartialEq)]
