@@ -1,6 +1,8 @@
+use std::mem;
+
 use crate::{error::Error, Rule};
-use anyhow::Result;
-use pest::iterators::{Pair, Pairs};
+use anyhow::{bail, Result};
+use pest::iterators::Pair;
 use smallvec::SmallVec;
 use variantly::Variantly;
 
