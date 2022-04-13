@@ -202,10 +202,8 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 							.collect::<Result<Vec<_>>>()?;
 						Subexpr::Tuple(tuple)
 					}
-					Rule::subexpr => {
-						// Parentheses
-						AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?
-					}
+					// Parentheses
+					Rule::subexpr => AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?,
 					Rule::block => todo!(),
 					Rule::if_expr => todo!(),
 					Rule::function_call => {
