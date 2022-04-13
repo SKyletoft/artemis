@@ -38,4 +38,3 @@ fn fail_files() {
 		assert!(res.is_err());
 	}
 }
-
