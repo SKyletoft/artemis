@@ -56,6 +56,7 @@ pub enum Subexpr {
 	Block(Block),
 	Literal(Literal),
 	Variable(SmallString),
+	Tuple(Vec<Subexpr>),
 	FunctionCall(FunctionCall),
 }
 
