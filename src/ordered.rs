@@ -11,35 +11,35 @@ type Block = Vec<Expr>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
-	name: SmallString,
-	arguments: SmallVec<[Argument; 4]>,
-	return_type: RawType,
-	block: Block,
+	pub name: SmallString,
+	pub arguments: SmallVec<[Argument; 4]>,
+	pub return_type: RawType,
+	pub block: Block,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
-	name: SmallString,
-	type_name: Type,
-	value: Subexpr,
+	pub name: SmallString,
+	pub type_name: Type,
+	pub value: Subexpr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
-	name: SmallString,
-	value: Subexpr,
+	pub name: SmallString,
+	pub value: Subexpr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
-	type_name: Type,
-	name: SmallString,
+	pub type_name: Type,
+	pub name: SmallString,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-	function_name: SmallString,
-	arguments: Vec<Subexpr>,
+	pub function_name: SmallString,
+	pub arguments: Vec<Subexpr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -70,16 +70,16 @@ pub enum Literal {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
-	lhs: Box<Subexpr>,
-	op: Op,
-	rhs: Box<Subexpr>,
+	pub lhs: Box<Subexpr>,
+	pub op: Op,
+	pub rhs: Box<Subexpr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
-	condition: Box<Subexpr>,
-	lhs: Block,
-	rhs: Block,
+	pub condition: Box<Subexpr>,
+	pub lhs: Block,
+	pub rhs: Block,
 }
 
 #[derive(Debug, Clone, PartialEq)]
