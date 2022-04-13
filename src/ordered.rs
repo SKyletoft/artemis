@@ -52,7 +52,7 @@ pub enum Expr {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Subexpr {
 	BinOp(BinOp),
-	If(IfExpr),
+	IfExpr(IfExpr),
 	Block(Block),
 	Literal(Literal),
 	Variable(SmallString),
