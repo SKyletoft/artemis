@@ -321,10 +321,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 						// Fix this when Type has been moved out into its own TryFrom impl
 						let contained_types = inner
 							.into_inner()
-							.map(AST::try_from)
-							.collect::<Result<SmallVec<[AST; 8]>>>()?
-							.into_iter()
-							.map(AST::type_literal)
+							.map(|pair| AST::try_from(pair).ok().and_then(AST::type_literal))
 							.collect::<Option<Vec<Type>>>()
 							.ok_or(Error::ParseError)?;
 						RawType::Tuple(contained_types)
@@ -467,17 +464,16 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 			Rule::block => {
 				let inner = pair
 					.into_inner()
-					.map(AST::try_from)
-					.collect::<Result<SmallVec<[AST; 8]>>>()?
-					.into_iter()
-					.map(|node| match node {
-						AST::Expr(e) => Ok(e),
-						AST::Subexpr(s) => Ok(Expr::Subexpr(s)),
-						AST::Declaration(d) => Ok(Expr::Declaration(d)),
-						AST::Assignment(a) => Ok(Expr::Assignment(a)),
-						_ => Err(Error::ParseError),
+					.map(|pair| {
+						AST::try_from(pair).and_then(|node| match node {
+							AST::Expr(e) => Ok(e),
+							AST::Subexpr(s) => Ok(Expr::Subexpr(s)),
+							AST::Declaration(d) => Ok(Expr::Declaration(d)),
+							AST::Assignment(a) => Ok(Expr::Assignment(a)),
+							_ => bail!(Error::ParseError),
+						})
 					})
-					.collect::<Result<Vec<Expr>, Error>>()?;
+					.collect::<Result<Vec<Expr>>>()?;
 				AST::Block(inner)
 			}
 			_ => panic!(),
