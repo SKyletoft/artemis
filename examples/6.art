@@ -1,4 +1,4 @@
-fn main() {
-	x : mut Int = 5;
-	x += 1;
+λmain () {
+	x : mut ℤ = 5
+	x += 1
 }

@@ -1,6 +1,5 @@
-fn main() {
-	x : Int = 5;
-	y : Int = 2;
-	z : Int = x + y;
+λmain () {
+	x : ℤ = 5
+	y : ℤ = 2
+	z : ℤ = x + y
 }
-

@@ -1,4 +1,4 @@
-fn main() {
-	x : Int = 5;
-	y : Int = x;
+λmain () {
+	x : ℤ = 5
+	y : ℤ = x
 }
