@@ -37,6 +37,12 @@ pub struct Argument {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct FunctionCall {
+	function_name: SmallString,
+	arguments: Vec<Subexpr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
 	Subexpr(Subexpr),
 	Declaration(Declaration),
@@ -50,6 +56,7 @@ pub enum Subexpr {
 	Block(Block),
 	Literal(Literal),
 	Variable(SmallString),
+	FunctionCall(FunctionCall),
 }
 
 #[derive(Debug, Clone, PartialEq)]
