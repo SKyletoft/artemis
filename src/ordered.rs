@@ -49,7 +49,7 @@ pub enum Expr {
 	Assignment(Assignment),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum Subexpr {
 	BinOp(BinOp),
 	IfExpr(IfExpr),
@@ -261,3 +261,224 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 	}
 }
 
+fn replace_bin_op(tokens: &mut SmallVec<[MaybeParsed; 4]>, idx: usize) -> Result<()> {
+	let op = tokens
+		.remove(idx)
+		.operator()
+		.expect("Proved by pattern match above");
+	assert!(idx >= 1);
+	let lhs = mem::replace(&mut tokens[idx - 1], MaybeParsed::Empty)
+		.parsed()
+		.and_then(AST::subexpr)
+		.ok_or(Error::ParseError)?;
+	let rhs = tokens
+		.remove(idx)
+		.parsed()
+		.and_then(AST::subexpr)
+		.ok_or(Error::ParseError)?;
+	let res = Subexpr::BinOp(BinOp {
+		lhs: Box::new(lhs),
+		op,
+		rhs: Box::new(rhs),
+	});
+	tokens[idx - 1] = MaybeParsed::Parsed(AST::Subexpr(res));
+	Ok(())
+}
+
+impl<'a> TryFrom<Pair<'a, Rule>> for AST {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'a, Rule>) -> Result<Self, Self::Error> {
+		let res = match pair.as_rule() {
+			Rule::var_name => AST::Subexpr(Subexpr::Variable(pair.as_str().into())),
+			Rule::type_name => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				let mutable = remove_by_pattern!(&mut inner, AST::RawToken(a), a)
+					.map(|s| s == "mut") // Because it could be `ref` too
+					.unwrap_or(false);
+				let raw_type =
+					remove_by_pattern!(&mut inner, AST::RawType(a), a).ok_or(Error::ParseError)?;
+				let mutability = if mutable { Type::Mutable } else { Type::Const };
+				AST::Type(mutability(raw_type))
+			}
+			Rule::mutable => AST::RawToken("mut".into()),
+			Rule::raw_type => {
+				// `raw_type` rule always contains exactly one thing
+				let inner = pair.into_inner().next().ok_or(Error::Internal)?;
+				let raw = match inner.as_rule() {
+					Rule::unit => RawType::Unit,
+					Rule::native_types => match inner.as_str() {
+						"ℕ" => RawType::Natural,
+						"ℤ" => RawType::Integer,
+						"ℝ" => RawType::Real,
+						"𝔹" => RawType::Boolean,
+						_ => unreachable!(),
+					},
+					Rule::tuple_type => {
+						// Fix this when Type has been moved out into its own TryFrom impl
+						let contained_types = inner
+							.into_inner()
+							.map(AST::try_from)
+							.collect::<Result<SmallVec<[AST; 8]>>>()?
+							.into_iter()
+							.map(AST::type_literal)
+							.collect::<Option<Vec<Type>>>()
+							.ok_or(Error::ParseError)?;
+						RawType::Tuple(contained_types)
+					}
+					Rule::struct_name => match inner.as_str() {
+						"Nat" => RawType::Natural,
+						"Int" => RawType::Integer,
+						"Real" => RawType::Real,
+						"Bool" => RawType::Boolean,
+						_ => RawType::Struct(inner.as_str().into()),
+					}
+					_ => unreachable!(),
+				};
+				AST::RawType(raw)
+			}
+			Rule::declaration => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				// Name, maybe type and value
+				assert!(inner.len() == 2 || inner.len() == 3);
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+					.ok_or(Error::ParseError)?;
+				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
+					.unwrap_or(Type::Const(RawType::Inferred));
+				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a).ok_or(Error::ParseError)?;
+				AST::Declaration(Declaration {
+					name,
+					type_name,
+					value,
+				})
+			}
+			Rule::assignment => todo!(),
+			Rule::expr => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				assert!(inner.len() == 1);
+				inner.pop().unwrap()
+			}
+			Rule::subexpr => {
+				let mut tokens = pair
+					.into_inner()
+					.map(MaybeParsed::try_from)
+					.collect::<Result<SmallVec<[MaybeParsed; 4]>>>()?;
+				/*
+				 *	Order of operations:
+				 *	.
+				 *	^
+				 *	¬ -x
+				 *	× /
+				 *	+ - δ
+				 *	Λ V ⊕
+				 */
+				while let Some(_idx) = tokens
+					.iter()
+					.position(|x| matches!(x, MaybeParsed::Operator(Op::Dot)))
+				{
+					todo!("Struct fields are not implemented yet");
+				}
+				while let Some(idx) = tokens
+					.iter()
+					// Todo: Unary minus
+					.position(|x| matches!(x, MaybeParsed::Operator(Op::Exp)))
+				{
+					replace_bin_op(&mut tokens, idx)?;
+				}
+				while let Some(idx) = tokens
+					.iter()
+					.position(|x| matches!(x, MaybeParsed::Operator(Op::Not)))
+				{}
+				while let Some(idx) = tokens
+					.iter()
+					.position(|x| matches!(x, MaybeParsed::Operator(Op::Times | Op::Div)))
+				{
+					replace_bin_op(&mut tokens, idx)?;
+				}
+				while let Some(idx) = tokens.iter().position(|x| {
+					matches!(x, MaybeParsed::Operator(Op::Plus | Op::Minus | Op::Delta))
+				}) {
+					replace_bin_op(&mut tokens, idx)?;
+				}
+				while let Some(idx) = tokens
+					.iter()
+					.position(|x| matches!(x, MaybeParsed::Operator(Op::And | Op::Or | Op::Xor)))
+				{
+					replace_bin_op(&mut tokens, idx)?;
+				}
+				if !matches!(tokens.as_slice(), [MaybeParsed::Parsed(_)]) {
+					bail!(Error::ParseError);
+				}
+				tokens.remove(0).parsed().ok_or(Error::Internal)?
+			}
+			Rule::fn_keyword => AST::RawToken(pair.as_str().into()),
+			Rule::argument => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a).ok_or(Error::ParseError)?;
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+					.ok_or(Error::ParseError)?;
+				AST::Argument(Argument { name, type_name })
+			}
+			Rule::function_definition => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				// Reverse order to reduce moves in the SmallVec
+				let block = remove_by_pattern!(&mut inner, AST::Block(a), a).ok_or(Error::ParseError)?;
+				let return_type =
+					remove_by_pattern!(&mut inner, AST::RawType(a), a).unwrap_or(RawType::Unit);
+				let arguments = {
+					let mut args = SmallVec::new();
+					while let Some(arg) = remove_by_pattern!(&mut inner, AST::Argument(a), a) {
+						args.push(arg);
+					}
+					args
+				};
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+					.ok_or(Error::ParseError)?;
+				let fn_keyword =
+					remove_by_pattern!(&mut inner, AST::RawToken(a), a).ok_or(Error::ParseError)?;
+				if matches!(fn_keyword.as_str(), "\\") {
+					log::warn!("\\ used over idiomatic λ");
+				}
+				AST::Function(Function {
+					name,
+					arguments,
+					return_type,
+					block,
+				})
+			}
+			Rule::block => {
+				let inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?
+					.into_iter()
+					.map(|node| match node {
+						AST::Expr(e) => Ok(e),
+						AST::Subexpr(s) => Ok(Expr::Subexpr(s)),
+						AST::Declaration(d) => Ok(Expr::Declaration(d)),
+						AST::Assignment(a) => Ok(Expr::Assignment(a)),
+						_ => Err(Error::ParseError),
+					})
+					.collect::<Result<Vec<Expr>, Error>>()?;
+				AST::Block(inner)
+			}
+			_ => panic!(),
+		};
+		Ok(res)
+	}
+}
