@@ -191,17 +191,17 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 					Rule::boolean => Subexpr::Literal(Literal::Boolean(inner.as_str().parse()?)),
 					Rule::unit => Subexpr::Literal(Literal::Unit),
 					Rule::tuple => {
-						let tuple = inner.into_inner()
+						let tuple = inner
+							.into_inner()
 							.into_iter()
 							.map(|pair| {
-								let expr = AST::try_from(pair)?
-									.subexpr()
-									.ok_or(Error::ParseError)?;
+								let expr =
+									AST::try_from(pair)?.subexpr().ok_or(Error::ParseError)?;
 								Ok(expr)
 							})
 							.collect::<Result<Vec<_>>>()?;
 						Subexpr::Tuple(tuple)
-					},
+					}
 					Rule::subexpr => {
 						// Parentheses
 						AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?
@@ -335,7 +335,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 						"Real" => RawType::Real,
 						"Bool" => RawType::Boolean,
 						_ => RawType::Struct(inner.as_str().into()),
-					}
+					},
 					_ => unreachable!(),
 				};
 				AST::RawType(raw)
@@ -351,7 +351,8 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.ok_or(Error::ParseError)?;
 				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
 					.unwrap_or(Type::Const(RawType::Inferred));
-				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a).ok_or(Error::ParseError)?;
+				let value =
+					remove_by_pattern!(&mut inner, AST::Subexpr(a), a).ok_or(Error::ParseError)?;
 				AST::Declaration(Declaration {
 					name,
 					type_name,
@@ -426,7 +427,8 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
-				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a).ok_or(Error::ParseError)?;
+				let type_name =
+					remove_by_pattern!(&mut inner, AST::Type(a), a).ok_or(Error::ParseError)?;
 				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
 					.ok_or(Error::ParseError)?;
 				AST::Argument(Argument { name, type_name })
@@ -437,7 +439,8 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
 				// Reverse order to reduce moves in the SmallVec
-				let block = remove_by_pattern!(&mut inner, AST::Block(a), a).ok_or(Error::ParseError)?;
+				let block =
+					remove_by_pattern!(&mut inner, AST::Block(a), a).ok_or(Error::ParseError)?;
 				let return_type =
 					remove_by_pattern!(&mut inner, AST::RawType(a), a).unwrap_or(RawType::Unit);
 				let arguments = {
