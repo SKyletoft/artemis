@@ -32,7 +32,7 @@ unit    = { "(" ~ ws ~ ")" }
 tuple   = { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
 
 declaration = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ subexpr }
-assignment  = { var_name ~ ws ~ "=" ~ ws ~ subexpr }
+assignment  = { var_name ~ ws ~ operator? ~ "=" ~ ws ~ subexpr }
 
 function_call = { var_name ~ "(" ~ ws ~ ((subexpr ~ ",")* ~ ws ~ subexpr)* ~ ws ~ ")" }
 
