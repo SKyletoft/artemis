@@ -9,7 +9,7 @@ use artemis::{ordered::AST, GeneratedParser, Rule};
 
 fn main() -> Result<()> {
 	SimpleLogger::new().init().expect("Logging init failure");
-	log::warn!("Logging initialised");
+	log::info!("Logging initialised");
 
 	let source_file_name = env::args().nth(1).expect("No source file provided");
 	let source = fs::read_to_string(&source_file_name)?;
