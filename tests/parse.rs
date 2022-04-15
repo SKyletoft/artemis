@@ -15,7 +15,7 @@ fn examples() {
 		let res = GeneratedParser::parse(Rule::function_definition, &contents);
 
 		if let Err(e) = &res {
-			eprintln!("{:?}:\n{e}", &file);
+			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
 		}
 		assert!(res.is_ok());
 	}
@@ -33,7 +33,7 @@ fn success_files() {
 		let res = GeneratedParser::parse(Rule::function_definition, &contents);
 
 		if let Err(e) = &res {
-			eprintln!("{:?}:\n{e}", &file);
+			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
 		}
 		assert!(res.is_ok());
 	}
@@ -51,7 +51,7 @@ fn fail_files() {
 		let res = GeneratedParser::parse(Rule::function_definition, &contents);
 
 		if let Ok(e) = &res {
-			eprintln!("{:?}:\n{e}", &file);
+			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
 		}
 		assert!(res.is_err());
 	}
