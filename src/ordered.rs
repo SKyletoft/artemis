@@ -215,7 +215,9 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 							.map(AST::try_from)
 							.collect::<Result<SmallVec<[AST; 8]>>>()?;
 						// There is always at least the name of the function being called
-						assert!(!inner_2.is_empty());
+						if !(!inner_2.is_empty()) {
+							bail!(Error::Internal);
+						}
 						let function_name = inner_2
 							.remove(0)
 							.subexpr()
@@ -263,11 +265,13 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 }
 
 fn replace_bin_op(tokens: &mut SmallVec<[MaybeParsed; 4]>, idx: usize) -> Result<()> {
+	if !(idx >= 1) {
+		bail!(Error::Internal);
+	}
 	let op = tokens
 		.remove(idx)
 		.operator()
-		.expect("Proved by pattern match above");
-	assert!(idx >= 1);
+		.ok_or(Error::Internal)?;
 	let lhs = mem::replace(&mut tokens[idx - 1], MaybeParsed::Empty)
 		.parsed()
 		.and_then(AST::subexpr)
@@ -344,7 +348,9 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
 				// Name, maybe type and value
-				assert!(inner.len() == 2 || inner.len() == 3);
+				if !(inner.len() == 2 || inner.len() == 3) {
+					bail!(Error::Internal);
+				}
 				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
 					.ok_or(Error::ParseError)?;
 				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
@@ -363,7 +369,9 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
-				assert!(inner.len() == 1);
+				if !(inner.len() == 1) {
+					bail!(Error::Internal);
+				}
 				inner.pop().unwrap()
 			}
 			Rule::subexpr => {
