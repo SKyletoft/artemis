@@ -207,7 +207,35 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 						let vec = AST::try_from(inner)?.block().ok_or(Error::ParseError)?;
 						Subexpr::Block(vec)
 					}
-					Rule::if_expr => todo!(),
+					Rule::if_expr => {
+						let mut inner_2 = inner
+							.into_inner()
+							.map(AST::try_from)
+							.collect::<Result<SmallVec<[AST; 3]>>>()?;
+						if inner_2.len() != 3 {
+							bail!(Error::ParseError);
+						}
+						let else_block = inner_2
+							.pop()
+							.expect("Length checked above")
+							.block()
+							.ok_or(Error::ParseError)?;
+						let then_block = inner_2
+							.pop()
+							.expect("Length checked above")
+							.block()
+							.ok_or(Error::ParseError)?;
+						let condition = inner_2
+							.pop()
+							.expect("Length checked above")
+							.subexpr()
+							.ok_or(Error::ParseError)?;
+						Subexpr::IfExpr(IfExpr {
+							condition: Box::new(condition),
+							lhs: then_block,
+							rhs: else_block,
+						})
+					}
 					Rule::function_call => {
 						let mut inner_2 = inner
 							.into_inner()
