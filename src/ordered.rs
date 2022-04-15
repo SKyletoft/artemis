@@ -193,7 +193,6 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 					Rule::tuple => {
 						let tuple = inner
 							.into_inner()
-							.into_iter()
 							.map(|pair| {
 								let expr =
 									AST::try_from(pair)?.subexpr().ok_or(Error::ParseError)?;
