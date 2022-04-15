@@ -1,6 +1,6 @@
 use anyhow::Result;
 use artemis::{
-	ordered::{BinOp, FunctionCall, Literal, Op, Subexpr, AST},
+	ordered::{BinOp, Expr, FunctionCall, Literal, Op, Subexpr, AST},
 	GeneratedParser, Rule,
 };
 use pest::Parser;
@@ -195,7 +195,6 @@ fn function_call_3() {
 			}),
 		],
 	}));
-	dbg!(&res);
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
 }
@@ -206,4 +205,48 @@ fn function_call_trailing_comma() {
 	let res = GeneratedParser::parse(Rule::function_call, s);
 	dbg!(&res);
 	assert!(res.is_err());
+}
+
+#[test]
+fn tuple_1() {
+	let s = "(x, y)";
+	let res = GeneratedParser::parse(Rule::subexpr, s)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	let expected = AST::Subexpr(Subexpr::Tuple(vec![
+		Subexpr::Variable("x".into()),
+		Subexpr::Variable("y".into()),
+	]));
+	assert_eq!(res.len(), 1);
+	assert_eq!(res[0], expected);
+}
+
+#[test]
+fn tuple_2() {
+	let s = "(1 + 2, (2 + 3) * 2)";
+	let res = GeneratedParser::parse(Rule::subexpr, s)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	let expected = AST::Subexpr(Subexpr::Tuple(vec![
+		Subexpr::BinOp(BinOp {
+			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+			op: Op::Plus,
+			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+		}),
+		Subexpr::BinOp(BinOp {
+			lhs: Box::new(Subexpr::BinOp(BinOp {
+				lhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+				op: Op::Plus,
+				rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
+			})),
+			op: Op::Times,
+			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+		}),
+	]));
+	assert_eq!(res.len(), 1);
+	assert_eq!(res[0], expected);
 }
