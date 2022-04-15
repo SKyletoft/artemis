@@ -1,0 +1,9 @@
+λf () {
+	a := if true {
+		1
+	} else {
+		2
+	}
+	if true {()} else if true {()} else {()}
+	if true {()} else if true {()} else if true {()} else {()}
+}
