@@ -25,11 +25,15 @@ and   = { "Λ" | "∧" | "⋀" }
 or    = { "V" | "∨" | "⋁" }
 xor   = { "⊕" | "⊻" | "⨁" }
 
-integer = { (plus | minus)? ~ digit+ }
-float   = { (plus | minus)? ~ digit+ ~ dot ~ digit* }
-boolean = { "true" | "false" }
-unit    = { "(" ~ ws ~ ")" }
-tuple   = { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
+string  = ${ "\"" ~ inner_s ~ "\"" }
+char    =  { "'" ~ single_char ~ "'" }
+
+inner_s     = @{ single_char* }
+single_char =  {
+	!("\"" | "\\") ~ ANY
+	| "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+	| "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
 
 declaration = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ subexpr }
 assignment  = { var_name ~ ws ~ operator? ~ "=" ~ ws ~ subexpr }
@@ -46,6 +50,8 @@ term = {
 	| block
 	| if_expr
 	| function_call
+	| string
+	| char
 	| var_name
 }
 operator = { exp | times | div | plus | minus | delta }
