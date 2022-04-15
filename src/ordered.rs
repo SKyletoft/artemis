@@ -204,7 +204,10 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 					}
 					// Parentheses
 					Rule::subexpr => AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?,
-					Rule::block => todo!(),
+					Rule::block => {
+						let vec = AST::try_from(inner)?.block().ok_or(Error::ParseError)?;
+						Subexpr::Block(vec)
+					},
 					Rule::if_expr => todo!(),
 					Rule::function_call => {
 						let mut inner_2 = inner
