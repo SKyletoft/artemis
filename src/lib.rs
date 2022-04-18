@@ -7,6 +7,7 @@ use pest::prec_climber::{Assoc, Operator, PrecClimber};
 
 pub mod error;
 pub mod ordered;
+pub mod type_check;
 
 pub static PREC_CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
 	use Assoc::*;
