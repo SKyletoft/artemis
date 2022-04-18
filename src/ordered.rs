@@ -1,8 +1,8 @@
 use std::mem;
 
-use crate::{error::Error, Rule};
+use crate::{error::Error, GeneratedParser, Rule};
 use anyhow::{bail, Result};
-use pest::iterators::Pair;
+use pest::{iterators::Pair, Parser};
 use smallvec::SmallVec;
 use variantly::Variantly;
 
@@ -362,7 +362,45 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					value,
 				})
 			}
-			Rule::assignment => todo!(),
+			Rule::assignment => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				// Name, maybe operator and value
+				if !(inner.len() == 2 || inner.len() == 3) {
+					bail!(Error::Internal);
+				}
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+					.ok_or(Error::ParseError)?;
+				let op = remove_by_pattern!(&mut inner, AST::RawToken(a), a);
+				let rhs = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
+					.ok_or(Error::ParseError)?;
+
+				let value = if let Some(op) = op {
+					let mut op_tokens = GeneratedParser::parse(Rule::operator, op.as_str())?
+						.map(MaybeParsed::try_from)
+						.collect::<Result<SmallVec<[MaybeParsed; 1]>>>()?;
+					if op_tokens.len() != 1 {
+						bail!(Error::Internal);
+					}
+					let op = op_tokens
+						.pop()
+						.map(MaybeParsed::try_from)
+						.expect("Length checked above")?
+						.operator()
+						.ok_or(Error::ParseError)?;
+					Subexpr::BinOp(BinOp {
+						lhs: Box::new(Subexpr::Variable(name.clone())),
+						op,
+						rhs: Box::new(rhs),
+					})
+				} else {
+					rhs
+				};
+
+				AST::Assignment(Assignment { name, value })
+			}
 			Rule::expr => {
 				let mut inner = pair
 					.into_inner()
@@ -517,7 +555,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					rhs: else_block,
 				}))
 			}
-			_ => panic!(),
+			_ => AST::RawToken(pair.as_str().into()),
 		};
 		Ok(res)
 	}
