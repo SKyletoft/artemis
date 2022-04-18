@@ -215,11 +215,15 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 						if inner_2.len() != 3 {
 							bail!(Error::ParseError);
 						}
-						let else_block = inner_2
-							.pop()
-							.expect("Length checked above")
-							.block()
-							.ok_or(Error::ParseError)?;
+						let else_block = {
+							let ast = inner_2.pop().expect("Length checked above");
+							match ast {
+								AST::Block(v) => Ok(v),
+								AST::Subexpr(a @ Subexpr::IfExpr(_)) => Ok(vec![Expr::Subexpr(a)]),
+								AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(Subexpr::IfExpr(else_if))]),
+								_ => Err(Error::ParseError),
+							}
+						}?;
 						let then_block = inner_2
 							.pop()
 							.expect("Length checked above")
