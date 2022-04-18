@@ -250,3 +250,22 @@ fn tuple_2() {
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
 }
+
+#[test]
+fn op_assign() {
+	let a = "a = a + 1";
+	let b = "a += 1";
+	let res_a = GeneratedParser::parse(Rule::expr, a)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	let res_b = GeneratedParser::parse(Rule::expr, b)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	assert_eq!(res_a.len(), 1);
+	assert_eq!(res_b.len(), 1);
+	assert_eq!(res_a, res_b);
+}
