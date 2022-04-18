@@ -1,9 +1,8 @@
 λf () {
-	a := if true {
-		1
-	} else {
-		2
-	}
+	a := if true {()} else {()}
+	b := if true {()} else if true {()} else {()}
+	c := if true {()} else if true {()} else if true {()} else {()}
+	if true {()} else {()}
 	if true {()} else if true {()} else {()}
 	if true {()} else if true {()} else if true {()} else {()}
 }
