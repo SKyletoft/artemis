@@ -269,3 +269,22 @@ fn op_assign() {
 	assert_eq!(res_b.len(), 1);
 	assert_eq!(res_a, res_b);
 }
+
+#[test]
+fn else_if() {
+	let a = "if () {()} else if () {()} else {()}";
+	let b = "if () {()} else { if () {()} else {()} }";
+	let res_a = GeneratedParser::parse(Rule::expr, a)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	let res_b = GeneratedParser::parse(Rule::expr, b)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	assert_eq!(res_a.len(), 1);
+	assert_eq!(res_b.len(), 1);
+	assert_eq!(res_a, res_b);
+}
