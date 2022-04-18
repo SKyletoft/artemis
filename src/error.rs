@@ -5,6 +5,7 @@ use std::error;
 pub enum Error {
 	ParseError,
 	Internal,
+	TypeError,
 }
 
 impl fmt::Display for Error {
