@@ -207,39 +207,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 						let vec = AST::try_from(inner)?.block().ok_or(Error::ParseError)?;
 						Subexpr::Block(vec)
 					}
-					Rule::if_expr => {
-						let mut inner_2 = inner
-							.into_inner()
-							.map(AST::try_from)
-							.collect::<Result<SmallVec<[AST; 3]>>>()?;
-						if inner_2.len() != 3 {
-							bail!(Error::ParseError);
-						}
-						let else_block = {
-							let ast = inner_2.pop().expect("Length checked above");
-							match ast {
-								AST::Block(v) => Ok(v),
-								AST::Subexpr(a @ Subexpr::IfExpr(_)) => Ok(vec![Expr::Subexpr(a)]),
-								AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(Subexpr::IfExpr(else_if))]),
-								_ => Err(Error::ParseError),
-							}
-						}?;
-						let then_block = inner_2
-							.pop()
-							.expect("Length checked above")
-							.block()
-							.ok_or(Error::ParseError)?;
-						let condition = inner_2
-							.pop()
-							.expect("Length checked above")
-							.subexpr()
-							.ok_or(Error::ParseError)?;
-						Subexpr::IfExpr(IfExpr {
-							condition: Box::new(condition),
-							lhs: then_block,
-							rhs: else_block,
-						})
-					}
+					Rule::if_expr => AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?,
 					Rule::function_call => {
 						let mut inner_2 = inner
 							.into_inner()
@@ -515,6 +483,39 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					})
 					.collect::<Result<Vec<Expr>>>()?;
 				AST::Block(inner)
+			}
+			Rule::if_expr => {
+				let mut inner = pair
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 3]>>>()?;
+				if inner.len() != 3 {
+					bail!(Error::ParseError);
+				}
+				let else_block = {
+					let ast = inner.pop().expect("Length checked above");
+					match ast {
+						AST::Block(v) => Ok(v),
+						AST::Subexpr(a @ Subexpr::IfExpr(_)) => Ok(vec![Expr::Subexpr(a)]),
+						AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(Subexpr::IfExpr(else_if))]),
+						_ => Err(Error::ParseError),
+					}
+				}?;
+				let then_block = inner
+					.pop()
+					.expect("Length checked above")
+					.block()
+					.ok_or(Error::ParseError)?;
+				let condition = inner
+					.pop()
+					.expect("Length checked above")
+					.subexpr()
+					.ok_or(Error::ParseError)?;
+				AST::Subexpr(Subexpr::IfExpr(IfExpr {
+					condition: Box::new(condition),
+					lhs: then_block,
+					rhs: else_block,
+				}))
 			}
 			_ => panic!(),
 		};
