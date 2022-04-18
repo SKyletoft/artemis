@@ -4,6 +4,7 @@ Syntax
 	arrays
 	structs
 	enums
+	casting
 Formatter
 Linker
 GC
