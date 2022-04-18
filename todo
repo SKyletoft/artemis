@@ -1,0 +1,16 @@
+Typechecking
+Syntax
+	allow if {} as if {} else {default}
+	arrays
+	structs
+	enums
+Formatter
+Linker
+GC
+
+The bad ideas
+	Arbirtary base int literals
+		1011b2 == 11b10
+		ABb16 == 171b10
+		34b5 == 19b10
+
