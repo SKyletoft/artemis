@@ -433,7 +433,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				}
 				while let Some(idx) = tokens
 					.iter()
-					// Todo: Unary minus
+					// todo: Unary minus
 					.position(|x| matches!(x, MaybeParsed::Operator(Op::Exp)))
 				{
 					replace_bin_op(&mut tokens, idx)?;
@@ -441,7 +441,9 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				while let Some(idx) = tokens
 					.iter()
 					.position(|x| matches!(x, MaybeParsed::Operator(Op::Not)))
-				{}
+				{
+					todo!()
+				}
 				while let Some(idx) = tokens
 					.iter()
 					.position(|x| matches!(x, MaybeParsed::Operator(Op::Times | Op::Div)))
