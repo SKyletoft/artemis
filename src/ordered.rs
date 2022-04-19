@@ -2,7 +2,10 @@ use std::mem;
 
 use crate::{error::Error, GeneratedParser, Rule};
 use anyhow::{bail, Result};
-use pest::{iterators::Pair, Parser};
+use pest::{
+	iterators::{Pair, Pairs},
+	Parser,
+};
 use smallvec::SmallVec;
 use variantly::Variantly;
 
@@ -119,6 +122,21 @@ pub enum Type {
 pub enum TopLevelConstruct {
 	Function(Function),
 	Declaration(Declaration),
+}
+
+impl TryFrom<AST> for TopLevelConstruct {
+	type Error = anyhow::Error;
+
+	fn try_from(value: AST) -> Result<Self, Self::Error> {
+		match value.clone() {
+			AST::Declaration(d) => Ok(TopLevelConstruct::Declaration(d)),
+			AST::Function(f) => Ok(TopLevelConstruct::Function(f)),
+			_ => {
+				log::error!("Illegal construct at top level: {value:?}");
+				bail!(Error::ParseError)
+			}
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
@@ -560,4 +578,10 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 		};
 		Ok(res)
 	}
+}
+
+pub fn order(pairs: Pairs<Rule>) -> Result<Vec<TopLevelConstruct>> {
+	pairs
+		.map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
+		.collect()
 }
