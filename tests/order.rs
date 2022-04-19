@@ -1,6 +1,8 @@
 use anyhow::Result;
 use artemis::{
-	ordered::{BinOp, Expr, FunctionCall, Literal, Op, Subexpr, AST},
+	ordered::{
+		self, BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Subexpr, Type, AST,
+	},
 	GeneratedParser, Rule,
 };
 use pest::Parser;
@@ -287,4 +289,31 @@ fn else_if() {
 	assert_eq!(res_a.len(), 1);
 	assert_eq!(res_b.len(), 1);
 	assert_eq!(res_a, res_b);
+}
+
+#[test]
+fn declaration_with_variable_init() {
+	let s = "{
+		x : ℤ = 1
+		y : ℤ = x
+	}";
+	let res = GeneratedParser::parse(Rule::block, s)
+		.unwrap()
+		.map(AST::try_from)
+		.collect::<Result<Vec<_>>>()
+		.unwrap();
+	let expected = vec![AST::Block(vec![
+		Expr::Declaration(Declaration {
+			name: "x".into(),
+			type_name: Type::Const(RawType::Integer),
+			value: Subexpr::Literal(Literal::Integer(1)),
+		}),
+		Expr::Declaration(Declaration {
+			name: "y".into(),
+			type_name: Type::Const(RawType::Integer),
+			value: Subexpr::Variable("x".into()),
+		}),
+	])];
+	assert_eq!(res.len(), 1);
+	assert_eq!(res, expected);
 }
