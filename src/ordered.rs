@@ -375,12 +375,13 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				if !(inner.len() == 2 || inner.len() == 3) {
 					bail!(Error::Internal);
 				}
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+
+				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
 					.ok_or(Error::ParseError)?;
 				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
 					.unwrap_or(Type::Const(RawType::Inferred));
-				let value =
-					remove_by_pattern!(&mut inner, AST::Subexpr(a), a).ok_or(Error::ParseError)?;
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+					.ok_or(Error::ParseError)?;
 				AST::Declaration(Declaration {
 					name,
 					type_name,
@@ -396,10 +397,11 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				if !(inner.len() == 2 || inner.len() == 3) {
 					bail!(Error::Internal);
 				}
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+
+				let rhs = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
 					.ok_or(Error::ParseError)?;
 				let op = remove_by_pattern!(&mut inner, AST::RawToken(a), a);
-				let rhs = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
+				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
 					.ok_or(Error::ParseError)?;
 
 				let value = if let Some(op) = op {
