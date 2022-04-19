@@ -160,17 +160,16 @@ macro_rules! remove_by_pattern {
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
-enum MaybeParsed<'a> {
+enum MaybeParsed {
 	Parsed(AST),
-	Unparsed(Pair<'a, Rule>),
 	Operator(Op),
 	Empty,
 }
 
-impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
+impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 	type Error = anyhow::Error;
 
-	fn try_from(pair: Pair<'a, Rule>) -> Result<MaybeParsed<'a>, Self::Error> {
+	fn try_from(pair: Pair<'a, Rule>) -> Result<MaybeParsed, Self::Error> {
 		match pair.as_rule() {
 			Rule::term => {
 				let inner = pair
