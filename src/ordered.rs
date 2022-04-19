@@ -118,6 +118,14 @@ pub enum Type {
 	Mutable(RawType),
 }
 
+impl Type {
+	pub fn raw(&self) -> &RawType {
+		match self {
+			Type::Const(rt) | Type::Mutable(rt) => rt,
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelConstruct {
 	Function(Function),
