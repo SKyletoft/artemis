@@ -214,7 +214,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 							.map(AST::try_from)
 							.collect::<Result<SmallVec<[AST; 8]>>>()?;
 						// There is always at least the name of the function being called
-						if !(!inner_2.is_empty()) {
+						if inner_2.is_empty() {
 							bail!(Error::Internal);
 						}
 						let function_name = inner_2
@@ -264,7 +264,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed<'a> {
 }
 
 fn replace_bin_op(tokens: &mut SmallVec<[MaybeParsed; 4]>, idx: usize) -> Result<()> {
-	if !(idx >= 1) {
+	if idx < 1 {
 		bail!(Error::Internal);
 	}
 	let op = tokens
@@ -406,7 +406,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
-				if !(inner.len() == 1) {
+				if inner.len() != 1 {
 					bail!(Error::Internal);
 				}
 				inner.pop().unwrap()
