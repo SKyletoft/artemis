@@ -3,9 +3,8 @@ use std::{env, fs};
 use anyhow::Result;
 use pest::Parser;
 use simple_logger::SimpleLogger;
-use smallvec::SmallVec;
 
-use artemis::{ordered::AST, GeneratedParser, Rule};
+use artemis::{ordered, type_check, GeneratedParser, Rule};
 
 fn main() -> Result<()> {
 	SimpleLogger::new().init().expect("Logging init failure");
@@ -15,10 +14,9 @@ fn main() -> Result<()> {
 	let source = fs::read_to_string(&source_file_name)?;
 	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
 	dbg!(&ast);
-	let ordered = ast
-		.map(AST::try_from)
-		.collect::<Result<SmallVec<[AST; 8]>>>()?;
+	let ordered = ordered::order(ast)?;
 	dbg!(&ordered);
+	type_check::check_program(&ordered)?;
 
 	println!("\n---------------------------------------------------\n\n{source}");
 
