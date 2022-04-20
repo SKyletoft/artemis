@@ -57,16 +57,31 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 			type_of_expr(&slice[slice.len() - 1], ctx)
 		}
 		Subexpr::Literal(l) => match l {
-			Literal::Integer(_) => Ok(Type::Const(RawType::Integer)),
-			Literal::Float(_) => Ok(Type::Const(RawType::Real)),
-			Literal::Boolean(_) => Ok(Type::Const(RawType::Boolean)),
-			Literal::Unit => Ok(Type::Const(RawType::Unit)),
+			Literal::Integer(_) => Ok(Type {
+				raw: RawType::Integer,
+				mutable: false,
+			}),
+			Literal::Float(_) => Ok(Type {
+				raw: RawType::Real,
+				mutable: false,
+			}),
+			Literal::Boolean(_) => Ok(Type {
+				raw: RawType::Boolean,
+				mutable: false,
+			}),
+			Literal::Unit => Ok(Type {
+				raw: RawType::Unit,
+				mutable: false,
+			}),
 		},
-		Subexpr::Tuple(v) => Ok(Type::Const(RawType::Tuple(
-			v.iter()
-				.map(|s| type_of_subexpr(s, ctx))
-				.collect::<Result<_>>()?,
-		))),
+		Subexpr::Tuple(v) => Ok(Type {
+			raw: RawType::Tuple(
+				v.iter()
+					.map(|s| type_of_subexpr(s, ctx))
+					.collect::<Result<_>>()?,
+			),
+			mutable: false,
+		}),
 		Subexpr::Variable(name) => {
 			let res = ctx
 				.get(name)
@@ -89,7 +104,7 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 			Ok(res)
 		}
 		Subexpr::FunctionCall(FunctionCall { function_name, .. }) => {
-			let res = ctx
+			let raw = ctx
 				.get(function_name)
 				.ok_or_else(|| {
 					log::error!(
@@ -108,7 +123,10 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 					Error::Internal
 				})?
 				.return_type;
-			Ok(Type::Const(res))
+			Ok(Type {
+				raw,
+				mutable: false,
+			})
 		}
 	}
 }
@@ -131,7 +149,7 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 					check_expr(line, &mut inner_ctx)?;
 				}
 				let actual_type = type_of_expr(&block[block.len() - 1], &inner_ctx)?;
-				if actual_type.raw() != return_type {
+				if &actual_type.raw != return_type {
 					log::error!(
 						"Type mismatch in function return type: {return_type:?} \
 						 {actual_type:?}\n{branch:?}\nλ{name} {arguments:?} → {return_type:?}"
@@ -170,11 +188,11 @@ fn check_declaration(
 ) -> Result<()> {
 	check_subexpr(value, ctx)?;
 	let actual_type = type_of_subexpr(value, &ctx)?;
-	let correct_type = match type_name {
-		Type::Const(RawType::Inferred) => actual_type.clone(),
+	let correct_type = match type_name.raw {
+		RawType::Inferred => actual_type.clone(),
 		_ => type_name.clone(),
 	};
-	if actual_type.raw() != correct_type.raw() {
+	if actual_type.raw != correct_type.raw {
 		log::error!("Type mismatch: {type_name:?} {actual_type:?}");
 		bail!(Error::TypeError);
 	}
@@ -213,17 +231,15 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 			let rhs_type = type_of_subexpr(rhs, ctx)?;
 			let eq = match op {
 				Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
-					lhs_type.raw() == rhs_type.raw()
+					lhs_type.raw == rhs_type.raw
 						&& matches!(
-							lhs_type.raw(),
+							lhs_type.raw,
 							RawType::Integer | RawType::Natural | RawType::Real
 						)
 				}
-				Op::Delta => {
-					lhs_type.raw() == rhs_type.raw() && lhs_type.raw() == &RawType::Natural
-				}
+				Op::Delta => lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Natural,
 				Op::And | Op::Or | Op::Xor => {
-					lhs_type.raw() == rhs_type.raw() && lhs_type.raw() == &RawType::Boolean
+					lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Boolean
 				}
 				_ => {
 					log::error!("Internal: Unary operator in binop?\n{expr:?}");
@@ -245,7 +261,7 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 			rhs,
 		}) => {
 			let cond_type = type_of_subexpr(condition, ctx)?;
-			if cond_type.raw() != &RawType::Boolean {
+			if cond_type.raw != RawType::Boolean {
 				log::error!("Type error: Non boolean condition in if statement\n{condition:?}");
 				bail!(Error::TypeError);
 			}

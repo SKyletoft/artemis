@@ -105,6 +105,7 @@ pub enum RawType {
 	Integer,
 	Natural,
 	Real,
+	IntegerLiteral,
 	Boolean,
 	Unit,
 	Struct(SmallString),
@@ -113,17 +114,9 @@ pub enum RawType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Type {
-	Const(RawType),
-	Mutable(RawType),
-}
-
-impl Type {
-	pub fn raw(&self) -> &RawType {
-		match self {
-			Type::Const(rt) | Type::Mutable(rt) => rt,
-		}
-	}
+pub struct Type {
+	pub mutable: bool,
+	pub raw: RawType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -328,10 +321,9 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				let mutable = remove_by_pattern!(&mut inner, AST::RawToken(a), a)
 					.map(|s| s == "mut") // Because it could be `ref` too
 					.unwrap_or(false);
-				let raw_type =
-					remove_by_pattern!(&mut inner, AST::RawType(a), a).ok_or(Error::ParseError)?;
-				let mutability = if mutable { Type::Mutable } else { Type::Const };
-				AST::Type(mutability(raw_type))
+				let raw = remove_by_pattern!(&mut inner, AST::RawType(a), a)
+					.ok_or(Error::ParseError)?;
+				AST::Type(Type { mutable, raw })
 			}
 			Rule::mutable => AST::RawToken("mut".into()),
 			Rule::raw_type => {
@@ -378,8 +370,10 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 
 				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
 					.ok_or(Error::ParseError)?;
-				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
-					.unwrap_or(Type::Const(RawType::Inferred));
+				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a).unwrap_or(Type {
+					raw: RawType::Inferred,
+					mutable: false,
+				});
 				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
 					.ok_or(Error::ParseError)?;
 				AST::Declaration(Declaration {

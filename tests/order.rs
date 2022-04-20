@@ -305,12 +305,18 @@ fn declaration_with_variable_init() {
 	let expected = vec![AST::Block(vec![
 		Expr::Declaration(Declaration {
 			name: "x".into(),
-			type_name: Type::Const(RawType::Integer),
+			type_name: Type {
+				raw: RawType::Integer,
+				mutable: false,
+			},
 			value: Subexpr::Literal(Literal::Integer(1)),
 		}),
 		Expr::Declaration(Declaration {
 			name: "y".into(),
-			type_name: Type::Const(RawType::Integer),
+			type_name: Type {
+				raw: RawType::Integer,
+				mutable: false,
+			},
 			value: Subexpr::Variable("x".into()),
 		}),
 	])];
