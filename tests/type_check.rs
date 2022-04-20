@@ -140,6 +140,7 @@ fn reject_assignment_to_const() -> Result<()> {
 	let s = "λf() {
 		x : ℤ = 1
 		x = 2
+		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
 	let res = type_check::check_program(&ordered);
@@ -153,9 +154,10 @@ fn accept_assignment_to_mut() -> Result<()> {
 	let s = "λf() {
 		x : mut ℤ = 1
 		x = 2
+		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
-	let res = type_check::check_program(&ordered)?;
+	type_check::check_program(&ordered)?;
 
 	Ok(())
 }
