@@ -113,10 +113,34 @@ pub enum RawType {
 	Inferred,
 }
 
+impl RawType {
+	pub fn default_int(self) -> Self {
+		if let RawType::IntegerLiteral = &self {
+			RawType::Integer
+		} else {
+			self
+		}
+	}
+	pub fn integer_equality(&self, rhs: &RawType) -> bool {
+		if !(self == &RawType::IntegerLiteral || rhs == &RawType::IntegerLiteral) {
+			return self == rhs;
+		}
+		matches!(self, RawType::Integer | RawType::Natural)
+			|| matches!(rhs, RawType::Integer | RawType::Natural)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Type {
 	pub mutable: bool,
 	pub raw: RawType,
+}
+
+impl Type {
+	pub fn default_int(mut self) -> Self {
+		self.raw = self.raw.default_int();
+		self
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]

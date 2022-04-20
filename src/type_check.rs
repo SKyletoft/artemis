@@ -64,7 +64,7 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 		}
 		Subexpr::Literal(l) => match l {
 			Literal::Integer(_) => Ok(Type {
-				raw: RawType::Integer,
+				raw: RawType::IntegerLiteral,
 				mutable: false,
 			}),
 			Literal::Float(_) => Ok(Type {
@@ -198,11 +198,12 @@ fn check_declaration(
 	ctx: &mut Context,
 ) -> Result<()> {
 	check_subexpr(value, ctx)?;
-	let actual_type = type_of_subexpr(value, &ctx)?;
+	let actual_type = type_of_subexpr(value, ctx)?;
 	let correct_type = match type_name.raw {
 		RawType::Inferred => actual_type.clone(),
 		_ => type_name.clone(),
 	};
+	if !actual_type.raw.integer_equality(&correct_type.raw) {
 		log::error!("Type mismatch [{}]: {type_name:?} {actual_type:?}", line!());
 		bail!(Error::TypeError);
 	}
@@ -212,15 +213,19 @@ fn check_declaration(
 
 fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) -> Result<()> {
 	check_subexpr(value, ctx)?;
-	let actual_type = type_of_subexpr(value, ctx)?;
+	let actual_type = type_of_subexpr(value, ctx)?.raw;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
 		log::error!("Use of undeclared variable [{}]: {name}", line!());
 		Error::TypeError
 	})?;
+	if let TypeRecord::Variable(Type { raw, mutable }) = recorded_type {
+		if !raw.integer_equality(&actual_type) && *mutable {
 			log::error!(
 				"Type mismatch [{}]: {recorded_type:?} {actual_type:?}",
 				line!()
 			);
+			bail!(Error::TypeError);
+		}
 	}
 	Ok(())
 }
@@ -242,13 +247,18 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 			let rhs_type = type_of_subexpr(rhs, ctx)?;
 			let eq = match op {
 				Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
-					lhs_type.raw == rhs_type.raw
+					lhs_type.raw.integer_equality(&rhs_type.raw)
 						&& matches!(
 							lhs_type.raw,
-							RawType::Integer | RawType::Natural | RawType::Real
+							RawType::Integer
+								| RawType::Natural | RawType::Real
+								| RawType::IntegerLiteral
 						)
 				}
-				Op::Delta => lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Natural,
+				Op::Delta => {
+					lhs_type.raw.integer_equality(&rhs_type.raw)
+						&& (lhs_type.raw == RawType::Natural || rhs_type.raw == RawType::Natural)
+				}
 				Op::And | Op::Or | Op::Xor => {
 					lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Boolean
 				}
