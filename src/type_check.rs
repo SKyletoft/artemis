@@ -35,13 +35,19 @@ fn type_of_expr(expr: &Expr, ctx: &Context) -> Result<Type> {
 			let res = ctx
 				.get(name)
 				.ok_or_else(|| {
-					log::error!("Internal: Supposedly checked variable is undefined");
+					log::error!(
+						"Internal [{}]: Supposedly checked variable is undefined",
+						line!()
+					);
 					Error::Internal
 				})?
 				.clone()
 				.variable()
 				.ok_or_else(|| {
-					log::error!("Internal: Supposedly checked variable was a function");
+					log::error!(
+						"Internal [{}]: Supposedly checked variable was a function",
+						line!()
+					);
 					Error::Internal
 				})?;
 			Ok(res)
@@ -87,8 +93,9 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 				.get(name)
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked variable is undefined\n\
-						{name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked variable is undefined\n\
+						{name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?
@@ -96,8 +103,9 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 				.variable()
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked variable was a function\n\
-						{name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked variable was a function\n\
+						{name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?;
@@ -108,8 +116,9 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 				.get(function_name)
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked function is undefined\n\
-						{function_name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked function is undefined\n\
+						{function_name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?
@@ -117,8 +126,9 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 				.function()
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked function was a variable\n\
-						{function_name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked function was a variable\n\
+						{function_name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?
@@ -151,8 +161,9 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 				let actual_type = type_of_expr(&block[block.len() - 1], &inner_ctx)?;
 				if &actual_type.raw != return_type {
 					log::error!(
-						"Type mismatch in function return type: {return_type:?} \
-						 {actual_type:?}\n{branch:?}\nλ{name} {arguments:?} → {return_type:?}"
+						"Type mismatch in function return type [{}]: {return_type:?} \
+						 {actual_type:?}\n{branch:?}\nλ{name} {arguments:?} → {return_type:?}",
+						line!()
 					);
 					bail!(Error::TypeError);
 				}
@@ -192,8 +203,7 @@ fn check_declaration(
 		RawType::Inferred => actual_type.clone(),
 		_ => type_name.clone(),
 	};
-	if actual_type.raw != correct_type.raw {
-		log::error!("Type mismatch: {type_name:?} {actual_type:?}");
+		log::error!("Type mismatch [{}]: {type_name:?} {actual_type:?}", line!());
 		bail!(Error::TypeError);
 	}
 	ctx.insert(name.clone(), TypeRecord::Variable(correct_type));
@@ -204,12 +214,13 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 	check_subexpr(value, ctx)?;
 	let actual_type = type_of_subexpr(value, ctx)?;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
-		log::error!("Use of undeclared variable: {name}");
+		log::error!("Use of undeclared variable [{}]: {name}", line!());
 		Error::TypeError
 	})?;
-	if &TypeRecord::Variable(actual_type.clone()) != recorded_type {
-		log::error!("Type mismatch:  {recorded_type:?} {actual_type:?}");
-		bail!(Error::TypeError);
+			log::error!(
+				"Type mismatch [{}]: {recorded_type:?} {actual_type:?}",
+				line!()
+			);
 	}
 	Ok(())
 }
@@ -242,14 +253,15 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 					lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Boolean
 				}
 				_ => {
-					log::error!("Internal: Unary operator in binop?\n{expr:?}");
+					log::error!("Internal [{}]: Unary operator in binop?\n{expr:?}", line!());
 					bail!(Error::Internal);
 				}
 			};
 			if !eq {
 				log::error!(
-					"Type error: Mismatch in Binary Operator\n\
-					{lhs:?}: {lhs_type:?} {op:?} {rhs:?}: {rhs_type:?}"
+					"Type error [{}]: Mismatch in Binary Operator\n\
+					{lhs:?}: {lhs_type:?} {op:?} {rhs:?}: {rhs_type:?}",
+					line!()
 				);
 				bail!(Error::TypeError);
 			}
@@ -262,7 +274,10 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 		}) => {
 			let cond_type = type_of_subexpr(condition, ctx)?;
 			if cond_type.raw != RawType::Boolean {
-				log::error!("Type error: Non boolean condition in if statement\n{condition:?}");
+				log::error!(
+					"Type error [{}]: Non boolean condition in if statement\n{condition:?}",
+					line!()
+				);
 				bail!(Error::TypeError);
 			}
 			check_block(lhs, ctx)?;
@@ -283,8 +298,9 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 				.get(function_name)
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked function is undefined\n\
-						{function_name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked function is undefined\n\
+						{function_name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?
@@ -292,8 +308,9 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 				.function()
 				.ok_or_else(|| {
 					log::error!(
-						"Internal: Supposedly checked function was a variable\n\
-						{function_name:?} {ctx:?}"
+						"Internal [{}]: Supposedly checked function was a variable\n\
+						{function_name:?} {ctx:?}",
+						line!()
 					);
 					Error::Internal
 				})?
@@ -302,7 +319,7 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 				let actual_type = type_of_subexpr(actual_arg, ctx)?;
 				if expected_arg != &actual_type {
 					log::error!(
-						"Type mismatch in function arguments: {expected_arg:?} {actual_type:?}"
+						"Type mismatch in function arguments [{}]: {expected_arg:?} {actual_type:?}", line!()
 					);
 					bail!(Error::TypeError);
 				}
