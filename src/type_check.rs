@@ -219,9 +219,16 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 		Error::TypeError
 	})?;
 	if let TypeRecord::Variable(Type { raw, mutable }) = recorded_type {
-		if !raw.integer_equality(&actual_type) && *mutable {
+		if !raw.integer_equality(&actual_type) {
 			log::error!(
 				"Type mismatch [{}]: {recorded_type:?} {actual_type:?}",
+				line!()
+			);
+			bail!(Error::TypeError);
+		}
+		if !*mutable {
+			log::error!(
+				"Write to const [{}]: {name}: {recorded_type:?}",
 				line!()
 			);
 			bail!(Error::TypeError);
