@@ -13,7 +13,7 @@ use crate::{
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
-type Context = HashMap<SmallString, TypeRecord>;
+type Context = HashMap<SmallString, (TypeRecord, bool)>;
 
 #[derive(Debug, Clone, PartialEq)]
 struct FunctionType {
@@ -42,6 +42,7 @@ fn type_of_expr(expr: &Expr, ctx: &Context) -> Result<Type> {
 					Error::Internal
 				})?
 				.clone()
+				.0
 				.variable()
 				.ok_or_else(|| {
 					log::error!(
@@ -100,6 +101,7 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 					Error::Internal
 				})?
 				.clone()
+				.0
 				.variable()
 				.ok_or_else(|| {
 					log::error!(
@@ -123,6 +125,7 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 					Error::Internal
 				})?
 				.clone()
+				.0
 				.function()
 				.ok_or_else(|| {
 					log::error!(
@@ -141,6 +144,12 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 	}
 }
 
+fn copy_for_inner_scope(ctx: &Context) -> Context {
+	ctx.iter()
+		.map(|(key, (typ, _))| (key.clone(), (typ.clone(), false)))
+		.collect()
+}
+
 pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
 	for branch in top_level.iter() {
@@ -151,9 +160,12 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 				return_type,
 				block,
 			}) => {
-				let mut inner_ctx = ctx.clone();
+				let mut inner_ctx = copy_for_inner_scope(&ctx);
 				for Argument { type_name, name } in arguments.into_iter() {
-					inner_ctx.insert(name.clone(), TypeRecord::Variable(type_name.clone()));
+					inner_ctx.insert(
+						name.clone(),
+						(TypeRecord::Variable(type_name.clone()), true),
+					);
 				}
 				for line in block.iter() {
 					check_expr(line, &mut inner_ctx)?;
@@ -169,10 +181,13 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 				}
 				ctx.insert(
 					name.clone(),
-					TypeRecord::Function(FunctionType {
-						return_type: return_type.clone(),
-						arguments: arguments.iter().map(|arg| arg.type_name.clone()).collect(),
-					}),
+					(
+						TypeRecord::Function(FunctionType {
+							return_type: return_type.clone(),
+							arguments: arguments.iter().map(|arg| arg.type_name.clone()).collect(),
+						}),
+						true,
+					),
 				);
 			}
 			TopLevelConstruct::Declaration(decl) => check_declaration(decl, &mut ctx)?,
@@ -182,7 +197,7 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 }
 
 fn check_block(block: &[Expr], ctx: &Context) -> Result<()> {
-	let mut inner_ctx = ctx.clone();
+	let mut inner_ctx = copy_for_inner_scope(ctx);
 	for line in block.iter() {
 		check_expr(line, &mut inner_ctx)?;
 	}
@@ -207,7 +222,7 @@ fn check_declaration(
 		log::error!("Type mismatch [{}]: {type_name:?} {actual_type:?}", line!());
 		bail!(Error::TypeError);
 	}
-	ctx.insert(name.clone(), TypeRecord::Variable(correct_type));
+	ctx.insert(name.clone(), (TypeRecord::Variable(correct_type), true));
 	Ok(())
 }
 
@@ -218,7 +233,7 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 		log::error!("Use of undeclared variable [{}]: {name}", line!());
 		Error::TypeError
 	})?;
-	if let TypeRecord::Variable(Type { raw, mutable }) = recorded_type {
+	if let (TypeRecord::Variable(Type { raw, mutable }), _) = recorded_type {
 		if !raw.integer_equality(&actual_type) {
 			log::error!(
 				"Type mismatch [{}]: {recorded_type:?} {actual_type:?}",
@@ -322,6 +337,7 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 					Error::Internal
 				})?
 				.clone()
+				.0
 				.function()
 				.ok_or_else(|| {
 					log::error!(
