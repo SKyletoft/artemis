@@ -1,7 +1,8 @@
 use anyhow::Result;
 use artemis::{
 	ordered::{
-		self, BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Subexpr, Type, AST,
+		self, BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Subexpr, Type,
+		AST,
 	},
 	GeneratedParser, Rule,
 };

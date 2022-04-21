@@ -7,8 +7,8 @@ use variantly::Variantly;
 use crate::{
 	error::Error,
 	ordered::{
-		Argument, Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Literal,
-		Op, RawType, Subexpr, TopLevelConstruct, Type,
+		Argument, Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr,
+		Literal, Op, RawType, Subexpr, TopLevelConstruct, Type,
 	},
 };
 
@@ -83,8 +83,7 @@ fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
 		},
 		Subexpr::Tuple(v) => Ok(Type {
 			raw: RawType::Tuple(
-				v.iter()
-					.map(|s| type_of_subexpr(s, ctx))
+				v.iter().map(|s| type_of_subexpr(s, ctx))
 					.collect::<Result<_>>()?,
 			),
 			mutable: false,
@@ -186,7 +185,9 @@ fn check_function(
 		if actual != RawType::Inferred {
 			actual
 		} else if let Expr::Declaration(Declaration { name, .. }) = last_statement {
-			if let Some((TypeRecord::Variable(Type { raw, .. }), _)) = inner_ctx.get(name) {
+			if let Some((TypeRecord::Variable(Type { raw, .. }), _)) =
+				inner_ctx.get(name)
+			{
 				raw.clone()
 			} else {
 				log::error!("Internal: Last statement in block wasn't recorded properly?");
@@ -210,7 +211,10 @@ fn check_function(
 		(
 			TypeRecord::Function(FunctionType {
 				return_type: return_type.clone(),
-				arguments: arguments.iter().map(|arg| arg.type_name.clone()).collect(),
+				arguments: arguments
+					.iter()
+					.map(|arg| arg.type_name.clone())
+					.collect(),
 			}),
 			true,
 		),
@@ -235,7 +239,10 @@ fn check_declaration(
 	ctx: &mut Context,
 ) -> Result<()> {
 	if matches!(ctx.get(name), Some((_, true))) {
-		log::error!("Same scope shadowing [{}]: {name} already exists in this scope", line!());
+		log::error!(
+			"Same scope shadowing [{}]: {name} already exists in this scope",
+			line!()
+		);
 		bail!(Error::TypeError)
 	}
 	check_subexpr(value, ctx)?;
@@ -296,28 +303,31 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 			check_subexpr(rhs, ctx)?;
 			let lhs_type = type_of_subexpr(lhs, ctx)?;
 			let rhs_type = type_of_subexpr(rhs, ctx)?;
-			let eq = match op {
-				Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
-					lhs_type.raw.integer_equality(&rhs_type.raw)
-						&& matches!(
-							lhs_type.raw,
-							RawType::Integer
-								| RawType::Natural | RawType::Real
-								| RawType::IntegerLiteral
-						)
-				}
-				Op::Delta => {
-					lhs_type.raw.integer_equality(&rhs_type.raw)
-						&& (lhs_type.raw == RawType::Natural || rhs_type.raw == RawType::Natural)
-				}
-				Op::And | Op::Or | Op::Xor => {
-					lhs_type.raw == rhs_type.raw && lhs_type.raw == RawType::Boolean
-				}
-				_ => {
-					log::error!("Internal [{}]: Unary operator in binop?\n{expr:?}", line!());
-					bail!(Error::Internal);
-				}
-			};
+			let eq =
+				match op {
+					Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
+						lhs_type.raw.integer_equality(&rhs_type.raw)
+							&& matches!(
+								lhs_type.raw,
+								RawType::Integer
+									| RawType::Natural | RawType::Real
+									| RawType::IntegerLiteral
+							)
+					}
+					Op::Delta => {
+						lhs_type.raw.integer_equality(&rhs_type.raw)
+							&& (lhs_type.raw == RawType::Natural
+								|| rhs_type.raw == RawType::Natural)
+					}
+					Op::And | Op::Or | Op::Xor => {
+						lhs_type.raw == rhs_type.raw
+							&& lhs_type.raw == RawType::Boolean
+					}
+					_ => {
+						log::error!("Internal [{}]: Unary operator in binop?\n{expr:?}", line!());
+						bail!(Error::Internal);
+					}
+				};
 			if !eq {
 				log::error!(
 					"Type error [{}]: Mismatch in Binary Operator\n\
@@ -377,7 +387,8 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 					Error::Internal
 				})?
 				.arguments;
-			for (expected_arg, actual_arg) in expected_args.iter().zip(arguments.iter()) {
+			for (expected_arg, actual_arg) in expected_args.iter().zip(arguments.iter())
+			{
 				let actual_type = type_of_subexpr(actual_arg, ctx)?;
 				if expected_arg != &actual_type {
 					log::error!(

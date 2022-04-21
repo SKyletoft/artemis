@@ -1,6 +1,5 @@
 use std::mem;
 
-use crate::{error::Error, GeneratedParser, Rule};
 use anyhow::{bail, Result};
 use pest::{
 	iterators::{Pair, Pairs},
@@ -8,6 +7,8 @@ use pest::{
 };
 use smallvec::SmallVec;
 use variantly::Variantly;
+
+use crate::{error::Error, GeneratedParser, Rule};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 type Block = Vec<Expr>;
@@ -121,6 +122,7 @@ impl RawType {
 			self
 		}
 	}
+
 	pub fn integer_equality(&self, rhs: &RawType) -> bool {
 		if !(self == &RawType::IntegerLiteral || rhs == &RawType::IntegerLiteral) {
 			return self == rhs;
@@ -193,7 +195,8 @@ macro_rules! remove_by_pattern {
 			let e: &mut SmallVec<[AST; 8]> = $e;
 
 			// Find the last one for minor performance improvements
-			#[allow(unused_variables)] // Unused variable is named so the pattern can be used twice
+			#[allow(unused_variables)]
+			// Unused variable is named so the pattern can be used twice
 			let idx = e.iter().rev().position(|n| matches!(n, $p))?;
 			let wrapped = e.remove(e.len() - idx - 1);
 
@@ -224,36 +227,50 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 					.next()
 					.expect("Rule should always contain exactly one subrule");
 				let subexpr = match inner.as_rule() {
-					Rule::float => Subexpr::Literal(Literal::Float(inner.as_str().parse()?)),
+					Rule::float => Subexpr::Literal(Literal::Float(
+						inner.as_str().parse()?,
+					)),
 					Rule::integer => {
 						// Try to parse as unsigned, on fail, retry as signed
 						// instead and bitcast to unsigned because our IR
 						// only supports unsigned
-						let val = inner.as_str().parse::<u64>().or_else(|_| -> Result<u64> {
-							Ok(inner.as_str().parse::<i64>()? as u64)
-						})?;
+						let val = inner.as_str().parse::<u64>().or_else(
+							|_| -> Result<u64> {
+								Ok(inner.as_str().parse::<i64>()?
+									as u64)
+							},
+						)?;
 						Subexpr::Literal(Literal::Integer(val))
 					}
-					Rule::boolean => Subexpr::Literal(Literal::Boolean(inner.as_str().parse()?)),
+					Rule::boolean => Subexpr::Literal(Literal::Boolean(
+						inner.as_str().parse()?,
+					)),
 					Rule::unit => Subexpr::Literal(Literal::Unit),
 					Rule::tuple => {
 						let tuple = inner
 							.into_inner()
 							.map(|pair| {
-								let expr =
-									AST::try_from(pair)?.subexpr().ok_or(Error::ParseError)?;
+								let expr = AST::try_from(pair)?
+									.subexpr()
+									.ok_or(Error::ParseError)?;
 								Ok(expr)
 							})
 							.collect::<Result<Vec<_>>>()?;
 						Subexpr::Tuple(tuple)
 					}
 					// Parentheses
-					Rule::subexpr => AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?,
+					Rule::subexpr => AST::try_from(inner)?
+						.subexpr()
+						.ok_or(Error::ParseError)?,
 					Rule::block => {
-						let vec = AST::try_from(inner)?.block().ok_or(Error::ParseError)?;
+						let vec = AST::try_from(inner)?
+							.block()
+							.ok_or(Error::ParseError)?;
 						Subexpr::Block(vec)
 					}
-					Rule::if_expr => AST::try_from(inner)?.subexpr().ok_or(Error::ParseError)?,
+					Rule::if_expr => AST::try_from(inner)?
+						.subexpr()
+						.ok_or(Error::ParseError)?,
 					Rule::function_call => {
 						let mut inner_2 = inner
 							.into_inner()
@@ -313,10 +330,7 @@ fn replace_bin_op(tokens: &mut SmallVec<[MaybeParsed; 4]>, idx: usize) -> Result
 	if idx < 1 {
 		bail!(Error::Internal);
 	}
-	let op = tokens
-		.remove(idx)
-		.operator()
-		.ok_or(Error::Internal)?;
+	let op = tokens.remove(idx).operator().ok_or(Error::Internal)?;
 	let lhs = mem::replace(&mut tokens[idx - 1], MaybeParsed::Empty)
 		.parsed()
 		.and_then(AST::subexpr)
@@ -370,7 +384,11 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 						// Fix this when Type has been moved out into its own TryFrom impl
 						let contained_types = inner
 							.into_inner()
-							.map(|pair| AST::try_from(pair).ok().and_then(AST::type_literal))
+							.map(|pair| {
+								AST::try_from(pair)
+									.ok()
+									.and_then(AST::type_literal)
+							})
 							.collect::<Option<Vec<Type>>>()
 							.ok_or(Error::ParseError)?;
 						RawType::Tuple(contained_types)
@@ -398,12 +416,17 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 
 				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
 					.ok_or(Error::ParseError)?;
-				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a).unwrap_or(Type {
-					raw: RawType::Inferred,
-					mutable: false,
-				});
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
-					.ok_or(Error::ParseError)?;
+				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
+					.unwrap_or(Type {
+						raw: RawType::Inferred,
+						mutable: false,
+					});
+				let name = remove_by_pattern!(
+					&mut inner,
+					AST::Subexpr(Subexpr::Variable(a)),
+					a
+				)
+				.ok_or(Error::ParseError)?;
 				AST::Declaration(Declaration {
 					name,
 					type_name,
@@ -423,13 +446,20 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				let rhs = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
 					.ok_or(Error::ParseError)?;
 				let op = remove_by_pattern!(&mut inner, AST::RawToken(a), a);
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
-					.ok_or(Error::ParseError)?;
+				let name = remove_by_pattern!(
+					&mut inner,
+					AST::Subexpr(Subexpr::Variable(a)),
+					a
+				)
+				.ok_or(Error::ParseError)?;
 
 				let value = if let Some(op) = op {
-					let mut op_tokens = GeneratedParser::parse(Rule::operator, op.as_str())?
-						.map(MaybeParsed::try_from)
-						.collect::<Result<SmallVec<[MaybeParsed; 1]>>>()?;
+					let mut op_tokens = GeneratedParser::parse(
+						Rule::operator,
+						op.as_str(),
+					)?
+					.map(MaybeParsed::try_from)
+					.collect::<Result<SmallVec<[MaybeParsed; 1]>>>()?;
 					if op_tokens.len() != 1 {
 						bail!(Error::Internal);
 					}
@@ -493,21 +523,27 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				{
 					todo!()
 				}
-				while let Some(idx) = tokens
-					.iter()
-					.position(|x| matches!(x, MaybeParsed::Operator(Op::Times | Op::Div)))
-				{
-					replace_bin_op(&mut tokens, idx)?;
-				}
 				while let Some(idx) = tokens.iter().position(|x| {
-					matches!(x, MaybeParsed::Operator(Op::Plus | Op::Minus | Op::Delta))
+					matches!(x, MaybeParsed::Operator(Op::Times | Op::Div))
 				}) {
 					replace_bin_op(&mut tokens, idx)?;
 				}
-				while let Some(idx) = tokens
-					.iter()
-					.position(|x| matches!(x, MaybeParsed::Operator(Op::And | Op::Or | Op::Xor)))
-				{
+				while let Some(idx) = tokens.iter().position(|x| {
+					matches!(
+						x,
+						MaybeParsed::Operator(
+							Op::Plus | Op::Minus | Op::Delta
+						)
+					)
+				}) {
+					replace_bin_op(&mut tokens, idx)?;
+				}
+				while let Some(idx) = tokens.iter().position(|x| {
+					matches!(
+						x,
+						MaybeParsed::Operator(Op::And | Op::Or | Op::Xor)
+					)
+				}) {
 					replace_bin_op(&mut tokens, idx)?;
 				}
 				if !matches!(tokens.as_slice(), [MaybeParsed::Parsed(_)]) {
@@ -521,10 +557,14 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
-				let type_name =
-					remove_by_pattern!(&mut inner, AST::Type(a), a).ok_or(Error::ParseError)?;
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
+				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
 					.ok_or(Error::ParseError)?;
+				let name = remove_by_pattern!(
+					&mut inner,
+					AST::Subexpr(Subexpr::Variable(a)),
+					a
+				)
+				.ok_or(Error::ParseError)?;
 				AST::Argument(Argument { name, type_name })
 			}
 			Rule::function_definition => {
@@ -533,21 +573,29 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
 				// Reverse order to reduce moves in the SmallVec
-				let block =
-					remove_by_pattern!(&mut inner, AST::Block(a), a).ok_or(Error::ParseError)?;
+				let block = remove_by_pattern!(&mut inner, AST::Block(a), a)
+					.ok_or(Error::ParseError)?;
 				let return_type =
-					remove_by_pattern!(&mut inner, AST::RawType(a), a).unwrap_or(RawType::Unit);
+					remove_by_pattern!(&mut inner, AST::RawType(a), a)
+						.unwrap_or(RawType::Unit);
 				let arguments = {
 					let mut args = SmallVec::new();
-					while let Some(arg) = remove_by_pattern!(&mut inner, AST::Argument(a), a) {
+					while let Some(arg) =
+						remove_by_pattern!(&mut inner, AST::Argument(a), a)
+					{
 						args.push(arg);
 					}
 					args
 				};
-				let name = remove_by_pattern!(&mut inner, AST::Subexpr(Subexpr::Variable(a)), a)
-					.ok_or(Error::ParseError)?;
+				let name = remove_by_pattern!(
+					&mut inner,
+					AST::Subexpr(Subexpr::Variable(a)),
+					a
+				)
+				.ok_or(Error::ParseError)?;
 				let fn_keyword =
-					remove_by_pattern!(&mut inner, AST::RawToken(a), a).ok_or(Error::ParseError)?;
+					remove_by_pattern!(&mut inner, AST::RawToken(a), a)
+						.ok_or(Error::ParseError)?;
 				if matches!(fn_keyword.as_str(), "\\") {
 					log::warn!("\\ used over idiomatic λ");
 				}
@@ -565,8 +613,12 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 						AST::try_from(pair).and_then(|node| match node {
 							AST::Expr(e) => Ok(e),
 							AST::Subexpr(s) => Ok(Expr::Subexpr(s)),
-							AST::Declaration(d) => Ok(Expr::Declaration(d)),
-							AST::Assignment(a) => Ok(Expr::Assignment(a)),
+							AST::Declaration(d) => {
+								Ok(Expr::Declaration(d))
+							}
+							AST::Assignment(a) => {
+								Ok(Expr::Assignment(a))
+							}
 							_ => bail!(Error::ParseError),
 						})
 					})
@@ -585,8 +637,12 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					let ast = inner.pop().expect("Length checked above");
 					match ast {
 						AST::Block(v) => Ok(v),
-						AST::Subexpr(a @ Subexpr::IfExpr(_)) => Ok(vec![Expr::Subexpr(a)]),
-						AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(Subexpr::IfExpr(else_if))]),
+						AST::Subexpr(a @ Subexpr::IfExpr(_)) => {
+							Ok(vec![Expr::Subexpr(a)])
+						}
+						AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(
+							Subexpr::IfExpr(else_if),
+						)]),
 						_ => Err(Error::ParseError),
 					}
 				}?;
@@ -613,7 +669,6 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 }
 
 pub fn order(pairs: Pairs<Rule>) -> Result<Vec<TopLevelConstruct>> {
-	pairs
-		.map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
+	pairs.map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
 		.collect()
 }

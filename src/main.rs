@@ -1,10 +1,9 @@
 use std::{env, fs};
 
 use anyhow::Result;
+use artemis::{ordered, type_check, GeneratedParser, Rule};
 use pest::Parser;
 use simple_logger::SimpleLogger;
-
-use artemis::{ordered, type_check, GeneratedParser, Rule};
 
 fn main() -> Result<()> {
 	SimpleLogger::new().init().expect("Logging init failure");
