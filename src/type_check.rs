@@ -180,10 +180,23 @@ fn check_function(
 	for line in block.iter() {
 		check_expr(line, &mut inner_ctx)?;
 	}
-				let actual_type = type_of_expr(&block[block.len() - 1], &inner_ctx)?;
-				if actual_type.raw == RawType::Inferred {
-					todo!("Handle inferred type on return statement");
-				}
+	let actual_type = {
+		let last_statement = &block[block.len() - 1];
+		let actual = type_of_expr(last_statement, &inner_ctx)?.raw;
+		if actual != RawType::Inferred {
+			actual
+		} else if let Expr::Declaration(Declaration { name, .. }) = last_statement {
+			if let Some((TypeRecord::Variable(Type { raw, .. }), _)) = inner_ctx.get(name) {
+				raw.clone()
+			} else {
+				log::error!("Internal: Last statement in block wasn't recorded properly?");
+				bail!(Error::Internal);
+			}
+		} else {
+			log::error!("Internal: Inferred implies declaration at the end of a block");
+			bail!(Error::Internal);
+		}
+	};
 	if !actual_type.integer_equality(return_type) {
 		log::error!(
 			"Type mismatch in function return type [{}]: {return_type:?} \
