@@ -154,48 +154,54 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
 	for branch in top_level.iter() {
 		match branch {
-			TopLevelConstruct::Function(Function {
-				name,
-				arguments,
-				return_type,
-				block,
-			}) => {
-				let mut inner_ctx = copy_for_inner_scope(&ctx);
-				for Argument { type_name, name } in arguments.into_iter() {
-					inner_ctx.insert(
-						name.clone(),
-						(TypeRecord::Variable(type_name.clone()), true),
-					);
-				}
-				for line in block.iter() {
-					check_expr(line, &mut inner_ctx)?;
-				}
+			TopLevelConstruct::Function(fun) => check_function(fun, &mut ctx)?,
+			TopLevelConstruct::Declaration(decl) => check_declaration(decl, &mut ctx)?,
+		}
+	}
+	Ok(())
+}
+
+fn check_function(
+	Function {
+		name,
+		arguments,
+		return_type,
+		block,
+	}: &Function,
+	ctx: &mut Context,
+) -> Result<()> {
+	let mut inner_ctx = copy_for_inner_scope(&ctx);
+	for Argument { type_name, name } in arguments.into_iter() {
+		inner_ctx.insert(
+			name.clone(),
+			(TypeRecord::Variable(type_name.clone()), true),
+		);
+	}
+	for line in block.iter() {
+		check_expr(line, &mut inner_ctx)?;
+	}
 				let actual_type = type_of_expr(&block[block.len() - 1], &inner_ctx)?;
 				if actual_type.raw == RawType::Inferred {
 					todo!("Handle inferred type on return statement");
 				}
-				if !actual_type.raw.integer_equality(return_type) {
-					log::error!(
-						"Type mismatch in function return type [{}]: {return_type:?} \
-						 {actual_type:?}\n{branch:?}\nλ{name} {arguments:?} → {return_type:?}",
-						line!()
-					);
-					bail!(Error::TypeError);
-				}
-				ctx.insert(
-					name.clone(),
-					(
-						TypeRecord::Function(FunctionType {
-							return_type: return_type.clone(),
-							arguments: arguments.iter().map(|arg| arg.type_name.clone()).collect(),
-						}),
-						true,
-					),
-				);
-			}
-			TopLevelConstruct::Declaration(decl) => check_declaration(decl, &mut ctx)?,
-		}
+	if !actual_type.integer_equality(return_type) {
+		log::error!(
+			"Type mismatch in function return type [{}]: {return_type:?} \
+						 {actual_type:?}\nλ{name} {arguments:?} → {return_type:?}",
+			line!()
+		);
+		bail!(Error::TypeError);
 	}
+	ctx.insert(
+		name.clone(),
+		(
+			TypeRecord::Function(FunctionType {
+				return_type: return_type.clone(),
+				arguments: arguments.iter().map(|arg| arg.type_name.clone()).collect(),
+			}),
+			true,
+		),
+	);
 	Ok(())
 }
 
