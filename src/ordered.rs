@@ -127,6 +127,10 @@ impl RawType {
 		}
 		matches!(self, RawType::Integer | RawType::Natural)
 			|| matches!(rhs, RawType::Integer | RawType::Natural)
+			|| matches!(
+				(self, rhs),
+				(RawType::IntegerLiteral, RawType::IntegerLiteral)
+			)
 	}
 }
 
