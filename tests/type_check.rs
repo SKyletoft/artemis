@@ -62,6 +62,7 @@ fn reject_same_scope_same_type_shadowing() -> Result<()> {
 	let s = "λf() {
 		x := 1
 		x := 1
+		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
 	let res = type_check::check_program(&ordered);
@@ -75,6 +76,7 @@ fn reject_same_scope_different_type_shadowing() -> Result<()> {
 	let s = "λf() {
 		x := 1
 		x := true
+		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
 	let res = type_check::check_program(&ordered);
@@ -91,6 +93,7 @@ fn accept_inner_scope_shadowing() -> Result<()> {
 			x := true
 			x
 		}
+		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
 	type_check::check_program(&ordered)?;
