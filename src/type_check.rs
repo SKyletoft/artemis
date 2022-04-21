@@ -234,6 +234,10 @@ fn check_declaration(
 	}: &Declaration,
 	ctx: &mut Context,
 ) -> Result<()> {
+	if matches!(ctx.get(name), Some((_, true))) {
+		log::error!("Same scope shadowing [{}]: {name} already exists in this scope", line!());
+		bail!(Error::TypeError)
+	}
 	check_subexpr(value, ctx)?;
 	let actual_type = type_of_subexpr(value, ctx)?;
 	let correct_type = match type_name.raw {
