@@ -241,10 +241,16 @@ fn check_declaration(
 		_ => type_name.clone(),
 	};
 	if !actual_type.raw.integer_equality(&correct_type.raw) {
-		log::error!("Type mismatch [{}]: {type_name:?} {actual_type:?}", line!());
+		log::error!(
+			"Type mismatch [{}]:\n{type_name:?}\n{actual_type:?}\n{correct_type:?}",
+			line!()
+		);
 		bail!(Error::TypeError);
 	}
-	ctx.insert(name.clone(), (TypeRecord::Variable(correct_type), true));
+	ctx.insert(
+		name.clone(),
+		(TypeRecord::Variable(correct_type.default_int()), true),
+	);
 	Ok(())
 }
 
@@ -264,10 +270,7 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 			bail!(Error::TypeError);
 		}
 		if !*mutable {
-			log::error!(
-				"Write to const [{}]: {name}: {recorded_type:?}",
-				line!()
-			);
+			log::error!("Write to const [{}]: {name}: {recorded_type:?}", line!());
 			bail!(Error::TypeError);
 		}
 	}
