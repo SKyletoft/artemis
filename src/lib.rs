@@ -4,8 +4,8 @@ extern crate pest_derive;
 
 pub mod error;
 pub mod ordered;
-pub mod type_check;
 pub mod simplify;
+pub mod type_check;
 
 #[derive(Parser)]
 #[grammar = "artemis.pest"]
