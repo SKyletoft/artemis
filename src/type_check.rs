@@ -171,7 +171,10 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 					check_expr(line, &mut inner_ctx)?;
 				}
 				let actual_type = type_of_expr(&block[block.len() - 1], &inner_ctx)?;
-				if &actual_type.raw != return_type {
+				if actual_type.raw == RawType::Inferred {
+					todo!("Handle inferred type on return statement");
+				}
+				if !actual_type.raw.integer_equality(return_type) {
 					log::error!(
 						"Type mismatch in function return type [{}]: {return_type:?} \
 						 {actual_type:?}\n{branch:?}\nλ{name} {arguments:?} → {return_type:?}",
