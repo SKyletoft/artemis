@@ -1,4 +1,5 @@
 Typechecking
+	Made the type checker also update all inferred variables to have actual types
 Syntax
 	allow if {} as if {} else {default}
 	arrays
