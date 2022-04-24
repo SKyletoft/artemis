@@ -28,4 +28,5 @@ pest_derive = "2.1.0"
 log = "0.4.16"
 simple_logger = { version = "2.1.0", default-features = false, features = [ "colors" ] }
 backtrace = "0.3.65"
+derive_more = "0.99.17"
 
