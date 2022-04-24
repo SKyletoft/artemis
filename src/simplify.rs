@@ -86,3 +86,92 @@ pub enum SimpleExpression {
 	FunctionCall(SimpleFunctionCall),
 }
 
+pub fn simplify_subexpr(
+	subexpr: &Subexpr,
+	out: &mut Vec<SimpleExpression>,
+	ctx: &mut Context,
+) -> Result<Source> {
+	let res = match subexpr {
+		Subexpr::BinOp(BinOp { op: Op::Not, .. }) => {
+			log::error!("Internal [{}]: Not as binop", line!());
+			bail!(Error::Internal);
+		}
+		Subexpr::BinOp(BinOp {
+			lhs,
+			op: Op::Delta,
+			rhs,
+		}) => todo!("transform into sub + abs"),
+		Subexpr::BinOp(BinOp {
+			lhs,
+			op: Op::Exp,
+			rhs,
+		}) => todo!("function call?"),
+		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
+			let left = simplify_subexpr(lhs, out, ctx)?;
+			let right = simplify_subexpr(rhs, out, ctx)?;
+			let target = ctx.next();
+			let simple_operator = match op {
+				Op::Plus => SimpleOp::Add,
+				Op::Minus => SimpleOp::Sub,
+				Op::Times => SimpleOp::Mul,
+				Op::Div => SimpleOp::Div,
+				Op::And => SimpleOp::And,
+				Op::Or => SimpleOp::Or,
+				Op::Xor => SimpleOp::Xor,
+				Op::Dot => todo!("Structs aren't implemented yet"),
+				Op::Delta | Op::Exp | Op::Not => unreachable!(),
+			};
+			let this = SimpleBinOp {
+				target,
+				op: simple_operator,
+				lhs: left,
+				rhs: right,
+			};
+			out.push(SimpleExpression::BinOp(this));
+			Source::Register(target)
+		}
+		Subexpr::IfExpr(IfExpr {
+			condition,
+			lhs,
+			rhs,
+		}) => todo!(),
+		Subexpr::Block(_) => todo!(),
+		Subexpr::Literal(v) => match v {
+			Literal::Integer(i) => Source::Integer(*i),
+			Literal::Float(f) => Source::Float(*f),
+			Literal::Boolean(b) => Source::Integer(*b as u64),
+			Literal::Unit => {
+				log::error!("Internal [{}]: Use of unit value", line!());
+				bail!(Error::Internal);
+			}
+		},
+		Subexpr::Variable(v) => match ctx.variables.get(v) {
+			Some(v) => Source::Register(*v),
+			None => {
+				log::error!("Internal [{}]: Use of undeclared variable", line!());
+				bail!(Error::Internal);
+			}
+		},
+		Subexpr::Tuple(_) => {
+			todo!("Should tuples even exist at this stage? Should they be a stack thing? These are design questions, not implementation")
+		}
+		Subexpr::FunctionCall(FunctionCall {
+			function_name,
+			arguments,
+		}) => {
+			let args = arguments
+				.iter()
+				.map(|s| simplify_subexpr(s, out, ctx))
+				.collect::<Result<SmallVec<_>>>()?;
+			let target = ctx.next();
+			let call = SimpleFunctionCall {
+				target,
+				function: function_name.clone(),
+				args,
+			};
+			out.push(SimpleExpression::FunctionCall(call));
+			Source::Register(target)
+		}
+	};
+	Ok(res)
+}
