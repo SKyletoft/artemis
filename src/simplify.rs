@@ -32,6 +32,13 @@ impl Context {
 	}
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+struct Block {
+	id: BlockId,
+	intro: (), // Phi nodes
+	block: SmallVec<[SimpleExpression; 4]>,
+	out: () // Jumps
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Variantly)]
 pub enum Source {
