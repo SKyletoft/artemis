@@ -11,3 +11,10 @@ use crate::{
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
+
+#[derive(Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From)]
+pub struct Register(u32);
+
+#[derive(Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From)]
+pub struct BlockId(u32);
+
