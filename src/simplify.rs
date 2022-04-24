@@ -66,6 +66,14 @@ pub struct SimpleBinOp {
 	pub rhs: Source,
 }
 
+impl SimpleBinOp {
+	fn is_same(&self, other: &Self) -> bool {
+		self.op == other.op
+			&& ((self.lhs == other.lhs && self.rhs == other.rhs)
+				|| (self.lhs == other.rhs && self.rhs == other.lhs))
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleUnOp {
 	pub target: Register,
