@@ -164,3 +164,19 @@ fn accept_assignment_to_mut() -> Result<()> {
 
 	Ok(())
 }
+
+#[test]
+fn nested_block_bug() -> Result<()> {
+	let s = "λf (x: ℤ) → ℤ {
+		a := {
+			a : mut ℤ = 1
+			a = x + a
+			a
+		}
+		a + 2
+	}";
+	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
+	type_check::check_program(&ordered)?;
+
+	Ok(())
+}
