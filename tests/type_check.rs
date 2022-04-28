@@ -166,6 +166,30 @@ fn accept_assignment_to_mut() -> Result<()> {
 }
 
 #[test]
+fn accept_if_returns_same() -> Result<()> {
+	let s = "λf() {
+		x : ℝ = if true { 1.0 } else { 2.0 }
+		()
+	}";
+	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
+	type_check::check_program(&ordered)?;
+
+	Ok(())
+}
+#[test]
+fn reject_if_returns_different() -> Result<()> {
+	let s = "λf() {
+		x := if true { true } else { 1.0 }
+		()
+	}";
+	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
+	let res = type_check::check_program(&ordered);
+
+	assert!(res.is_err());
+	Ok(())
+}
+
+#[test]
 fn nested_block_bug() -> Result<()> {
 	let s = "λf (x: ℤ) → ℤ {
 		a := {
