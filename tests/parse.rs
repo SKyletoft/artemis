@@ -8,6 +8,7 @@ fn examples() {
 	let mut files = fs::read_dir("examples")
 		.unwrap()
 		.map(|entry| entry.unwrap().path())
+		.filter(|entry| entry.is_file())
 		.collect::<Vec<_>>();
 	files.sort_unstable();
 	for file in files {
