@@ -33,9 +33,9 @@ fn copy_for_inner_scope(ctx: &Context) -> Context {
 		.collect()
 }
 
-pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
+pub fn check_program(top_level: &mut [TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
-	for branch in top_level.iter() {
+	for branch in top_level.iter_mut() {
 		match branch {
 			TopLevelConstruct::Function(fun) => {
 				check_function(fun, &mut ctx)?;
@@ -54,7 +54,7 @@ fn check_function(
 		arguments,
 		return_type,
 		block,
-	}: &Function,
+	}: &mut Function,
 	ctx: &mut Context,
 ) -> Result<()> {
 	let mut inner_ctx = copy_for_inner_scope(&ctx);
@@ -64,11 +64,14 @@ fn check_function(
 			(TypeRecord::Variable(type_name.clone()), true),
 		);
 	}
-	for line in block.iter() {
+	for line in block.iter_mut() {
 		check_expr(line, &mut inner_ctx)?;
 	}
 	let actual_type = {
-		let last_statement = &block[block.len() - 1];
+		let last_statement = block.last_mut().ok_or_else(|| {
+			log::error!("Internal: Block was empty? This should be a parse error");
+			Error::Internal
+		})?;
 		let actual = check_expr(last_statement, &mut inner_ctx)?.raw;
 		if actual != RawType::Inferred {
 			actual
@@ -110,13 +113,13 @@ fn check_function(
 	Ok(())
 }
 
-fn check_block(block: &[Expr], ctx: &Context) -> Result<Type> {
+fn check_block(block: &mut [Expr], ctx: &Context) -> Result<Type> {
 	let mut inner_ctx = copy_for_inner_scope(ctx);
 	let mut last = Type {
 		mutable: false,
 		raw: RawType::Unit,
 	};
-	for line in block.iter() {
+	for line in block.iter_mut() {
 		last = check_expr(line, &mut inner_ctx)?;
 	}
 	Ok(last)
@@ -127,7 +130,7 @@ fn check_declaration(
 		name,
 		type_name,
 		value,
-	}: &Declaration,
+	}: &mut Declaration,
 	ctx: &mut Context,
 ) -> Result<Type> {
 	if matches!(ctx.get(name), Some((_, true))) {
@@ -158,7 +161,10 @@ fn check_declaration(
 	Ok(maybe_defaulted)
 }
 
-fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) -> Result<Type> {
+fn check_assignment(
+	Assignment { name, value }: &mut Assignment,
+	ctx: &mut Context,
+) -> Result<Type> {
 	check_subexpr(value, ctx)?;
 	let actual_type = check_subexpr(value, ctx)?.raw;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
@@ -200,7 +206,7 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 	Ok(res)
 }
 
-fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<Type> {
+fn check_expr(expr: &mut Expr, ctx: &mut Context) -> Result<Type> {
 	match expr {
 		Expr::Subexpr(s) => check_subexpr(s, ctx),
 		Expr::Declaration(d) => check_declaration(d, ctx),
@@ -208,7 +214,7 @@ fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<Type> {
 	}
 }
 
-fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
+fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 	let res = match expr {
 		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
 			let lhs_type = check_subexpr(lhs, ctx)?;
@@ -278,7 +284,7 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
 		Subexpr::Block(block) => check_block(block, ctx)?,
 		Subexpr::Tuple(tuple) => {
 			let types = tuple
-				.iter()
+				.iter_mut()
 				.map(|s| check_subexpr(s, ctx))
 				.collect::<Result<Vec<Type>>>()?;
 			Type {
@@ -313,7 +319,8 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
 					);
 					Error::Internal
 				})?;
-			for (expected_arg, actual_arg) in expected_args.iter().zip(arguments.iter())
+			for (expected_arg, actual_arg) in
+				expected_args.iter().zip(arguments.iter_mut())
 			{
 				let actual_type = check_subexpr(actual_arg, ctx)?;
 				if expected_arg != &actual_type {
