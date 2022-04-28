@@ -168,7 +168,11 @@ fn accept_assignment_to_mut() -> Result<()> {
 #[test]
 fn accept_if_returns_same() -> Result<()> {
 	let s = "λf() {
-		x : ℝ = if true { 1.0 } else { 2.0 }
+		x : ℝ = if true {
+			1.0
+		} else {
+			2.0
+		}
 		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
@@ -179,7 +183,11 @@ fn accept_if_returns_same() -> Result<()> {
 #[test]
 fn reject_if_returns_different() -> Result<()> {
 	let s = "λf() {
-		x := if true { true } else { 1.0 }
+		x := if true {
+			true
+		} else {
+			1.0
+		}
 		()
 	}";
 	let ordered = ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;

@@ -209,7 +209,6 @@ fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<Type> {
 }
 
 fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
-	dbg!(expr);
 	let res = match expr {
 		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
 			let lhs_type = check_subexpr(lhs, ctx)?;
@@ -266,6 +265,11 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
 			let rhs_type = check_block(rhs, ctx)?;
 
 			if !lhs_type.raw.integer_equality(&rhs_type.raw) {
+				log::error!(
+					"Type error [{}]: Different types in then and else part of if statement\n\
+					{lhs_type:?} {rhs_type:?}",
+					line!()
+				);
 				bail!(Error::TypeError);
 			}
 
