@@ -190,7 +190,7 @@ fn reject_if_returns_different() -> Result<()> {
 }
 
 #[test]
-fn nested_block_bug() -> Result<()> {
+fn accept_block_return_of_inner_variable() -> Result<()> {
 	let s = "λf (x: ℤ) → ℤ {
 		a := {
 			a : mut ℤ = 1
