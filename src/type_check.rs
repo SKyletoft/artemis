@@ -154,6 +154,7 @@ fn check_declaration(
 		bail!(Error::TypeError);
 	}
 	let maybe_defaulted = correct_type.default_int();
+	*type_name = maybe_defaulted.clone(); // Write back the type in the case of type inference
 	ctx.insert(
 		name.clone(),
 		(TypeRecord::Variable(maybe_defaulted.clone()), true),
