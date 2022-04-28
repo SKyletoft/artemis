@@ -1,0 +1,13 @@
+λgcd (a: ℕ, b: ℕ) → ℕ {
+	if a == 0 {
+		b
+	} else if b == 0 {
+		a
+	} else if a == b {
+		a
+	} else if a > b {
+		gcd(a - b, b)
+	} else {
+		gcd(a, b - a)
+	}
+}
