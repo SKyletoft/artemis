@@ -1,8 +1,15 @@
 use anyhow::Result;
-use artemis::{ordered, type_check, GeneratedParser, Rule};
+use artemis::{
+	ordered::{
+		self, Assignment, Declaration, Expr, Function, Literal, RawType, Subexpr,
+		TopLevelConstruct, Type,
+	},
+	type_check, GeneratedParser, Rule,
+};
 use once_cell::sync::Lazy;
 use pest::Parser;
 use simple_logger::SimpleLogger;
+use smallvec::SmallVec;
 
 #[allow(unused_variables, dead_code)]
 static LOGGER: Lazy<()> = Lazy::new(|| SimpleLogger::new().init().expect("Logger init failure"));
@@ -224,6 +231,63 @@ fn accept_block_return_of_inner_variable() -> Result<()> {
 	let mut ordered =
 		ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
+
+	Ok(())
+}
+
+#[test]
+fn infer_types() -> Result<()> {
+	let s = "λf () {
+		x := 1
+		y := true
+		z := -2
+		w := 4.0
+		()
+	}";
+	let mut ordered =
+		ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
+	type_check::check_program(&mut ordered)?;
+	let expected = vec![TopLevelConstruct::Function(Function {
+		name: "f".into(),
+		arguments: SmallVec::new(),
+		return_type: RawType::Unit,
+		block: vec![
+			Expr::Declaration(Declaration {
+				name: "x".into(),
+				value: Subexpr::Literal(Literal::Integer(1)),
+				type_name: Type {
+					mutable: false,
+					raw: RawType::Integer,
+				},
+			}),
+			Expr::Declaration(Declaration {
+				name: "y".into(),
+				value: Subexpr::Literal(Literal::Boolean(true)),
+				type_name: Type {
+					mutable: false,
+					raw: RawType::Boolean,
+				},
+			}),
+			Expr::Declaration(Declaration {
+				name: "z".into(),
+				value: Subexpr::Literal(Literal::Integer(-2i64 as u64)),
+				type_name: Type {
+					mutable: false,
+					raw: RawType::Integer,
+				},
+			}),
+			Expr::Declaration(Declaration {
+				name: "w".into(),
+				value: Subexpr::Literal(Literal::Float(4.0)),
+				type_name: Type {
+					mutable: false,
+					raw: RawType::Real,
+				},
+			}),
+			Expr::Subexpr(Subexpr::Literal(Literal::Unit))
+		],
+	})];
+	assert_eq!(ordered, expected);
 
 	Ok(())
 }
