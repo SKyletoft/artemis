@@ -27,122 +27,6 @@ enum TypeRecord {
 	Function(FunctionType),
 }
 
-fn type_of_expr(expr: &Expr, ctx: &Context) -> Result<Type> {
-	match expr {
-		Expr::Subexpr(s) => type_of_subexpr(s, ctx),
-		Expr::Declaration(Declaration { type_name, .. }) => Ok(type_name.clone()),
-		Expr::Assignment(Assignment { name, .. }) => {
-			let res = ctx
-				.get(name)
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked variable is undefined",
-						line!()
-					);
-					Error::Internal
-				})?
-				.clone()
-				.0
-				.variable()
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked variable was a function",
-						line!()
-					);
-					Error::Internal
-				})?;
-			Ok(res)
-		}
-	}
-}
-
-fn type_of_subexpr(subexpr: &Subexpr, ctx: &Context) -> Result<Type> {
-	// Trusts the check functions and only checks the left hand side in expressions that require lhs and rhs to be of the same type
-	match subexpr {
-		Subexpr::BinOp(BinOp { lhs, .. }) => type_of_subexpr(lhs.as_ref(), ctx),
-		Subexpr::IfExpr(IfExpr { lhs: slice, .. }) | Subexpr::Block(slice) => {
-			type_of_expr(&slice[slice.len() - 1], ctx)
-		}
-		Subexpr::Literal(l) => match l {
-			Literal::Integer(_) => Ok(Type {
-				raw: RawType::IntegerLiteral,
-				mutable: false,
-			}),
-			Literal::Float(_) => Ok(Type {
-				raw: RawType::Real,
-				mutable: false,
-			}),
-			Literal::Boolean(_) => Ok(Type {
-				raw: RawType::Boolean,
-				mutable: false,
-			}),
-			Literal::Unit => Ok(Type {
-				raw: RawType::Unit,
-				mutable: false,
-			}),
-		},
-		Subexpr::Tuple(v) => Ok(Type {
-			raw: RawType::Tuple(
-				v.iter().map(|s| type_of_subexpr(s, ctx))
-					.collect::<Result<_>>()?,
-			),
-			mutable: false,
-		}),
-		Subexpr::Variable(name) => {
-			let res = ctx
-				.get(name)
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked variable is undefined\n\
-						{name:?} {ctx:?}",
-						line!()
-					);
-					Error::Internal
-				})?
-				.clone()
-				.0
-				.variable()
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked variable was a function\n\
-						{name:?} {ctx:?}",
-						line!()
-					);
-					Error::Internal
-				})?;
-			Ok(res)
-		}
-		Subexpr::FunctionCall(FunctionCall { function_name, .. }) => {
-			let raw = ctx
-				.get(function_name)
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked function is undefined\n\
-						{function_name:?} {ctx:?}",
-						line!()
-					);
-					Error::Internal
-				})?
-				.clone()
-				.0
-				.function()
-				.ok_or_else(|| {
-					log::error!(
-						"Internal [{}]: Supposedly checked function was a variable\n\
-						{function_name:?} {ctx:?}",
-						line!()
-					);
-					Error::Internal
-				})?
-				.return_type;
-			Ok(Type {
-				raw,
-				mutable: false,
-			})
-		}
-	}
-}
-
 fn copy_for_inner_scope(ctx: &Context) -> Context {
 	ctx.iter()
 		.map(|(key, (typ, _))| (key.clone(), (typ.clone(), false)))
@@ -153,8 +37,12 @@ pub fn check_program(top_level: &[TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
 	for branch in top_level.iter() {
 		match branch {
-			TopLevelConstruct::Function(fun) => check_function(fun, &mut ctx)?,
-			TopLevelConstruct::Declaration(decl) => check_declaration(decl, &mut ctx)?,
+			TopLevelConstruct::Function(fun) => {
+				check_function(fun, &mut ctx)?;
+			}
+			TopLevelConstruct::Declaration(decl) => {
+				check_declaration(decl, &mut ctx)?;
+			}
 		}
 	}
 	Ok(())
@@ -181,7 +69,7 @@ fn check_function(
 	}
 	let actual_type = {
 		let last_statement = &block[block.len() - 1];
-		let actual = type_of_expr(last_statement, &inner_ctx)?.raw;
+		let actual = check_expr(last_statement, &mut inner_ctx)?.raw;
 		if actual != RawType::Inferred {
 			actual
 		} else if let Expr::Declaration(Declaration { name, .. }) = last_statement {
@@ -222,12 +110,16 @@ fn check_function(
 	Ok(())
 }
 
-fn check_block(block: &[Expr], ctx: &Context) -> Result<()> {
+fn check_block(block: &[Expr], ctx: &Context) -> Result<Type> {
 	let mut inner_ctx = copy_for_inner_scope(ctx);
+	let mut last = Type {
+		mutable: false,
+		raw: RawType::Unit,
+	};
 	for line in block.iter() {
-		check_expr(line, &mut inner_ctx)?;
+		last = check_expr(line, &mut inner_ctx)?;
 	}
-	Ok(())
+	Ok(last)
 }
 
 fn check_declaration(
@@ -237,7 +129,7 @@ fn check_declaration(
 		value,
 	}: &Declaration,
 	ctx: &mut Context,
-) -> Result<()> {
+) -> Result<Type> {
 	if matches!(ctx.get(name), Some((_, true))) {
 		log::error!(
 			"Same scope shadowing [{}]: {name} already exists in this scope",
@@ -246,7 +138,7 @@ fn check_declaration(
 		bail!(Error::TypeError)
 	}
 	check_subexpr(value, ctx)?;
-	let actual_type = type_of_subexpr(value, ctx)?;
+	let actual_type = check_subexpr(value, ctx)?;
 	let correct_type = match type_name.raw {
 		RawType::Inferred => actual_type.clone(),
 		_ => type_name.clone(),
@@ -258,16 +150,17 @@ fn check_declaration(
 		);
 		bail!(Error::TypeError);
 	}
+	let maybe_defaulted = correct_type.default_int();
 	ctx.insert(
 		name.clone(),
-		(TypeRecord::Variable(correct_type.default_int()), true),
+		(TypeRecord::Variable(maybe_defaulted.clone()), true),
 	);
-	Ok(())
+	Ok(maybe_defaulted)
 }
 
-fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) -> Result<()> {
+fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) -> Result<Type> {
 	check_subexpr(value, ctx)?;
-	let actual_type = type_of_subexpr(value, ctx)?.raw;
+	let actual_type = check_subexpr(value, ctx)?.raw;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
 		log::error!("Use of undeclared variable [{}]: {name}", line!());
 		Error::TypeError
@@ -285,10 +178,29 @@ fn check_assignment(Assignment { name, value }: &Assignment, ctx: &mut Context) 
 			bail!(Error::TypeError);
 		}
 	}
-	Ok(())
+	let res = ctx
+		.get(name)
+		.ok_or_else(|| {
+			log::error!(
+				"Internal [{}]: Supposedly checked variable is undefined",
+				line!()
+			);
+			Error::Internal
+		})?
+		.clone()
+		.0
+		.variable()
+		.ok_or_else(|| {
+			log::error!(
+				"Internal [{}]: Supposedly checked variable was a function",
+				line!()
+			);
+			Error::Internal
+		})?;
+	Ok(res)
 }
 
-fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<()> {
+fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<Type> {
 	match expr {
 		Expr::Subexpr(s) => check_subexpr(s, ctx),
 		Expr::Declaration(d) => check_declaration(d, ctx),
@@ -296,13 +208,12 @@ fn check_expr(expr: &Expr, ctx: &mut Context) -> Result<()> {
 	}
 }
 
-fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
-	match expr {
+fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
+	dbg!(expr);
+	let res = match expr {
 		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
-			check_subexpr(lhs, ctx)?;
-			check_subexpr(rhs, ctx)?;
-			let lhs_type = type_of_subexpr(lhs, ctx)?;
-			let rhs_type = type_of_subexpr(rhs, ctx)?;
+			let lhs_type = check_subexpr(lhs, ctx)?;
+			let rhs_type = check_subexpr(rhs, ctx)?;
 			let eq =
 				match op {
 					Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
@@ -336,14 +247,14 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 				);
 				bail!(Error::TypeError);
 			}
-			Ok(())
+			lhs_type
 		}
 		Subexpr::IfExpr(IfExpr {
 			condition,
 			lhs,
 			rhs,
 		}) => {
-			let cond_type = type_of_subexpr(condition, ctx)?;
+			let cond_type = check_subexpr(condition, ctx)?;
 			if cond_type.raw != RawType::Boolean {
 				log::error!(
 					"Type error [{}]: Non boolean condition in if statement\n{condition:?}",
@@ -351,22 +262,35 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 				);
 				bail!(Error::TypeError);
 			}
-			check_block(lhs, ctx)?;
-			check_block(rhs, ctx)?;
-			Ok(())
+			let lhs_type = check_block(lhs, ctx)?;
+			let rhs_type = check_block(rhs, ctx)?;
+
+			if lhs_type.raw.integer_equality(&rhs_type.raw) {
+				log::error!("Type error [{}]: Different types in then and else part of if statement", line!());
+				bail!(Error::TypeError);
+			}
+
+			lhs_type
 		}
-		Subexpr::Block(block) => check_block(block, ctx),
-		Subexpr::Tuple(tuple) => tuple
-			.iter()
-			.map(|s| check_subexpr(s, ctx))
-			.collect::<Result<Vec<()>>>()
-			.map(|_| ()),
+		Subexpr::Block(block) => check_block(block, ctx)?,
+		Subexpr::Tuple(tuple) => {
+			let types = tuple
+				.iter()
+				.map(|s| check_subexpr(s, ctx))
+				.collect::<Result<Vec<Type>>>()?;
+			Type {
+				raw: RawType::Tuple(types),
+				mutable: false,
+			}
+		}
 		Subexpr::FunctionCall(FunctionCall {
 			function_name,
 			arguments,
 		}) => {
-			let expected_args = ctx
-				.get(function_name)
+			let FunctionType {
+				return_type,
+				arguments: expected_args,
+			} = ctx.get(function_name)
 				.ok_or_else(|| {
 					log::error!(
 						"Internal [{}]: Supposedly checked function is undefined\n\
@@ -385,11 +309,10 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 						line!()
 					);
 					Error::Internal
-				})?
-				.arguments;
+				})?;
 			for (expected_arg, actual_arg) in expected_args.iter().zip(arguments.iter())
 			{
-				let actual_type = type_of_subexpr(actual_arg, ctx)?;
+				let actual_type = check_subexpr(actual_arg, ctx)?;
 				if expected_arg != &actual_type {
 					log::error!(
 						"Type mismatch in function arguments [{}]: {expected_arg:?} {actual_type:?}", line!()
@@ -397,8 +320,50 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<()> {
 					bail!(Error::TypeError);
 				}
 			}
-			Ok(())
+			Type {
+				raw: return_type,
+				mutable: false,
+			}
 		}
-		_ => Ok(()),
-	}
+		Subexpr::Literal(Literal::Integer(_)) => Type {
+			raw: RawType::IntegerLiteral,
+			mutable: false,
+		},
+		Subexpr::Literal(Literal::Float(_)) => Type {
+			raw: RawType::Real,
+			mutable: false,
+		},
+		Subexpr::Literal(Literal::Boolean(_)) => Type {
+			raw: RawType::Boolean,
+			mutable: false,
+		},
+		Subexpr::Literal(Literal::Unit) => Type {
+			raw: RawType::Unit,
+			mutable: false,
+		},
+		Subexpr::Variable(name) => ctx
+			.get(name)
+			.ok_or_else(|| {
+				let bt = backtrace::Backtrace::new();
+				eprintln!("{bt:?}");
+				log::error!(
+					"Internal [{}]: Supposedly checked variable is undefined\n\
+					{name:?} {ctx:?}",
+					line!()
+				);
+				Error::Internal
+			})?
+			.clone()
+			.0
+			.variable()
+			.ok_or_else(|| {
+				log::error!(
+					"Internal [{}]: Supposedly checked variable was a function\n\
+					{name:?} {ctx:?}",
+					line!()
+				);
+				Error::Internal
+			})?,
+	};
+	Ok(res)
 }
