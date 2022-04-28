@@ -265,8 +265,7 @@ fn check_subexpr(expr: &Subexpr, ctx: &mut Context) -> Result<Type> {
 			let lhs_type = check_block(lhs, ctx)?;
 			let rhs_type = check_block(rhs, ctx)?;
 
-			if lhs_type.raw.integer_equality(&rhs_type.raw) {
-				log::error!("Type error [{}]: Different types in then and else part of if statement", line!());
+			if !lhs_type.raw.integer_equality(&rhs_type.raw) {
 				bail!(Error::TypeError);
 			}
 
