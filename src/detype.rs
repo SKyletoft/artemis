@@ -102,62 +102,20 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
-fn is_floating(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<bool> {
-	match subexpr {
-		OrderedSubexpr::BinOp(OrderedBinOp { lhs, .. }) => is_floating(lhs, ctx),
-		OrderedSubexpr::IfExpr(OrderedIfExpr { lhs, .. }) | OrderedSubexpr::Block(lhs) => {
-			todo!()
-		}
-		OrderedSubexpr::Literal(OrderedLiteral::Float(_)) => Ok(true),
-		OrderedSubexpr::Literal(_) => Ok(false),
-		OrderedSubexpr::Variable(name) => {
-			let raw = ctx
-				.get(name)
-				.ok_or_else(|| {
-					log::error!("Internal [{}]: Undefined variable in already checked context", line!());
-					Error::Internal
-				})?
-				.0
-				.clone()
-				.variable()
-				.ok_or_else(|| {
-					log::error!("Internal [{}]: Variable was function in already checked context", line!());
-					Error::Internal
-				})?
-				.raw;
-			Ok(raw == RawType::Real)
-		}
-		OrderedSubexpr::FunctionCall(OrderedFunctionCall { function_name, .. }) => {
-			let raw = ctx
-				.get(function_name)
-				.ok_or_else(|| {
-					log::error!("Internal [{}]: Undefined function in already checked context", line!());
-					Error::Internal
-				})?
-				.0
-				.clone()
-				.function()
-				.ok_or_else(|| {
-					log::error!("Internal [{}]: Function was variable in already checked context", line!());
-					Error::Internal
-				})?
-				.return_type;
-			Ok(raw == RawType::Real)
-		}
-		OrderedSubexpr::Tuple(_) => {
-			log::error!("Type error [{}]: Operation on entire tuple", line!());
-			bail!(Error::TypeError);
-		}
-	}
-}
-
-pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<Subexpr> {
+pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Subexpr, bool)> {
 	let res = match subexpr {
 		OrderedSubexpr::BinOp(OrderedBinOp { lhs, op, rhs }) => {
-			let is_float = is_floating(lhs, ctx)?;
-			let lhs = detype_subexpr(lhs, ctx)?;
-			let rhs = detype_subexpr(rhs, ctx)?;
-			let op = match (op, is_float) {
+			let (lhs, left_float) = detype_subexpr(lhs, ctx)?;
+			let (rhs, right_float) = detype_subexpr(rhs, ctx)?;
+			if left_float != right_float {
+				log::error!(
+					"Internal [{}]: Left and right aren't of same floatiness\n\
+					{lhs:?} {rhs:?}",
+					line!()
+				);
+				bail!(Error::Internal);
+			}
+			let op = match (op, left_float) {
 				(OrderedOp::Plus, true) => Op::FPlus,
 				(OrderedOp::Plus, false) => Op::Plus,
 				(OrderedOp::Minus, true) => Op::FMinus,
@@ -176,39 +134,120 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<Sub
 				(OrderedOp::Xor, _) => Op::Xor,
 				(OrderedOp::Dot, _) => Op::Dot,
 			};
-			Subexpr::BinOp(BinOp {
+			let res = Subexpr::BinOp(BinOp {
 				lhs: Box::new(lhs),
 				op,
 				rhs: Box::new(rhs),
-			})
+			});
+			(res, left_float)
 		}
 		OrderedSubexpr::IfExpr(_) => todo!(),
 		OrderedSubexpr::Block(_) => todo!(),
 		OrderedSubexpr::Literal(l) => match l {
-			OrderedLiteral::Integer(l) => Subexpr::Literal(*l),
-			OrderedLiteral::Float(f) => Subexpr::Literal(f.to_bits()),
-			OrderedLiteral::Boolean(b) => Subexpr::Literal(*b as u64),
-			OrderedLiteral::Unit => Subexpr::Unit,
+			OrderedLiteral::Integer(l) => (Subexpr::Literal(*l), false),
+			OrderedLiteral::Float(f) => (Subexpr::Literal(f.to_bits()), true),
+			OrderedLiteral::Boolean(b) => (Subexpr::Literal(*b as u64), false),
+			OrderedLiteral::Unit => (Subexpr::Unit, false),
 		},
-		OrderedSubexpr::Variable(v) => Subexpr::Variable(v.clone()),
-		OrderedSubexpr::Tuple(t) => todo!("I should probably get rid of tuples here"),
-		OrderedSubexpr::FunctionCall(_) => todo!(),
+		OrderedSubexpr::Variable(name) => {
+			let res = Subexpr::Variable(name.clone());
+			let raw = ctx
+				.get(name)
+				.ok_or_else(|| {
+					log::error!("Internal [{}]: Undefined variable in already checked context", line!());
+					Error::Internal
+				})?
+				.0
+				.clone()
+				.variable()
+				.ok_or_else(|| {
+					log::error!("Internal [{}]: Variable was function in already checked context", line!());
+					Error::Internal
+				})?
+				.raw;
+			let is_float = raw == RawType::Real;
+			(res, is_float)
+		}
+		OrderedSubexpr::Tuple(_) => todo!("I should probably get rid of tuples here"),
+		OrderedSubexpr::FunctionCall(OrderedFunctionCall {
+			function_name,
+			arguments,
+		}) => {
+			let arguments = arguments
+				.iter()
+				.map(|arg| detype_subexpr(arg, ctx).map(|(a, _)| a))
+				.collect::<Result<Vec<_>>>()?;
+			let res = Subexpr::FunctionCall(FunctionCall {
+				function_name: function_name.clone(),
+				arguments,
+			});
+			let raw = ctx
+				.get(function_name)
+				.ok_or_else(|| {
+					log::error!("Internal [{}]: Undefined function in already checked context", line!());
+					Error::Internal
+				})?
+				.0
+				.clone()
+				.function()
+				.ok_or_else(|| {
+					log::error!("Internal [{}]: Function was variable in already checked context", line!());
+					Error::Internal
+				})?
+				.return_type;
+			let is_float = raw == RawType::Real;
+			(res, is_float)
+		}
 	};
 	Ok(res)
 }
 
-pub fn detype_declaration(OrderedDeclaration { name, type_name, value }: &OrderedDeclaration, ctx: &mut Context) -> Result<Declaration> {
-	let mut inner_ctx = type_check::copy_for_inner_scope(ctx);
-	let value = detype_subexpr(value, &mut inner_ctx)?;
-	ctx.insert(name.clone(), (TypeRecord::Variable(type_name.clone()), true));
-	Ok(Declaration {name: name.clone(), value})
+pub fn detype_declaration(
+	OrderedDeclaration {
+		name,
+		type_name,
+		value,
+	}: &OrderedDeclaration,
+	ctx: &mut Context,
+) -> Result<(Declaration, bool)> {
+	let (value, is_float) = detype_subexpr(value, ctx)?;
+	let res = Declaration {
+		name: name.clone(),
+		value,
+	};
+	ctx.insert(
+		name.clone(),
+		(TypeRecord::Variable(type_name.clone()), true),
+	);
+	Ok((res, is_float))
 }
 
-pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<Expr> {
+pub fn detype_assignment(
+	OrderedAssignment { name, value }: &OrderedAssignment,
+	ctx: &mut Context,
+) -> Result<(Assignment, bool)> {
+	let (value, is_float) = detype_subexpr(value, ctx)?;
+	let res = Assignment {
+		name: name.clone(),
+		value,
+	};
+	Ok((res, is_float))
+}
+
+pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, bool)> {
 	let res = match expr {
-		OrderedExpr::Subexpr(s) => Expr::Subexpr(detype_subexpr(s, ctx)?),
-		OrderedExpr::Declaration(d) => Expr::Declaration(detype_declaration(d, ctx)?),
-		OrderedExpr::Assignment(a) => todo!(),
+		OrderedExpr::Subexpr(s) => {
+			let (subexpr, is_float) = detype_subexpr(s, ctx)?;
+			(Expr::Subexpr(subexpr), is_float)
+		}
+		OrderedExpr::Declaration(d) => {
+			let (decl, is_float) = detype_declaration(d, ctx)?;
+			(Expr::Declaration(decl), is_float)
+		}
+		OrderedExpr::Assignment(a) => {
+			let (assignment, is_float) = detype_assignment(a, ctx)?;
+			(Expr::Assignment(assignment), is_float)
+		}
 	};
 	Ok(res)
 }
