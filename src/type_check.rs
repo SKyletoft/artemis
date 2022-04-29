@@ -27,7 +27,7 @@ pub enum TypeRecord {
 	Function(FunctionType),
 }
 
-fn copy_for_inner_scope(ctx: &Context) -> Context {
+pub fn copy_for_inner_scope(ctx: &Context) -> Context {
 	ctx.iter()
 		.map(|(key, (typ, _))| (key.clone(), (typ.clone(), false)))
 		.collect()

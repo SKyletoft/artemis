@@ -11,7 +11,7 @@ use crate::{
 		Literal as OrderedLiteral, Op as OrderedOp, RawType, Subexpr as OrderedSubexpr,
 		TopLevelConstruct as OrderedTopLevelConstruct,
 	},
-	type_check::{Context, TypeRecord},
+	type_check::{self, Context, TypeRecord},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -197,10 +197,17 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<Sub
 	Ok(res)
 }
 
+pub fn detype_declaration(OrderedDeclaration { name, type_name, value }: &OrderedDeclaration, ctx: &mut Context) -> Result<Declaration> {
+	let mut inner_ctx = type_check::copy_for_inner_scope(ctx);
+	let value = detype_subexpr(value, &mut inner_ctx)?;
+	ctx.insert(name.clone(), (TypeRecord::Variable(type_name.clone()), true));
+	Ok(Declaration {name: name.clone(), value})
+}
+
 pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<Expr> {
 	let res = match expr {
 		OrderedExpr::Subexpr(s) => Expr::Subexpr(detype_subexpr(s, ctx)?),
-		OrderedExpr::Declaration(d) => todo!(),
+		OrderedExpr::Declaration(d) => Expr::Declaration(detype_declaration(d, ctx)?),
 		OrderedExpr::Assignment(a) => todo!(),
 	};
 	Ok(res)
