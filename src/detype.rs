@@ -102,7 +102,7 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
-fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, bool)> {
+pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, bool)> {
 	let mut inner_ctx = type_check::copy_for_inner_scope(ctx);
 	let mut last = true;
 	let mut vec = Vec::with_capacity(block.len());
