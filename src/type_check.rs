@@ -12,17 +12,17 @@ use crate::{
 	},
 };
 
-type SmallString = smallstr::SmallString<[u8; 16]>;
-type Context = HashMap<SmallString, (TypeRecord, bool)>;
+pub type SmallString = smallstr::SmallString<[u8; 16]>;
+pub type Context = HashMap<SmallString, (TypeRecord, bool)>;
 
 #[derive(Debug, Clone, PartialEq)]
-struct FunctionType {
-	return_type: RawType,
-	arguments: SmallVec<[Type; 4]>,
+pub struct FunctionType {
+	pub return_type: RawType,
+	pub arguments: SmallVec<[Type; 4]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
-enum TypeRecord {
+pub enum TypeRecord {
 	Variable(Type),
 	Function(FunctionType),
 }
