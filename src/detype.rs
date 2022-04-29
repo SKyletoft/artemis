@@ -102,6 +102,17 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
+fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, bool)> {
+	let mut last = true;
+	let mut vec = Vec::with_capacity(block.len());
+	for line in block.iter() {
+		let (line, res) = detype_expr(line, ctx)?;
+		vec.push(line);
+		last = res;
+	}
+	Ok((vec, last))
+}
+
 pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Subexpr, bool)> {
 	let res = match subexpr {
 		OrderedSubexpr::BinOp(OrderedBinOp { lhs, op, rhs }) => {
@@ -141,8 +152,33 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 			});
 			(res, left_float)
 		}
-		OrderedSubexpr::IfExpr(_) => todo!(),
-		OrderedSubexpr::Block(_) => todo!(),
+		OrderedSubexpr::IfExpr(OrderedIfExpr {
+			condition,
+			lhs,
+			rhs,
+		}) => {
+			let (condition, cond_float) = detype_subexpr(condition, ctx)?;
+			let (lhs, left_float) = detype_block(lhs, ctx)?;
+			let (rhs, right_float) = detype_block(rhs, ctx)?;
+			if left_float != right_float || !cond_float {
+				log::error!(
+					"Internal [{}]: Incorrect floatiness in typechecked context\n\
+					{cond_float} {left_float} {right_float}",
+					line!()
+				);
+				bail!(Error::Internal);
+			}
+			let res = Subexpr::IfExpr(IfExpr {
+				condition: Box::new(condition),
+				lhs,
+				rhs,
+			});
+			(res, left_float)
+		}
+		OrderedSubexpr::Block(block) => {
+			let (res, is_float) = detype_block(block, ctx)?;
+			(Subexpr::Block(res), is_float)
+		}
 		OrderedSubexpr::Literal(l) => match l {
 			OrderedLiteral::Integer(l) => (Subexpr::Literal(*l), false),
 			OrderedLiteral::Float(f) => (Subexpr::Literal(f.to_bits()), true),
