@@ -31,7 +31,7 @@ fn int_add() -> Result<()> {
 		op: DetypedOp::Plus,
 		rhs: Box::new(DetypedSubexpr::Literal(1)),
 	}));
-	let res = detype::detype_expr(&ordered, &mut HashMap::new())?;
+	let (res, _) = detype::detype_expr(&ordered, &mut HashMap::new())?;
 
 	assert_eq!(res, expected);
 	Ok(())
@@ -49,7 +49,7 @@ fn float_add() -> Result<()> {
 		op: DetypedOp::FPlus,
 		rhs: Box::new(DetypedSubexpr::Literal(1f64.to_bits())),
 	}));
-	let res = detype::detype_expr(&ordered, &mut HashMap::new())?;
+	let (res, _) = detype::detype_expr(&ordered, &mut HashMap::new())?;
 
 	assert_eq!(res, expected);
 	Ok(())
