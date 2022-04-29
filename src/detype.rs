@@ -103,10 +103,11 @@ pub enum TopLevelConstruct {
 }
 
 fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, bool)> {
+	let mut inner_ctx = type_check::copy_for_inner_scope(ctx);
 	let mut last = true;
 	let mut vec = Vec::with_capacity(block.len());
 	for line in block.iter() {
-		let (line, res) = detype_expr(line, ctx)?;
+		let (line, res) = detype_expr(line, &mut inner_ctx)?;
 		vec.push(line);
 		last = res;
 	}
