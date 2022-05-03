@@ -16,3 +16,13 @@ The bad ideas
 		ABb16 == 171b10
 		34b5 == 19b10
 
+To investigate
+	Must all loops be folds?
+		Reasonable syntax
+			Implicit removal of the fold start value for () returns?
+		What new greek letter for the `for` keyword
+	Merging basic blocks
+		Keep all existing context?
+			Keep register counts but not names
+	Replace all errors with error messages with a unique enum variant (there's a crate for deriving Error apparently)
+
