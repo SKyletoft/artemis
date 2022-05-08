@@ -72,6 +72,7 @@ fn check_function(
 			log::error!("Internal: Block was empty? This should be a parse error");
 			Error::Internal
 		})?;
+		// BUG: This will cause a shadowing issue if the function returns on a declaration
 		let actual = check_expr(last_statement, &mut inner_ctx)?.raw;
 		if actual != RawType::Inferred {
 			actual

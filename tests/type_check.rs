@@ -284,10 +284,22 @@ fn infer_types() -> Result<()> {
 					raw: RawType::Real,
 				},
 			}),
-			Expr::Subexpr(Subexpr::Literal(Literal::Unit))
+			Expr::Subexpr(Subexpr::Literal(Literal::Unit)),
 		],
 	})];
 	assert_eq!(ordered, expected);
+
+	Ok(())
+}
+
+#[test]
+fn accept_ending_on_declaration() -> Result<()> {
+	let s = "λf () → ℤ {
+		x := 5
+	}";
+	let mut ordered =
+		ordered::order(GeneratedParser::parse(Rule::function_definition, s.trim())?)?;
+	type_check::check_program(&mut ordered)?;
 
 	Ok(())
 }
