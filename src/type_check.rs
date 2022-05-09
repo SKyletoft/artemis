@@ -64,36 +64,14 @@ fn check_function(
 			(TypeRecord::Variable(type_name.clone()), true),
 		);
 	}
+	let mut last = RawType::Unit;
 	for line in block.iter_mut() {
-		check_expr(line, &mut inner_ctx)?;
+		last = check_expr(line, &mut inner_ctx)?.raw;
 	}
-	let actual_type = {
-		let last_statement = block.last_mut().ok_or_else(|| {
-			log::error!("Internal: Block was empty? This should be a parse error");
-			Error::Internal
-		})?;
-		// BUG: This will cause a shadowing issue if the function returns on a declaration
-		let actual = check_expr(last_statement, &mut inner_ctx)?.raw;
-		if actual != RawType::Inferred {
-			actual
-		} else if let Expr::Declaration(Declaration { name, .. }) = last_statement {
-			if let Some((TypeRecord::Variable(Type { raw, .. }), _)) =
-				inner_ctx.get(name)
-			{
-				raw.clone()
-			} else {
-				log::error!("Internal: Last statement in block wasn't recorded properly?");
-				bail!(Error::Internal);
-			}
-		} else {
-			log::error!("Internal: Inferred implies declaration at the end of a block");
-			bail!(Error::Internal);
-		}
-	};
-	if !actual_type.integer_equality(return_type) {
+	if !last.integer_equality(return_type) {
 		log::error!(
 			"Type mismatch in function return type [{}]: {return_type:?} \
-						 {actual_type:?}\nλ{name} {arguments:?} → {return_type:?}",
+			{last:?}\nλ{name} {arguments:?} → {return_type:?}",
 			line!()
 		);
 		bail!(Error::TypeError);
