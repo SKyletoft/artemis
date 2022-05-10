@@ -21,9 +21,23 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 #[repr(transparent)]
 pub struct Register(usize);
 
-#[derive(Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From)]
+impl fmt::Display for Register {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "${}", self.0)
+	}
+}
+
+#[derive(
+	Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From, Into,
+)]
 #[repr(transparent)]
 pub struct BlockId(usize);
+
+impl fmt::Display for BlockId {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "#{}", self.0)
+	}
+}
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Context {
@@ -39,11 +53,21 @@ impl Context {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum BlockEnd {
 	Return,
 	One(BlockId),
 	Two(Source, BlockId, BlockId),
+}
+
+impl fmt::Debug for BlockEnd {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Self::Return => write!(f, "ret"),
+			Self::One(target) => write!(f, "{target}"),
+			Self::Two(reg, left, right) => write!(f, "{reg} ? {left}, {right}"),
+		}
+	}
 }
 
 impl Default for BlockEnd {
@@ -65,6 +89,15 @@ pub enum Source {
 	Value(u64),
 }
 
+impl fmt::Display for Source {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Source::Register(Register(r)) => write!(f, "${r}"),
+			Source::Value(v) => write!(f, "{v}"),
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SimpleOp {
 	Add,
@@ -81,6 +114,27 @@ pub enum SimpleOp {
 	Or,
 	Xor,
 	Not,
+}
+
+impl fmt::Display for SimpleOp {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			SimpleOp::Add => write!(f, "+"),
+			SimpleOp::Sub => write!(f, "-"),
+			SimpleOp::Abs => write!(f, "±"),
+			SimpleOp::Mul => write!(f, "×"),
+			SimpleOp::Div => write!(f, "÷"),
+			SimpleOp::FAdd => write!(f, "+."),
+			SimpleOp::FSub => write!(f, "-."),
+			SimpleOp::FAbs => write!(f, "±."),
+			SimpleOp::FMul => write!(f, "×."),
+			SimpleOp::FDiv => write!(f, "÷."),
+			SimpleOp::And => write!(f, "Λ"),
+			SimpleOp::Or => write!(f, "V"),
+			SimpleOp::Xor => write!(f, "⊕"),
+			SimpleOp::Not => write!(f, "¬"),
+		}
+	}
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -112,13 +166,33 @@ pub struct SimpleFunctionCall {
 	pub args: SmallVec<[Source; 4]>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum SimpleExpression {
 	BinOp(SimpleBinOp),
 	UnOp(SimpleUnOp),
 	FunctionCall(SimpleFunctionCall),
 }
 
+impl fmt::Debug for SimpleExpression {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			SimpleExpression::BinOp(SimpleBinOp {
+				target,
+				op,
+				lhs,
+				rhs,
+			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
+			SimpleExpression::UnOp(SimpleUnOp { target, lhs }) => {
+				write!(f, "{target} ← {lhs}")
+			}
+			SimpleExpression::FunctionCall(SimpleFunctionCall {
+				target,
+				function,
+				args,
+			}) => write!(f, "{target} ← {function}{args:?}"),
+		}
+	}
+}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PhiEdge {
@@ -126,10 +200,24 @@ pub struct PhiEdge {
 	value: Source,
 }
 
+impl fmt::Debug for PhiEdge {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		let PhiEdge { from, value } = self;
+		write!(f, "{from}:{value}")
+	}
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct PhiNode {
 	target: Register,
 	value: SmallVec<[PhiEdge; 2]>,
+}
+
+impl fmt::Debug for PhiNode {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		let PhiNode { target, value } = self;
+		write!(f, "{target} ← φ{value:?}")
+	}
 }
 
 pub fn simplify_subexpr(
