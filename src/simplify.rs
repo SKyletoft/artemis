@@ -15,7 +15,9 @@ use crate::{
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
-#[derive(Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From)]
+#[derive(
+	Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From, Into,
+)]
 #[repr(transparent)]
 pub struct Register(usize);
 
@@ -52,8 +54,7 @@ impl Default for BlockEnd {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Block {
-	pub id: BlockId,
-	pub intro: (), // Phi nodes
+	pub intro: SmallVec<[PhiNode; 2]>, // Hardcoded 2 because I think this might be able to be an array or just 2 values, but I'm not 100% yet
 	pub block: SmallVec<[SimpleExpression; 4]>,
 	pub out: BlockEnd,
 }
@@ -116,6 +117,19 @@ pub enum SimpleExpression {
 	BinOp(SimpleBinOp),
 	UnOp(SimpleUnOp),
 	FunctionCall(SimpleFunctionCall),
+}
+
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct PhiEdge {
+	from: BlockId,
+	value: Source,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct PhiNode {
+	target: Register,
+	value: SmallVec<[PhiEdge; 2]>,
 }
 
 pub fn simplify_subexpr(
