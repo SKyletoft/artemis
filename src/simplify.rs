@@ -55,7 +55,8 @@ impl Context {
 
 #[derive(Clone, Copy, PartialEq, Variantly)]
 pub enum BlockEnd {
-	Return,
+	#[variantly(rename = "ret")]
+	Return(Source),
 	One(BlockId),
 	Two(Source, BlockId, BlockId),
 }
@@ -63,7 +64,7 @@ pub enum BlockEnd {
 impl fmt::Debug for BlockEnd {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Self::Return => write!(f, "ret"),
+			Self::Return(reg) => write!(f, "ret {reg}"),
 			Self::One(target) => write!(f, "{target}"),
 			Self::Two(reg, left, right) => write!(f, "{reg} ? {left}, {right}"),
 		}
@@ -72,7 +73,7 @@ impl fmt::Debug for BlockEnd {
 
 impl Default for BlockEnd {
 	fn default() -> Self {
-		BlockEnd::Return
+		BlockEnd::Return(Source::Value(0))
 	}
 }
 
@@ -317,11 +318,16 @@ pub fn simplify_subexpr(
 			if then_variables != else_variables {
 				old_variables
 					.keys()
-					.map(|key| (then_variables[key], else_variables[key]))
-					.filter(|(l, r)| l != r)
-					.for_each(|(then_var_src, else_var_src)| {
+					.map(|key| (key, then_variables[key], else_variables[key]))
+					.filter(|(_, l, r)| l != r)
+					.for_each(|(key, then_var_src, else_var_src)| {
+						let target = ctx.next();
+						ctx.variables.insert(
+							key.clone(),
+							Source::Register(target),
+						);
 						current.intro.push(PhiNode {
-							target: ctx.next(),
+							target,
 							value: smallvec![
 								PhiEdge {
 									from: then_end_id,
@@ -421,6 +427,7 @@ pub fn simplify_exprs(
 	for expr in exprs.iter() {
 		last_source = simplify_expr(expr, current, blocks, ctx)?;
 	}
+	current.out = BlockEnd::Return(last_source);
 	let final_block = mem::take(current);
 	blocks.push(final_block);
 	let final_id = blocks.len() - 1;
