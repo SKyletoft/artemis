@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use anyhow::{bail, Result};
 use variantly::Variantly;
 
 use crate::{
 	error::Error,
 	ordered::{
-		Assignment as OrderedAssignment, BinOp as OrderedBinOp,
+		Argument, Assignment as OrderedAssignment, BinOp as OrderedBinOp,
 		Declaration as OrderedDeclaration, Expr as OrderedExpr,
 		Function as OrderedFunctions, Function as OrderedFunction,
 		FunctionCall as OrderedFunctionCall, IfExpr as OrderedIfExpr,
@@ -20,7 +22,7 @@ type Block = Vec<Expr>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
 	pub name: SmallString,
-	pub arguments: usize,
+	pub arguments: Vec<SmallString>,
 	pub block: Block,
 }
 
@@ -161,7 +163,7 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 			let (condition, cond_float) = detype_subexpr(condition, ctx)?;
 			let (lhs, left_float) = detype_block(lhs, ctx)?;
 			let (rhs, right_float) = detype_block(rhs, ctx)?;
-			if left_float != right_float || !cond_float {
+			if left_float != right_float || cond_float {
 				log::error!(
 					"Internal [{}]: Incorrect floatiness in typechecked context\n\
 					{cond_float} {left_float} {right_float}",
@@ -287,4 +289,68 @@ pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, bool)
 		}
 	};
 	Ok(res)
+}
+
+pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruct>> {
+	let mut ctx = exprs
+		.iter()
+		.filter_map(|tlc| match tlc {
+			OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
+				name,
+				type_name,
+				..
+			}) => Some((
+				name.clone(),
+				(TypeRecord::Variable(type_name.clone()), true),
+			)),
+			_ => None,
+		})
+		.collect::<HashMap<_, _>>();
+
+	exprs.iter()
+		.map(|expr| {
+			let res = match expr {
+				OrderedTopLevelConstruct::Function(OrderedFunction {
+					name,
+					arguments,
+					block,
+					..
+				}) => {
+					let mut inner_ctx = type_check::copy_for_inner_scope(&ctx);
+					for Argument { type_name, name } in arguments.iter() {
+						inner_ctx.insert(
+							name.clone(),
+							(
+								TypeRecord::Variable(
+									type_name.clone(),
+								),
+								true,
+							),
+						);
+					}
+					let (block, _) = detype_block(block, &mut inner_ctx)?;
+					TopLevelConstruct::Function(Function {
+						name: name.clone(),
+						arguments: arguments
+							.iter()
+							.map(|Argument { name, .. }| name.clone())
+							.collect(),
+						block,
+					})
+				}
+				OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
+					name,
+					value,
+					..
+				}) => {
+					let (value, _) = detype_subexpr(value, &mut ctx)?;
+					TopLevelConstruct::Declaration(Declaration {
+						name: name.clone(),
+						value,
+					})
+				}
+			};
+			Ok(res)
+		})
+		.collect::<Result<Vec<_>>>()
 }
