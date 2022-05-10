@@ -1,12 +1,15 @@
-use std::{collections::HashMap, mem};
+use std::{collections::HashMap, fmt, mem};
 
 use anyhow::{bail, Result};
-use derive_more::{Add, AddAssign, From};
-use smallvec::SmallVec;
+use derive_more::{Add, AddAssign, From, Into};
+use smallvec::{smallvec, SmallVec};
 use variantly::Variantly;
 
 use crate::{
-	detype::{Assignment, BinOp, Declaration, Expr, FunctionCall, IfExpr, Op, Subexpr},
+	detype::{
+		Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Subexpr,
+		TopLevelConstruct,
+	},
 	error::Error,
 };
 
