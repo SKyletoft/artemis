@@ -1,36 +1,60 @@
 use artemis::{
-	ordered::{BinOp, Literal, Op, Subexpr},
-	simplify::{self, Context, SimpleBinOp, SimpleExpression, SimpleOp, Source},
+	detype::{BinOp, Declaration, Expr, IfExpr, Op, Subexpr},
+	simplify::{self, Block, Context, SimpleBinOp, SimpleExpression, SimpleOp, Source},
 };
+use smallvec::{smallvec, SmallVec};
 
 #[test]
 fn nested_addition() {
 	let s = Subexpr::BinOp(BinOp {
 		lhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+			lhs: Box::new(Subexpr::Literal(1)),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+			rhs: Box::new(Subexpr::Literal(2)),
 		})),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
+		rhs: Box::new(Subexpr::Literal(3)),
 	});
-	let mut res = Vec::new();
+	let mut blocks = Vec::new();
 	let mut ctx = Context::default();
-	simplify::simplify_subexpr(&s, &mut res, &mut ctx).unwrap();
-	let expected = vec![
+	let mut block = Block::default();
+	simplify::simplify_subexpr(&s, &mut block, &mut blocks, &mut ctx).unwrap();
+
+	let expected: SmallVec<[SimpleExpression; 4]> = smallvec![
 		SimpleExpression::BinOp(SimpleBinOp {
 			target: 0.into(),
 			op: SimpleOp::Add,
-			lhs: Source::Integer(1),
-			rhs: Source::Integer(2),
+			lhs: Source::Value(1),
+			rhs: Source::Value(2),
 		}),
 		SimpleExpression::BinOp(SimpleBinOp {
 			target: 1.into(),
 			op: SimpleOp::Add,
 			lhs: Source::Register(0.into()),
-			rhs: Source::Integer(3),
+			rhs: Source::Value(3),
 		}),
 	];
 
-	assert_eq!(res, expected);
+	assert_eq!(block.block, expected);
+}
+
+#[test]
+fn simple_branch() {
+	let s = Expr::Declaration(Declaration {
+		name: "x".into(),
+		value: Subexpr::IfExpr(IfExpr {
+			condition: Box::new(Subexpr::Literal(1)),
+			lhs: vec![Expr::Subexpr(Subexpr::Literal(2))],
+			rhs: vec![Expr::Subexpr(Subexpr::Literal(3))],
+		}),
+	});
+
+	let mut block = Block::default();
+	let mut blocks = Vec::new();
+	let mut ctx = Context::default();
+	simplify::simplify_expr(&s, &mut block, &mut blocks, &mut ctx).unwrap();
+
+	// Assert that the block links are correct, but not the order of the output
+	assert_eq!(block.intro[0].value[0].from, blocks[0].out.two().unwrap().1);
+	assert_eq!(block.intro[0].value[1].from, blocks[0].out.two().unwrap().2);
 }

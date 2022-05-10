@@ -53,7 +53,7 @@ impl Context {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Variantly)]
 pub enum BlockEnd {
 	Return,
 	One(BlockId),
@@ -212,8 +212,8 @@ pub enum SSAConstruct {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PhiEdge {
-	from: BlockId,
-	value: Source,
+	pub from: BlockId,
+	pub value: Source,
 }
 
 impl fmt::Debug for PhiEdge {
@@ -225,8 +225,8 @@ impl fmt::Debug for PhiEdge {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PhiNode {
-	target: Register,
-	value: SmallVec<[PhiEdge; 2]>,
+	pub target: Register,
+	pub value: SmallVec<[PhiEdge; 2]>,
 }
 
 impl fmt::Debug for PhiNode {
