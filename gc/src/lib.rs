@@ -10,6 +10,7 @@ use parking_lot::Mutex;
 static ALLOCATIONS: Lazy<Mutex<HashMap<usize, Layout>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static STACK_START: Lazy<usize> = Lazy::new(get_stack_pointer);
 
+#[no_mangle]
 pub extern "C" fn allocate(size: usize) -> *mut u8 {
 	//TODO: Should GC run on *every* allocation?
 	collect_garbage();
@@ -31,7 +32,8 @@ pub extern "C" fn allocate(size: usize) -> *mut u8 {
 
 /// A depth-first search algorithm going through everything on the stack and everything it points at to create a
 /// collection of all living objects and then just remove everything that isn't on there
-fn collect_garbage() {
+#[no_mangle]
+pub extern "C" fn collect_garbage() {
 	let start = *STACK_START;
 	let end = get_stack_pointer();
 	let allocations = &mut *ALLOCATIONS.lock();
