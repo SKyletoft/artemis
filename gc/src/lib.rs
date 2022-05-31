@@ -44,7 +44,7 @@ pub extern "C" fn collect_garbage() {
 
 	let mut objects_to_check = stack
 		.iter()
-		.map(|x| *x as usize)
+		.copied()
 		.filter(|word| allocations.contains_key(word))
 		.collect::<Vec<_>>();
 	let mut found_objects = HashSet::new();
@@ -63,22 +63,31 @@ pub extern "C" fn collect_garbage() {
 				size.size() / mem::size_of::<usize>(),
 			)
 		};
-		for word in object
+
+		for &word in object
 			.iter()
-			.map(|x| *x as usize)
-			.filter(|word| allocations.contains_key(word))
+			.filter(|&word| allocations.contains_key(word))
 		{
 			objects_to_check.push(word as usize);
 		}
 	}
 
-	for (ptr, layout) in allocations.drain_filter(|adr, _| !found_objects.contains(adr)) {
+	// Revert to drain when `HashMap::drain_filter` gets stabilised
+	let to_remove = allocations
+		.keys()
+		.copied()
+		.filter(|adr| found_objects.contains(adr))
+		.collect::<Vec<_>>();
+
+	for ptr in to_remove.into_iter() {
+		let layout = allocations.remove(&ptr).unwrap();
 		unsafe {
 			alloc::dealloc(ptr as _, layout);
 		}
 	}
 }
 
+#[inline(always)]
 fn get_stack_pointer() -> usize {
 	#[cfg(target_arch = "x86_64")]
 	return x86::bits64::registers::rsp() as _;
