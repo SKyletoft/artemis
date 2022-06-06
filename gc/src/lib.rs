@@ -8,7 +8,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 static ALLOCATIONS: Lazy<Mutex<HashMap<usize, Layout>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-static STACK_START: Lazy<usize> = Lazy::new(get_stack_pointer);
+static mut STACK_START: usize = 0;
 
 #[no_mangle]
 pub extern "C" fn allocate(size: usize) -> *mut u8 {
@@ -27,6 +27,7 @@ pub extern "C" fn allocate(size: usize) -> *mut u8 {
 	assert!(!allocations.contains_key(&int_ptr));
 	allocations.insert(int_ptr, layout);
 
+	eprintln!("  allocating: {}", ptr as usize);
 	ptr
 }
 
@@ -34,19 +35,17 @@ pub extern "C" fn allocate(size: usize) -> *mut u8 {
 /// collection of all living objects and then just remove everything that isn't on there
 #[no_mangle]
 pub extern "C" fn collect_garbage() {
-	let start = *STACK_START;
-	let end = get_stack_pointer();
 	let allocations = &mut *ALLOCATIONS.lock();
-
-	// Safety: Yeah, I don't trust this yet. It assumes the stack is contiguous and that STACK_START was initialised properly
-	// Also requires that the program is single threaded
-	let stack = unsafe { slice::from_raw_parts(start as *const usize, (end - start) as usize) };
+	let stack = get_stack();
 
 	let mut objects_to_check = stack
 		.iter()
 		.copied()
 		.filter(|word| allocations.contains_key(word))
 		.collect::<Vec<_>>();
+	// eprintln!("----------------------------------------");
+	// eprintln!("objects_to_check: {objects_to_check:#?}");
+	// eprintln!("stack: {stack:#?}");
 	let mut found_objects = HashSet::new();
 
 	while let Some(adr) = objects_to_check.pop() {
@@ -64,11 +63,8 @@ pub extern "C" fn collect_garbage() {
 			)
 		};
 
-		for &word in object
-			.iter()
-			.filter(|&word| allocations.contains_key(word))
-		{
-			objects_to_check.push(word as usize);
+		for &word in object.iter().filter(|&word| allocations.contains_key(word)) {
+			objects_to_check.push(word);
 		}
 	}
 
@@ -76,10 +72,11 @@ pub extern "C" fn collect_garbage() {
 	let to_remove = allocations
 		.keys()
 		.copied()
-		.filter(|adr| found_objects.contains(adr))
+		.filter(|adr| !found_objects.contains(adr))
 		.collect::<Vec<_>>();
 
 	for ptr in to_remove.into_iter() {
+		eprintln!("deallocating: {ptr}");
 		let layout = allocations.remove(&ptr).unwrap();
 		unsafe {
 			alloc::dealloc(ptr as _, layout);
@@ -87,14 +84,88 @@ pub extern "C" fn collect_garbage() {
 	}
 }
 
+// This is a macro to force inlining. Without inlining the stack pointer value will be for yet another inner scope
+macro_rules! get_stack_pointer {
+	() => {{
+		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+		compile_error!("GC only supports x64 and aarch64 right now");
+
+		if cfg!(target_arch = "x86_64") {
+			x86::bits64::registers::rsp() as _
+		} else if cfg!(target_arch = "aarch64") {
+			0 //aarch64::regs::SP.read() as _
+		} else {
+			unreachable!()
+		}
+	}};
+}
+
+#[no_mangle]
 #[inline(always)]
-fn get_stack_pointer() -> usize {
-	#[cfg(target_arch = "x86_64")]
-	return x86::bits64::registers::rsp() as _;
+pub unsafe extern "C" fn reset_stack_start() {
+	STACK_START = get_stack_pointer!();
+}
 
-	#[cfg(target_arch = "aarch64")]
-	return aarch64::regs::SP.read();
+fn get_stack() -> &'static [usize] {
+	let start = unsafe { STACK_START };
+	let end = get_stack_pointer!();
+	let len = (start - end + mem::size_of::<usize>()) as usize / mem::size_of::<usize>();
+	assert_eq!((start - end) % 8, 0);
 
-	#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-	compile_error!("GC only supports x64 and aarch64 right now");
+	// Safety: Yeah, I don't trust this yet. It assumes the stack is contiguous and that STACK_START was initialised properly
+	// Also requires that the program is single threaded
+	// Note that the stack is backwards as it grows downwards
+	unsafe { slice::from_raw_parts(end as *const usize, len) }
+}
+
+#[cfg(test)]
+mod test {
+
+	use crate::*;
+
+	#[inline(never)]
+	fn allocate_in_other_scope() -> *mut u8 {
+		allocate(1)
+	}
+
+	#[inline(never)]
+	fn actual_test() {
+		let mut pointers = [8888888888888usize, 0, 0, 0, 9999999999999];
+		let pointers = &mut pointers as *mut _ as *mut usize;
+
+		unsafe {
+			pointers.offset(1)
+				.write_volatile(allocate_in_other_scope() as usize);
+			dbg!(&ALLOCATIONS);
+			assert_eq!(ALLOCATIONS.lock().len(), 1);
+
+			pointers.offset(2)
+				.write_volatile(allocate_in_other_scope() as usize);
+			dbg!(&ALLOCATIONS);
+			assert_eq!(ALLOCATIONS.lock().len(), 2);
+
+			pointers.offset(3)
+				.write_volatile(allocate_in_other_scope() as usize);
+			dbg!(&ALLOCATIONS);
+			assert_eq!(ALLOCATIONS.lock().len(), 3);
+
+			pointers.offset(1).write_volatile(0);
+			pointers.offset(2).write_volatile(0);
+			pointers.offset(3).write_volatile(0);
+
+			let stack = get_stack();
+			dbg!(stack);
+
+			pointers.write_volatile(allocate_in_other_scope() as usize);
+			assert_eq!(ALLOCATIONS.lock().len(), 1);
+		}
+	}
+
+	#[test]
+	fn allocate_a_bit() {
+		unsafe {
+			reset_stack_start();
+		}
+		actual_test();
+	}
 }
