@@ -1,7 +1,11 @@
 use std::{env, fs};
 
 use anyhow::Result;
-use artemis::{detype, ordered, simplify, type_check, GeneratedParser, Rule};
+use artemis::{
+	detype, ordered,
+	register_allocation::{self, Configuration},
+	simplify, type_check, GeneratedParser, Rule,
+};
 use pest::Parser;
 use simple_logger::SimpleLogger;
 
@@ -23,6 +27,17 @@ fn main() -> Result<()> {
 
 	let ssa = simplify::simplify(&detyped)?;
 	dbg!(&ssa);
+
+	let allocated = register_allocation::register_allocate(
+		&ssa,
+		&Configuration {
+			general_purpose_registers: 20,
+			floating_point_registers: 2,
+			argument_registers: 2,
+			temporary_registers: 0,
+		},
+	)?;
+	dbg!(allocated);
 
 	println!("\n---------------------------------------------------\n\n{source}");
 

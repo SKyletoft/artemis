@@ -16,7 +16,19 @@ use crate::{
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
 #[derive(
-	Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From, Into,
+	Debug,
+	Clone,
+	Copy,
+	Add,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	AddAssign,
+	Default,
+	From,
+	Into,
+	Hash,
 )]
 #[repr(transparent)]
 pub struct Register(usize);
@@ -84,7 +96,8 @@ pub struct Block {
 	pub out: BlockEnd,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Variantly)]
+/// Registers | Value
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Variantly, Hash)]
 pub enum Source {
 	Register(Register),
 	Value(u64),
@@ -138,6 +151,17 @@ impl fmt::Display for SimpleOp {
 	}
 }
 
+impl SimpleOp {
+	pub fn is_floating_point(&self) -> bool {
+		matches!(
+			self,
+			SimpleOp::FAdd
+				| SimpleOp::FSub | SimpleOp::FAbs
+				| SimpleOp::FMul | SimpleOp::FDiv
+		)
+	}
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SimpleBinOp {
 	pub target: Register,
@@ -157,6 +181,7 @@ impl SimpleBinOp {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleUnOp {
 	pub target: Register,
+	pub op: SimpleOp,
 	pub lhs: Source,
 }
 
@@ -183,14 +208,24 @@ impl fmt::Debug for SimpleExpression {
 				lhs,
 				rhs,
 			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
-			SimpleExpression::UnOp(SimpleUnOp { target, lhs }) => {
-				write!(f, "{target} ← {lhs}")
+			SimpleExpression::UnOp(SimpleUnOp { target, op, lhs }) => {
+				write!(f, "{target} ← {op} {lhs}")
 			}
 			SimpleExpression::FunctionCall(SimpleFunctionCall {
 				target,
 				function,
 				args,
 			}) => write!(f, "{target} ← {function}{args:?}"),
+		}
+	}
+}
+
+impl SimpleExpression {
+	pub fn get_target(&self) -> Register {
+		match self {
+			SimpleExpression::BinOp(SimpleBinOp { target, .. })
+			| SimpleExpression::UnOp(SimpleUnOp { target, .. })
+			| SimpleExpression::FunctionCall(SimpleFunctionCall { target, .. }) => *target,
 		}
 	}
 }

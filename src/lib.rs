@@ -1,3 +1,5 @@
+#![feature(result_option_inspect)]
+
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
