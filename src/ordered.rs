@@ -517,7 +517,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				{
 					replace_bin_op(&mut tokens, idx)?;
 				}
-				while let Some(idx) = tokens
+				while let Some(_idx) = tokens
 					.iter()
 					.position(|x| matches!(x, MaybeParsed::Operator(Op::Not)))
 				{

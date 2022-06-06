@@ -8,10 +8,9 @@ use crate::{
 	ordered::{
 		Argument, Assignment as OrderedAssignment, BinOp as OrderedBinOp,
 		Declaration as OrderedDeclaration, Expr as OrderedExpr,
-		Function as OrderedFunctions, Function as OrderedFunction,
-		FunctionCall as OrderedFunctionCall, IfExpr as OrderedIfExpr,
-		Literal as OrderedLiteral, Op as OrderedOp, RawType, Subexpr as OrderedSubexpr,
-		TopLevelConstruct as OrderedTopLevelConstruct,
+		Function as OrderedFunction, FunctionCall as OrderedFunctionCall,
+		IfExpr as OrderedIfExpr, Literal as OrderedLiteral, Op as OrderedOp, RawType,
+		Subexpr as OrderedSubexpr, TopLevelConstruct as OrderedTopLevelConstruct,
 	},
 	type_check::{self, Context, TypeRecord},
 };
