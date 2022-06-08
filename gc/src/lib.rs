@@ -161,6 +161,7 @@ mod test {
 		}
 	}
 
+	/*
 	#[test]
 	fn allocate_a_bit() {
 		unsafe {
@@ -168,4 +169,5 @@ mod test {
 		}
 		actual_test();
 	}
+	*/
 }
