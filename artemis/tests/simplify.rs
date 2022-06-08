@@ -1,7 +1,9 @@
 use artemis::{
 	detype::{BinOp, Declaration, Expr, IfExpr, Op, Subexpr},
-	simplify::{self, Block, Context, SimpleBinOp, SimpleExpression, SimpleOp, Source},
+	simplify
 };
+use air::
+	simplify::{Block, Context, SimpleBinOp, SimpleExpression, SimpleOp, Source};
 use smallvec::{smallvec, SmallVec};
 
 #[test]

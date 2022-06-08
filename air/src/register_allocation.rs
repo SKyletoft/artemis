@@ -361,22 +361,35 @@ fn collect_last_use_of_registers_in_block(
 	for (block_idx, block) in scope.iter().enumerate() {
 		for (line_idx, line) in block.block.iter().enumerate() {
 			match line {
-				SimpleExpression::BinOp(SimpleBinOp { lhs, rhs, target, .. }) => {
+				SimpleExpression::BinOp(SimpleBinOp {
+					lhs, rhs, target, ..
+				}) => {
 					map.insert(*lhs, (block_idx, line_idx));
 					map.insert(*rhs, (block_idx, line_idx));
-					map.insert(Source::Register(*target), (block_idx, line_idx));
+					map.insert(
+						Source::Register(*target),
+						(block_idx, line_idx),
+					);
 				}
 				SimpleExpression::UnOp(SimpleUnOp { lhs, target, .. }) => {
 					map.insert(*lhs, (block_idx, line_idx));
-					map.insert(Source::Register(*target), (block_idx, line_idx));
+					map.insert(
+						Source::Register(*target),
+						(block_idx, line_idx),
+					);
 				}
 				SimpleExpression::FunctionCall(SimpleFunctionCall {
-					args, target, ..
+					args,
+					target,
+					..
 				}) => {
 					for arg in args.iter() {
 						map.insert(*arg, (block_idx, line_idx));
 					}
-					map.insert(Source::Register(*target), (block_idx, line_idx));
+					map.insert(
+						Source::Register(*target),
+						(block_idx, line_idx),
+					);
 				}
 			}
 		}

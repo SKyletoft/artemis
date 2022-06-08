@@ -39,6 +39,21 @@ dependencies = [
 [[package]]
 name = "air"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "backtrace",
+ "derive_more",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "pest",
+ "pest_derive",
+ "rayon",
+ "simple_logger",
+ "smallstr",
+ "smallvec",
+ "variantly",
+]
 
 [[package]]
 name = "anyhow"

@@ -1,5 +1,3 @@
-#![feature(result_option_inspect)]
-
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
@@ -7,7 +5,6 @@ extern crate pest_derive;
 pub mod detype;
 pub mod error;
 pub mod ordered;
-pub mod register_allocation;
 pub mod simplify;
 pub mod type_check;
 

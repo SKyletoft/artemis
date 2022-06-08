@@ -1,11 +1,8 @@
 use std::{env, fs};
 
+use air::register_allocation::{self, Configuration};
 use anyhow::Result;
-use artemis::{
-	detype, ordered,
-	register_allocation::{self, Configuration},
-	simplify, type_check, GeneratedParser, Rule,
-};
+use artemis::{detype, ordered, simplify, type_check, GeneratedParser, Rule};
 use pest::Parser;
 use simple_logger::SimpleLogger;
 
