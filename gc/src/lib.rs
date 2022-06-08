@@ -69,6 +69,7 @@ pub extern "C" fn collect_garbage() {
 	}
 
 	// Revert to drain when `HashMap::drain_filter` gets stabilised
+	#[allow(clippy::needless_collect)] // Incorrect lint, suggestion does not compile
 	let to_remove = allocations
 		.keys()
 		.copied()
@@ -100,10 +101,16 @@ macro_rules! get_stack_pointer {
 	}};
 }
 
+/// Sets the start of the stack for the Garbage Collector and returns the old value
+/// # Safety
+/// Needs to be run in a scope where the gc will never be run after it returns (unless
+/// this is set again)
 #[no_mangle]
 #[inline(always)]
-pub unsafe extern "C" fn reset_stack_start() {
+pub unsafe extern "C" fn reset_stack_start() -> usize {
+	let old = STACK_START;
 	STACK_START = get_stack_pointer!();
+	old
 }
 
 fn get_stack() -> &'static [usize] {

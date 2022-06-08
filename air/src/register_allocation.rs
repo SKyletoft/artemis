@@ -317,7 +317,7 @@ fn compare_block_line(
 
 fn select_register(
 	is_floating_point: bool,
-	pos @ (block_idx, line_idx): (usize, usize),
+	pos: (usize, usize),
 	state: &State,
 	last_use: &HashMap<Source, (usize, usize)>,
 	protected_registers: &[Register],
@@ -472,7 +472,15 @@ fn allocate_for_block(scope: &[SimpleBlock], config: &Configuration) -> Result<V
 
 	let last_use_of_register = collect_last_use_of_registers_in_block(scope);
 
-	for (block_idx, SimpleBlock { intro, block, out }) in scope.iter().enumerate() {
+	for (
+		block_idx,
+		SimpleBlock {
+			intro,
+			block,
+			out: _,
+		},
+	) in scope.iter().enumerate()
+	{
 		assert!(
 			intro.len() <= config.argument_registers as usize,
 			"Cannot have phi-nodes not in registers: figure this out later"

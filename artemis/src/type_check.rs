@@ -57,7 +57,7 @@ fn check_function(
 	}: &mut Function,
 	ctx: &mut Context,
 ) -> Result<()> {
-	let mut inner_ctx = copy_for_inner_scope(&ctx);
+	let mut inner_ctx = copy_for_inner_scope(ctx);
 	for Argument { type_name, name } in arguments.into_iter() {
 		inner_ctx.insert(
 			name.clone(),

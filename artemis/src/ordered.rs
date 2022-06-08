@@ -149,6 +149,7 @@ impl Type {
 	}
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum TopLevelConstruct {
 	Function(Function),
@@ -209,6 +210,7 @@ macro_rules! remove_by_pattern {
 	};
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Variantly)]
 enum MaybeParsed {
 	Parsed(AST),

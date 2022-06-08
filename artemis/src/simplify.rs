@@ -1,8 +1,8 @@
 use std::mem;
 
 use air::simplify::{
-	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, Register, SSAConstruct, SimpleBinOp,
-	SimpleExpression, SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
+	SimpleExpression, SimpleFunctionCall, SimpleOp, Source,
 };
 use anyhow::{bail, Result};
 use smallvec::{smallvec, SmallVec};
@@ -14,8 +14,6 @@ use crate::{
 	},
 	error::Error,
 };
-
-type SmallString = smallstr::SmallString<[u8; 16]>;
 
 pub fn simplify_subexpr(
 	subexpr: &Subexpr,
@@ -29,24 +27,24 @@ pub fn simplify_subexpr(
 			bail!(Error::Internal);
 		}
 		Subexpr::BinOp(BinOp {
-			lhs,
+			lhs: _,
 			op: Op::Delta,
-			rhs,
+			rhs: _,
 		}) => todo!("transform into sub + abs"),
 		Subexpr::BinOp(BinOp {
-			lhs,
+			lhs: _,
 			op: Op::FDelta,
-			rhs,
+			rhs: _,
 		}) => todo!("transform into sub + abs"),
 		Subexpr::BinOp(BinOp {
-			lhs,
+			lhs: _,
 			op: Op::Exp,
-			rhs,
+			rhs: _,
 		}) => todo!("function call?"),
 		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
 			let left = simplify_subexpr(lhs, current, blocks, ctx)?;
 			let right = simplify_subexpr(rhs, current, blocks, ctx)?;
-			let target = ctx.next();
+			let target = ctx.next_register();
 			let simple_operator = match op {
 				Op::Plus => SimpleOp::Add,
 				Op::FPlus => SimpleOp::FAdd,
@@ -101,7 +99,7 @@ pub fn simplify_subexpr(
 					.map(|key| (key, then_variables[key], else_variables[key]))
 					.filter(|(_, l, r)| l != r)
 					.for_each(|(key, then_var_src, else_var_src)| {
-						let target = ctx.next();
+						let target = ctx.next_register();
 						ctx.variables.insert(
 							key.clone(),
 							Source::Register(target),
@@ -122,7 +120,7 @@ pub fn simplify_subexpr(
 					});
 			}
 
-			let phi_target = ctx.next();
+			let phi_target = ctx.next_register();
 			current.intro.push(PhiNode {
 				target: phi_target,
 				value: smallvec![
@@ -165,7 +163,7 @@ pub fn simplify_subexpr(
 				.iter()
 				.map(|s| simplify_subexpr(s, current, blocks, ctx))
 				.collect::<Result<SmallVec<_>>>()?;
-			let target = ctx.next();
+			let target = ctx.next_register();
 			let call = SimpleFunctionCall {
 				target,
 				function: function_name.clone(),

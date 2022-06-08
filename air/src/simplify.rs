@@ -50,7 +50,7 @@ pub struct Context {
 }
 
 impl Context {
-	pub fn next(&mut self) -> Register {
+	pub fn next_register(&mut self) -> Register {
 		let next = self.next_register;
 		self.next_register += Register(1);
 		next
@@ -163,7 +163,7 @@ pub struct SimpleBinOp {
 }
 
 impl SimpleBinOp {
-	fn is_same(&self, other: &Self) -> bool {
+	pub fn is_same(&self, other: &Self) -> bool {
 		self.op == other.op
 			&& ((self.lhs == other.lhs && self.rhs == other.rhs)
 				|| (self.lhs == other.rhs && self.rhs == other.lhs))
