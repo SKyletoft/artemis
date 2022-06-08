@@ -346,7 +346,6 @@ fn select_register(
 				// Register that has been used for the last time
 				last_use.get(&inner_reg)
 					.map(|last| compare_block_line(pos, *last))
-					// .inspect(|v| { if *v {eprintln!("Throwing out: {reg:?}"); }})
 					.unwrap_or(true)
 			}) {
 		return Register::GeneralPurpose(first_unused as u64);
@@ -411,7 +410,7 @@ fn get_or_load_and_get_value(
 	// If there's something already there **AND** it's going to be used again **AND** is not a literal value
 	// TODO: Replace with if let when if let chains are stabilised
 	match register_set[register_idx as usize] {
-		Some(r @ Source::Register(reg)) if compare_block_line(pos, last_use[&r]) => {
+		Some(r @ Source::Register(reg)) if compare_block_line(last_use[&r], pos) => {
 			block.block.push(Expression::BinOp(BinOp {
 				target: new_register,
 				op: Op::StoreMem,
