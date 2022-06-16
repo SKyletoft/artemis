@@ -1,10 +1,12 @@
 Typechecking
+	casting
 Syntax
 	allow if {} as if {} else {default}
 	arrays
 	structs
 	enums
-	casting
+	piping with |> and <|
+	partial application with f[x, y] and even f[_, y]
 Formatter
 Linker
 GC
