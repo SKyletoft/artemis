@@ -6,10 +6,15 @@ Syntax
 	structs
 	enums
 	piping with |> and <|
+		two args with ||>?
+		map with ]>? ]=?
+		fold with `arr ]> default func`?
 	partial application with f[x, y] and even f[_, y]
 Formatter
 Linker
 GC
+
+JS backend?
 
 The bad ideas
 	Arbirtary base int literals
