@@ -263,3 +263,7 @@ impl fmt::Debug for PhiNode {
 		write!(f, "{target} ← φ{value:?}")
 	}
 }
+
+pub fn validate_ir(construct: &SSAConstruct) -> Result<()> {
+	todo!()
+}
