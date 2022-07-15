@@ -1,18 +1,21 @@
 use std::{
-	cmp::Ordering,
-	collections::HashMap,
+	collections::{HashMap, HashSet},
 	fmt,
 	hash::Hash,
-	ops::{Deref, DerefMut},
 };
 
+use anyhow::{bail, Result};
 use derive_more::{Deref, DerefMut};
 use smallvec::SmallVec;
 use variantly::Variantly;
 
-use crate::simplify::{
-	Block as SimpleBlock, BlockId, Register as SimpleRegister, SSAConstruct, SimpleBinOp,
-	SimpleExpression, SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+use crate::{
+	error::Error,
+	simplify::{
+		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
+		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
+		SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+	},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
