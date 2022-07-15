@@ -262,7 +262,7 @@ pub fn register_allocate(
 				SSAConstruct::Function { name, blocks } => {
 					CodeConstruct::Function {
 						name: name.clone(),
-						blocks: allocate_for_block(blocks, config)?,
+						blocks: allocate_for_blocks(blocks, config)?,
 					}
 				}
 				SSAConstruct::Variable { .. } => todo!(),
@@ -543,91 +543,243 @@ fn get_or_load_and_get_value(
 	new_register
 }
 
-fn allocate_for_block(scope: &[SimpleBlock], config: &Configuration) -> Result<Vec<Block>> {
-	let mut state = State::from(config);
-	let mut blocks = Vec::with_capacity(scope.len());
-
+fn allocate_for_blocks(scope: &[SimpleBlock], config: &Configuration) -> Result<Vec<Block>> {
 	let last_use_of_register = collect_last_use_of_registers_in_block(scope);
+	let mut state = State::from(config);
+	let mut blocks = vec![None; scope.len()];
 
-	for (
-		block_idx,
-		SimpleBlock {
-			intro,
+	allocate_for_blocks_with_end(
+		scope,
+		&mut blocks,
+		config,
+		&mut state,
+		0.into(),
+		usize::MAX.into(),
+		&last_use_of_register,
+	)?;
+
+	dbg!(&blocks);
+	let converted = blocks
+		.into_iter()
+		.collect::<Option<Vec<_>>>()
+		.ok_or(Error::UnconvertedBlock)?;
+	Ok(converted)
+}
+
+/// Converts blocks until it hits the end id (exclusive) or a block that returns from the function.
+/// Returns the last processed block before the end id
+fn allocate_for_blocks_with_end<'a>(
+	scope: &[SimpleBlock],
+	out: &'a mut Vec<Option<Block>>,
+	config: &Configuration,
+	state: &mut State,
+	start: BlockId,
+	end: BlockId,
+	last_use_of_register: &HashMap<Source, (usize, usize)>,
+) -> Result<BlockId> {
+	let mut next_id = start;
+	let mut old_id = start;
+	let mut next = scope.get(usize::from(next_id));
+
+	while let Some(block) = next {
+		// Break on hitting a block already done by a different path
+		// Break on the end of the relevant scope
+		if out[usize::from(next_id)].is_some() || next_id == end {
+			break;
+		}
+
+		old_id = next_id;
+		let new = handle_single_block(
 			block,
-			out: _,
-		},
-	) in scope.iter().enumerate()
-	{
-		assert!(
-			intro.len() <= config.argument_registers as usize,
-			"Cannot have phi-nodes not in registers: figure this out later"
-		);
-		let mut new_block = Block {
-			block: SmallVec::new(),
-			out: BlockEnd::Return(Register::GeneralPurpose(0)),
-		};
-
-		for (value, register) in intro.iter().zip(state.general_purpose.iter_mut()) {
-			*register = Some(Source::Register(value.target));
-		}
-
-		for (line_idx, line) in block.iter().enumerate() {
-			match line {
-				SimpleExpression::BinOp(SimpleBinOp {
-					target,
-					op,
-					lhs,
-					rhs,
-				}) if !op.is_floating_point() => {
-					let lhs_register = get_or_load_and_get_value(
-						lhs,
-						&mut state,
-						(block_idx, line_idx),
-						false,
-						&mut new_block,
-						&last_use_of_register,
-						&[],
-					);
-					let rhs_register = get_or_load_and_get_value(
-						rhs,
-						&mut state,
-						(block_idx, line_idx),
-						false,
-						&mut new_block,
-						&last_use_of_register,
-						&[lhs_register],
-					);
-					let recommended_register = select_register(
-						false,
-						(block_idx, line_idx),
-						&state,
-						&last_use_of_register,
-						&[lhs_register, rhs_register],
-					);
-					let expr = Expression::BinOp(BinOp {
-						target: recommended_register,
-						op: op.into(),
-						lhs: lhs_register,
-						rhs: rhs_register,
-					});
-
-					let gp_idx = recommended_register.unwrap_general_purpose()
-						as usize;
-					state.general_purpose[gp_idx] =
-						Some(Source::Register(*target));
-
-					new_block.block.push(expr);
-				}
-				SimpleExpression::UnOp(_) => todo!(),
-				SimpleExpression::FunctionCall(_) => todo!(),
-				_ => todo!(),
-			}
-		}
-
+			next_id.into(),
+			config,
+			state,
+			last_use_of_register,
+		)?;
 		// TODO: Move stuff into correct registers for the next block
 		// TODO: Set jump target
+		out[usize::from(old_id)] = Some(new);
 
-		blocks.push(new_block);
+		next_id = match block.out {
+			SimpleBlockEnd::Return(_) => usize::MAX.into(),
+			SimpleBlockEnd::One(id) => id,
+			SimpleBlockEnd::Two(_, left_start, right_start) => {
+				let merge_point =
+					find_merge(scope, next_id).ok_or(Error::PathsDoNotMerge)?;
+
+				let mut left_state = state.clone();
+				let mut right_state = state.clone();
+
+				let left_end = allocate_for_blocks_with_end(
+					scope,
+					out,
+					config,
+					&mut left_state,
+					left_start,
+					merge_point,
+					last_use_of_register,
+				)?;
+				let right_end = allocate_for_blocks_with_end(
+					scope,
+					out,
+					config,
+					&mut right_state,
+					right_start,
+					merge_point,
+					last_use_of_register,
+				)?;
+
+				let target_state = &scope[usize::from(merge_point)].intro;
+
+				let (left_end_block, right_end_block) =
+					{
+						let (l, r) = get_two_references_from_slice(
+							out,
+							left_end.into(),
+							right_end.into(),
+						);
+						(
+							&mut l.as_mut().ok_or(Error::ReturnedNonExistantBlock)?.block,
+							&mut r.as_mut().ok_or(Error::ReturnedNonExistantBlock)?.block,
+						)
+					};
+				state.general_purpose.reset();
+
+				// Merge the phi nodes by moving the right path value to
+				// whatever register it's in on the left side
+				for PhiNode {
+					target,
+					value: [left, right],
+				} in target_state.iter()
+				{
+					assert_eq!(left.from, left_end);
+					assert_eq!(right.from, right_end);
+
+					// TODO: This can error if the value has been pushed to the stack
+					let left_position = left_state
+						.general_purpose
+						.index_of(&left.value)
+						.ok_or(Error::MissingRegister)?;
+					let right_position = right_state
+						.general_purpose
+						.index_of(&right.value)
+						.ok_or(Error::MissingRegister)?;
+
+					state.general_purpose[left_position] =
+						Some(Source::Register(*target));
+					if left_position != right_position {
+						// TODO: Only swap if right value actually needs preserving
+						swap_registers(
+							right_end_block,
+							&mut right_state,
+							Register::GeneralPurpose(
+								left_position as u64,
+							),
+							Register::GeneralPurpose(
+								right_position as u64,
+							),
+						)?;
+					}
+				}
+
+				// And keep whatever values are the same still in both paths
+				for (idx, (left_register, _)) in left_state
+					.general_purpose
+					.iter()
+					.zip(right_state.general_purpose.iter())
+					.enumerate()
+					.filter(|(_, (a, b))| a == b)
+				{
+					state.general_purpose[idx] = *left_register;
+				}
+
+				merge_point
+			}
+		};
+		next = scope.get(usize::from(next_id));
 	}
-	Ok(blocks)
+
+	// dbg!(&out);
+
+	Ok(old_id)
+}
+
+fn handle_single_block(
+	SimpleBlock {
+		intro,
+		block,
+		out: _,
+	}: &SimpleBlock,
+	block_idx: usize,
+	config: &Configuration,
+	state: &mut State,
+	last_use_of_register: &HashMap<Source, (usize, usize)>,
+) -> Result<Block> {
+	assert!(
+		intro.len() <= config.argument_registers as usize,
+		"Cannot have phi-nodes not in registers: figure this out later"
+	);
+	let mut new_block = Block {
+		block: SmallVec::new(),
+		out: BlockEnd::Return(Register::GeneralPurpose(0)),
+	};
+
+	for (value, register) in intro.iter().zip(state.general_purpose.iter_mut()) {
+		*register = Some(Source::Register(value.target));
+	}
+
+	for (line_idx, line) in block.iter().enumerate() {
+		match line {
+			SimpleExpression::BinOp(SimpleBinOp {
+				target,
+				op,
+				lhs,
+				rhs,
+			}) if !op.is_floating_point() => {
+				let lhs_register = get_or_load_and_get_value(
+					lhs,
+					state,
+					(block_idx, line_idx),
+					false,
+					&mut new_block,
+					last_use_of_register,
+					&[],
+				);
+				let rhs_register = get_or_load_and_get_value(
+					rhs,
+					state,
+					(block_idx, line_idx),
+					false,
+					&mut new_block,
+					last_use_of_register,
+					&[lhs_register],
+				);
+				let recommended_register = select_register(
+					false,
+					(block_idx, line_idx),
+					state,
+					last_use_of_register,
+					&[lhs_register, rhs_register],
+				);
+				let expr = Expression::BinOp(BinOp {
+					target: recommended_register,
+					op: op.into(),
+					lhs: lhs_register,
+					rhs: rhs_register,
+				});
+
+				let gp_idx = recommended_register
+					.general_purpose()
+					.ok_or(Error::WrongRegisterType)? as usize;
+				state.general_purpose[gp_idx] = Some(Source::Register(*target));
+
+				new_block.block.push(expr);
+			}
+			SimpleExpression::UnOp(_) => todo!(),
+			SimpleExpression::FunctionCall(_) => todo!(),
+			_ => todo!(),
+		}
+	}
+
+	Ok(new_block)
 }
