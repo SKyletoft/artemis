@@ -82,7 +82,7 @@ impl fmt::Debug for BlockEnd {
 		match self {
 			Self::Return(reg) => write!(f, "ret {reg}"),
 			Self::One(target) => write!(f, "{target}"),
-			Self::Two(reg, left, right) => write!(f, "{reg} ? {left}, {right}"),
+			Self::Two(reg, left, right) => write!(f, "{reg} ? {left} : {right}"),
 		}
 	}
 }
