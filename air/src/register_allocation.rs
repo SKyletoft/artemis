@@ -277,11 +277,12 @@ fn select_register(
 	is_floating_point: bool,
 	pos: (usize, usize),
 	state: &State,
-	last_use: &HashMap<Source, (usize, usize)>,
+	last_use_of_register: &HashMap<Source, (usize, usize)>,
 	protected_registers: &[Register],
 ) -> Register {
 	assert!(!is_floating_point, "Todo: floating point");
 
+	// Try to find an unused register
 	if let Some(first_unused) =
 		state.general_purpose
 			.iter()
@@ -302,7 +303,7 @@ fn select_register(
 				}
 
 				// Register that has been used for the last time
-				inner_reg.has_been_used_for_the_last_time(pos, last_use)
+				inner_reg.has_been_used_for_the_last_time(pos, last_use_of_register)
 			}) {
 		return Register::GeneralPurpose(first_unused as u64);
 	}
@@ -360,7 +361,7 @@ fn get_or_load_and_get_value(
 	pos: (usize, usize),
 	is_floating: bool,
 	block: &mut Block,
-	last_use: &HashMap<Source, (usize, usize)>,
+	last_use_of_register: &HashMap<Source, (usize, usize)>,
 	protected_registers: &[Register],
 ) -> Register {
 	assert!(!is_floating);
@@ -368,7 +369,13 @@ fn get_or_load_and_get_value(
 		return Register::GeneralPurpose(idx as u64);
 	}
 
-	let new_register = select_register(is_floating, pos, state, last_use, protected_registers);
+	let new_register = select_register(
+		is_floating,
+		pos,
+		state,
+		last_use_of_register,
+		protected_registers,
+	);
 	// dbg!(source, &new_register);
 	let (register_idx, register_set) = match new_register {
 		Register::GeneralPurpose(r) => (r, &mut state.general_purpose),
@@ -381,7 +388,7 @@ fn get_or_load_and_get_value(
 	match register_set[register_idx as usize] {
 		// TODO: has_been_used_for_the_last_time
 		Some(r @ Source::Register(reg))
-			if r.has_been_used_for_the_last_time(pos, last_use) =>
+			if r.has_been_used_for_the_last_time(pos, last_use_of_register) =>
 		{
 			block.block.push(Expression::BinOp(BinOp {
 				target: new_register,
