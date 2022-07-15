@@ -5,7 +5,7 @@ use air::simplify::{
 	SimpleExpression, SimpleFunctionCall, SimpleOp, Source,
 };
 use anyhow::{bail, Result};
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use crate::{
 	detype::{
@@ -106,15 +106,15 @@ pub fn simplify_subexpr(
 						);
 						current.intro.push(PhiNode {
 							target,
-							value: smallvec![
+							value: [
 								PhiEdge {
 									from: then_end_id,
-									value: then_var_src
+									value: then_var_src,
 								},
 								PhiEdge {
 									from: else_end_id,
-									value: else_var_src
-								}
+									value: else_var_src,
+								},
 							],
 						});
 					});
@@ -123,15 +123,15 @@ pub fn simplify_subexpr(
 			let phi_target = ctx.next_register();
 			current.intro.push(PhiNode {
 				target: phi_target,
-				value: smallvec![
+				value: [
 					PhiEdge {
 						from: then_end_id,
-						value: then_source
+						value: then_source,
 					},
 					PhiEdge {
 						from: else_end_id,
-						value: else_source
-					}
+						value: else_source,
+					},
 				],
 			});
 

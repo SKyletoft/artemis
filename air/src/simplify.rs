@@ -271,7 +271,7 @@ impl fmt::Debug for PhiEdge {
 #[derive(Clone, PartialEq, Eq)]
 pub struct PhiNode {
 	pub target: Register,
-	pub value: SmallVec<[PhiEdge; 2]>,
+	pub value: [PhiEdge; 2],
 }
 
 impl fmt::Debug for PhiNode {
