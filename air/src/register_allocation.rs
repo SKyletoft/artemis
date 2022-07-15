@@ -6,7 +6,7 @@ use std::{
 	ops::{Deref, DerefMut},
 };
 
-use anyhow::Result;
+use derive_more::{Deref, DerefMut};
 use smallvec::SmallVec;
 use variantly::Variantly;
 
@@ -166,22 +166,8 @@ pub enum Expression {
 }
 
 /// Vec<Option<Source>>;
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deref, DerefMut)]
 pub struct RegisterSet(Vec<Option<Source>>);
-
-impl Deref for RegisterSet {
-	type Target = [Option<Source>];
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-
-impl DerefMut for RegisterSet {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
-	}
-}
 
 impl RegisterSet {
 	pub fn new(width: u64) -> Self {
