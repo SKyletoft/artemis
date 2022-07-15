@@ -4,6 +4,11 @@ use std::{error, fmt};
 pub enum Error {
 	WrongRegisterType,
 	UnconvertedBlock,
+	BlockWithoutReturn,
+	PathsDoNotMerge,
+	ReturnedNonExistantBlock,
+	MissingRegister,
+	MismatchedRegisterTypes,
 }
 
 impl fmt::Display for Error {
@@ -12,6 +17,11 @@ impl fmt::Display for Error {
 		match self {
 			WrongRegisterType => write!(f, "Wrong Register Type (ex. GP vs FP)"),
 			UnconvertedBlock => write!(f, "Unconverted block, some block in the generated code is unreachable"),
+			BlockWithoutReturn => write!(f, "Block doesn't contain a return statement"),
+			PathsDoNotMerge => write!(f, "Paths don't merge"),
+			ReturnedNonExistantBlock => write!(f, "Returned an end index to a block that doesn't exist (out of bounds or None)"),
+			MissingRegister => write!(f, "Value of return value from block is not in the active register bank"),
+			MismatchedRegisterTypes => write!(f, "Registers weren't both GP or both FP"),
 		}
 	}
 }
