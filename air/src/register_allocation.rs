@@ -130,32 +130,6 @@ impl From<&SimpleOp> for Op {
 	}
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct PhiEdge {
-	pub from: BlockId,
-	pub value: Register,
-}
-
-impl fmt::Debug for PhiEdge {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		let PhiEdge { from, value } = self;
-		write!(f, "{from}:{value}")
-	}
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct PhiNode {
-	pub target: Register,
-	pub value: SmallVec<[PhiEdge; 2]>,
-}
-
-impl fmt::Debug for PhiNode {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		let PhiNode { target, value } = self;
-		write!(f, "{target} ← φ{value:?}")
-	}
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
 	pub block: SmallVec<[Expression; 4]>,
