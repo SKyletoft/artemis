@@ -354,6 +354,52 @@ fn collect_last_use_of_registers_in_block(
 	map
 }
 
+/// Finds the first block that both paths of a split will both reach
+fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
+	let mut visited_left = HashSet::new();
+	let mut visited_right = HashSet::new();
+
+	let (_, lhs, rhs) = scope[usize::from(start)].out.two()?;
+	if lhs == rhs {
+		return Some(lhs);
+	}
+
+	let mut next_id = lhs;
+	let mut next = scope.get(usize::from(next_id));
+
+	// Search through the left branch until it ends or becomes an infinite loop
+	while let Some(block) = next {
+		next_id = block
+			.out
+			.one()
+			.or_else(|| block.out.two().and_then(|_| find_merge(scope, next_id)))?;
+		if visited_left.insert(next_id) {
+			break;
+		}
+		next = scope.get(usize::from(lhs));
+	}
+
+	// Then search through the right branch until we find somewhere we've been on the left side,
+	// or the right branch ends or becomes an infinite loop
+	next_id = rhs;
+	next = scope.get(usize::from(next_id));
+	while let Some(block) = next {
+		next_id = block
+			.out
+			.one()
+			.or_else(|| block.out.two().and_then(|_| find_merge(scope, next_id)))?;
+		if visited_left.contains(&next_id) {
+			return Some(next_id);
+		}
+		if visited_right.insert(next_id) {
+			break;
+		}
+		next = scope.get(usize::from(lhs));
+	}
+
+	None
+}
+
 /// Find a suitable register for `source`, potentially unloading and throwing existing values on the stack
 fn get_or_load_and_get_value(
 	source: &Source,
