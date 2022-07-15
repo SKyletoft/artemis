@@ -1,5 +1,9 @@
 Typechecking
 	casting
+		Primitives <-> Primitives
+		Objects -> Primitives
+		Primitives -/> Objects
+		Objects -/> Objects
 Syntax
 	allow if {} as if {} else {default}
 	arrays
@@ -10,9 +14,12 @@ Syntax
 		map with ]>? ]=?
 		fold with `arr ]> default func`?
 	partial application with f[x, y] and even f[_, y]
+	enforce referential transparency by library design, making everything with a side effect require an environment token (ZST given by the main arguments)
 Formatter
 Linker
+	Just rely on mold for now
 GC
+	Handle pointers to mid-array
 
 JS backend?
 
