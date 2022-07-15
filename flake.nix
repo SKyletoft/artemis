@@ -30,6 +30,7 @@
 						rustup
 						valgrind
 						rr
+						tokei
 					] ++ artemis.nativeBuildInputs;
 				};
 			}
