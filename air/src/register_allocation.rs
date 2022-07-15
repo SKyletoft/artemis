@@ -400,6 +400,51 @@ fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
 	None
 }
 
+/// Swaps two registers of the same type. Returns Err if lhs and rhs are not of the same register type.
+/// Short circuits if they're the same, even if they're of a forbidden type
+fn swap_registers(
+	block: &mut SmallVec<[Expression; 4]>,
+	state: &mut State,
+	lhs: Register,
+	rhs: Register,
+) -> Result<()> {
+	if lhs == rhs {
+		return Ok(());
+	}
+
+	match (lhs, rhs) {
+		(Register::GeneralPurpose(l), Register::GeneralPurpose(r)) => {
+			state.general_purpose.swap(l as usize, r as usize)
+		}
+		(Register::FloatingPoint(l), Register::FloatingPoint(r)) => {
+			state.floating_point.swap(l as usize, r as usize)
+		}
+		_ => bail!(Error::MismatchedRegisterTypes),
+	}
+
+	// https://en.wikipedia.org/wiki/XOR_swap_algorithm
+	block.push(Expression::BinOp(BinOp {
+		target: lhs,
+		op: Op::Xor,
+		lhs,
+		rhs,
+	}));
+	block.push(Expression::BinOp(BinOp {
+		target: rhs,
+		op: Op::Xor,
+		lhs: rhs,
+		rhs: lhs,
+	}));
+	block.push(Expression::BinOp(BinOp {
+		target: lhs,
+		op: Op::Xor,
+		lhs,
+		rhs,
+	}));
+
+	Ok(())
+}
+
 /// Find a suitable register for `source`, potentially unloading and throwing existing values on the stack
 fn get_or_load_and_get_value(
 	source: &Source,
