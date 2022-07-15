@@ -152,9 +152,10 @@ pub fn simplify_subexpr(
 			Some(&r) => anyhow::Ok(r),
 			None => todo!("Handle loading of globals"),
 		}?,
-		Subexpr::Tuple(_) => {
-			todo!("Should tuples even exist at this stage? Should they be a stack thing? These are design questions, not implementation")
-		}
+		Subexpr::Tuple(_) => todo!(
+			"Should tuples even exist at this stage? Should they be a stack thing?\n\
+			These are design questions, not implementation"
+		),
 		Subexpr::FunctionCall(FunctionCall {
 			function_name,
 			arguments,
