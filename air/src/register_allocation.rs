@@ -177,6 +177,12 @@ impl RegisterSet {
 	pub fn index_of(&self, source: &Source) -> Option<usize> {
 		self.0.iter().position(|x| *x == Some(*source))
 	}
+
+	pub fn reset(&mut self) {
+		for reg in self.iter_mut() {
+			*reg = None;
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
