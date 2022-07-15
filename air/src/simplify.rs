@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{cmp::Ordering, collections::HashMap, fmt};
 
 use anyhow::Result;
 use derive_more::{Add, AddAssign, From, Into};
@@ -93,6 +93,23 @@ pub struct Block {
 pub enum Source {
 	Register(Register),
 	Value(u64),
+}
+
+impl Source {
+	pub fn has_been_used_for_the_last_time(
+		&self,
+		(r_block, r_line): (usize, usize),
+		last_use_of_register: &HashMap<Source, (usize, usize)>,
+	) -> bool {
+		last_use_of_register
+			.get(self)
+			.map(|&(l_block, l_line)| match r_block.cmp(&l_block) {
+				Ordering::Less => true,
+				Ordering::Equal => r_line < l_line,
+				Ordering::Greater => false,
+			})
+			.unwrap_or(true)
+	}
 }
 
 impl fmt::Display for Source {

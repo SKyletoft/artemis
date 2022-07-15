@@ -270,17 +270,6 @@ pub fn register_allocate(
 		.collect()
 }
 
-fn compare_block_line(
-	(l_block, l_line): (usize, usize),
-	(r_block, r_line): (usize, usize),
-) -> bool {
-	match r_block.cmp(&l_block) {
-		Ordering::Less => false,
-		Ordering::Equal => r_line < l_line,
-		Ordering::Greater => true,
-	}
-}
-
 fn select_register(
 	is_floating_point: bool,
 	pos: (usize, usize),
@@ -310,9 +299,7 @@ fn select_register(
 				}
 
 				// Register that has been used for the last time
-				last_use.get(&inner_reg)
-					.map(|last| compare_block_line(pos, *last))
-					.unwrap_or(true)
+				inner_reg.has_been_used_for_the_last_time(pos, last_use)
 			}) {
 		return Register::GeneralPurpose(first_unused as u64);
 	}
@@ -389,7 +376,10 @@ fn get_or_load_and_get_value(
 	// If there's something already there **AND** it's going to be used again **AND** is not a literal value
 	// TODO: Replace with if let when if let chains are stabilised
 	match register_set[register_idx as usize] {
-		Some(r @ Source::Register(reg)) if compare_block_line(last_use[&r], pos) => {
+		// TODO: has_been_used_for_the_last_time
+		Some(r @ Source::Register(reg))
+			if r.has_been_used_for_the_last_time(pos, last_use) =>
+		{
 			block.block.push(Expression::BinOp(BinOp {
 				target: new_register,
 				op: Op::StoreMem,
