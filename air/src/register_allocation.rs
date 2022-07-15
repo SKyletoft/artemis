@@ -445,6 +445,26 @@ fn swap_registers(
 	Ok(())
 }
 
+/// Helper function to get two mutable references from the same slice.
+/// Panics if left and right are the same or out of bounds.
+fn get_two_references_from_slice<T>(
+	slice: &mut [T],
+	left: usize,
+	right: usize,
+) -> (&mut T, &mut T) {
+	// Safety: Bounds checks are asserted.
+	// This could also be done in safe code with a bunch of hacks with
+	// `[T]::split_at_mut` but that is just unreadable when we don't know
+	// if left is less than right
+
+	assert_ne!(left, right);
+	assert!(left < slice.len());
+	assert!(right < slice.len());
+
+	let ptr = slice.as_mut_ptr();
+	unsafe { (&mut *ptr.add(left), &mut *ptr.add(right)) }
+}
+
 /// Find a suitable register for `source`, potentially unloading and throwing existing values on the stack
 fn get_or_load_and_get_value(
 	source: &Source,
