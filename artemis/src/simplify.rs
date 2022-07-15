@@ -138,7 +138,7 @@ pub fn simplify_subexpr(
 			blocks[curr_idx].out =
 				BlockEnd::Two(cond_reg, then_start_id.into(), else_start_id.into());
 			// Invariant: All branches must make sure the source comes first in `blocks`
-			let next = BlockId(blocks.len());
+			let next = BlockId::from(blocks.len());
 			let then_id: usize = then_end_id.into();
 			let else_id: usize = else_end_id.into();
 			blocks[then_id].out = BlockEnd::One(next);

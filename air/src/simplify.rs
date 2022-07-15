@@ -23,7 +23,7 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 	Hash,
 )]
 #[repr(transparent)]
-pub struct Register(pub usize);
+pub struct Register(usize);
 
 impl fmt::Display for Register {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -32,10 +32,22 @@ impl fmt::Display for Register {
 }
 
 #[derive(
-	Debug, Clone, Copy, Add, PartialEq, Eq, PartialOrd, Ord, AddAssign, Default, From, Into,
+	Debug,
+	Clone,
+	Copy,
+	Add,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	AddAssign,
+	Default,
+	From,
+	Into,
+	Hash,
 )]
 #[repr(transparent)]
-pub struct BlockId(pub usize);
+pub struct BlockId(usize);
 
 impl fmt::Display for BlockId {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
