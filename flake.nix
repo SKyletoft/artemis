@@ -31,9 +31,9 @@
 						valgrind
 						rr
 						tokei
+						lldb
 					] ++ artemis.nativeBuildInputs;
 				};
 			}
 		);
 }
-
