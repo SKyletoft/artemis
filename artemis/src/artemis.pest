@@ -79,3 +79,13 @@ function_definition = {
 	")" ~ ws ~ (("->" | "→") ~ ws ~ raw_type)? ~ ws ~ block
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
+
+struct_enum_field = { var_name ~ ws ~ ":" ~ ws ~ raw_type }
+struct_definition = {
+	times ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
+	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
+}
+enum_definition = {
+	plus ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
+	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
+}
