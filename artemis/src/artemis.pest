@@ -27,7 +27,7 @@ xor   = { "⊕" | "⊻" | "⨁" | "(+)" }
 
 integer =  { (plus | minus)? ~ digit+ }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* }
-boolean =  { "true" | "false" }
+boolean =  { "𝕋" | "𝔽" | "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
 string  = ${ "\"" ~ inner_s ~ "\"" }
