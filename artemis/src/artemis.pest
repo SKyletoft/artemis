@@ -61,7 +61,7 @@ term = {
 }
 operator = { exp | times | div | plus | minus | delta }
 
-if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_expr) }
+if_expr = { ("?" | "if") ~ ws ~ subexpr ~ ws ~ block ~ ws ~ ("|" | "else") ~ ws ~ (block | if_expr) }
 subexpr = { term ~ (ws ~ operator ~ ws ~ term)* }
 expr    = { declaration | assignment | subexpr }
 
