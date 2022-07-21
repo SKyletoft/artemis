@@ -2,10 +2,15 @@ lower_case =  { 'a'..'z' | "å" | "ä" | "ö" }
 upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
 digit      =  { '0'..'9' }
 whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
+greek      =  {
+	"α" | "β" | "Γ" | "γ" | "ε" | "ζ" | "η" | "Θ" | "θ" | "ι" | "Κ" |
+	"κ" | "μ" | "ν" | "Ξ" | "ξ" | "Π" | "π" | "ρ" | "Σ" | "σ" | "ς" |
+	"τ" | "υ" | "Φ" | "φ" | "Χ" | "χ" | "Ψ" | "ψ" | "Ω" | "ω"
+}
 
 ws = _{ whitespace? }
 
-var_name     = { lower_case ~ (lower_case | digit | "_")* }
+var_name     = { (lower_case ~ (lower_case | digit | "_")*) | greek }
 type_name    = { (mutable ~ whitespace)? ~ raw_type }
 mutable      = { "mut" }
 raw_type     = { native_types | struct_name | unit | tuple_type }
@@ -23,11 +28,11 @@ exp   = { "^" }
 not   = { "¬" }
 and   = { "Λ" | "∧" | "⋀" }
 or    = { "V" | "∨" | "⋁" }
-xor   = { "⊕" | "⊻" | "⨁" }
+xor   = { "⊕" | "⊻" | "⨁" | "(+)" }
 
 integer =  { (plus | minus)? ~ digit+ }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* }
-boolean =  { "true" | "false" }
+boolean =  { "𝕋" | "𝔽" | "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
 string  = ${ "\"" ~ inner_s ~ "\"" }
@@ -61,7 +66,7 @@ term = {
 }
 operator = { exp | times | div | plus | minus | delta }
 
-if_expr = { "if" ~ ws ~ subexpr ~ ws ~ block ~ ws ~ "else" ~ ws ~ (block | if_expr) }
+if_expr = { ("?" | "if") ~ ws ~ subexpr ~ ws ~ block ~ ws ~ ("|" | "else") ~ ws ~ (block | if_expr) }
 subexpr = { term ~ (ws ~ operator ~ ws ~ term)* }
 expr    = { declaration | assignment | subexpr }
 
