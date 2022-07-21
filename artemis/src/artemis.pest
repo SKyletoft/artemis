@@ -8,6 +8,11 @@ greek      =  {
 	"τ" | "υ" | "Φ" | "φ" | "Χ" | "χ" | "Ψ" | "ψ" | "Ω" | "ω"
 }
 
+large_metric_prefix = { "D" | "da"| "h" | "k" | "M" | "G" | "T" | "P" | "E" | "Z" | "Y" }
+small_metric_prefix = { "d" | "c" | "m" | "μ" | "u" | "n" | "p" | "f" | "a" | "z" | "y" }
+metrix_prefix       = { small_metric_prefix | large_metric_prefix }
+binary_prefix       = { "ki" | "Mi" | "Gi" | "Ti" | "Pi" | "Ei" | "Zi" | "Yi" }
+
 ws = _{ whitespace? }
 
 var_name     = { (lower_case ~ (lower_case | digit | "_")*) | greek }
@@ -30,8 +35,8 @@ and   = { "Λ" | "∧" | "⋀" | "`and`" }
 or    = { "V" | "∨" | "⋁" | "`or`" }
 xor   = { "⊕" | "⊻" | "⨁" | "(+)" | "`xor`" }
 
-integer =  { (plus | minus)? ~ digit+ }
-float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* }
+integer =  { (plus | minus)? ~ digit+ ~ (metrix_prefix | binary_prefix)? }
+float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ (metrix_prefix | binary_prefix)? }
 boolean =  { "𝕋" | "𝔽" | "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
