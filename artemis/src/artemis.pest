@@ -18,17 +18,17 @@ native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" }
 struct_name  = { upper_case ~ (upper_case | lower_case | digit)* }
 tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ type_name)+ ~ ws ~ ")" }
 
-dot   = { "." }
-plus  = { "+" }
-minus = { "-" }
-delta = { "δ" }
-times = { "*" | "×" | "·" }
-div   = { "/" | "÷" }
-exp   = { "^" }
-not   = { "¬" }
-and   = { "Λ" | "∧" | "⋀" }
-or    = { "V" | "∨" | "⋁" }
-xor   = { "⊕" | "⊻" | "⨁" | "(+)" }
+dot   = { "." | "`dot`" }
+plus  = { "+" | "`add`" }
+minus = { "-" | "`sub`" }
+delta = { "δ" | "`delta`" }
+times = { "*" | "×" | "·" | "`mul`" }
+div   = { "/" | "÷" | "`div`" }
+exp   = { "^" | "`exp`" }
+not   = { "¬" | "`not`" }
+and   = { "Λ" | "∧" | "⋀" | "`and`" }
+or    = { "V" | "∨" | "⋁" | "`or`" }
+xor   = { "⊕" | "⊻" | "⨁" | "(+)" | "`xor`" }
 
 integer =  { (plus | minus)? ~ digit+ }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* }
@@ -66,11 +66,11 @@ term = {
 }
 operator = { exp | times | div | plus | minus | delta }
 
-if_expr = { ("?" | "if") ~ ws ~ subexpr ~ ws ~ block ~ ws ~ ("|" | "else") ~ ws ~ (block | if_expr) }
+if_expr = { ("?" | "if" | "`if`" ) ~ ws ~ subexpr ~ ws ~ block ~ ws ~ ("|" | "else" | "`else`" ) ~ ws ~ (block | if_expr) }
 subexpr = { term ~ (ws ~ operator ~ ws ~ term)* }
 expr    = { declaration | assignment | subexpr }
 
-fn_keyword = { "\\" | "λ" }
+fn_keyword = { "\\" | "λ" | "fn" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 
 function_definition = {
@@ -82,10 +82,10 @@ block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
 
 struct_enum_field = { var_name ~ ws ~ ":" ~ ws ~ raw_type }
 struct_definition = {
-	times ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
+	(times | "struct") ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
 	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
 }
 enum_definition = {
-	plus ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
+	(plus  | "enum") ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
 	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
 }
