@@ -591,7 +591,6 @@ fn get_or_load_and_get_value(
 		Source::Register(r) => {
 			// Push to stack
 
-			eprintln!("--------------------------------------------------------");
 			// If we're here, we've already checked current registers, meaning search the stack immediately
 			let stack_position = state
 				.stack
@@ -609,7 +608,7 @@ fn get_or_load_and_get_value(
 	};
 	block.block.push(expr);
 
-	eprintln!(
+	log::trace!(
 		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
 		line!(),
 		register_set[register_idx as usize],
@@ -642,7 +641,7 @@ fn allocate_for_blocks(
 		state.stack.push(Some(Source::Register(arg.into())));
 	}
 
-	eprintln!(
+	log::trace!(
 		"[{}]: Start\nRegs: {:#?}\nStack: {:#?}\n",
 		line!(),
 		&state.general_purpose,
@@ -703,7 +702,7 @@ fn allocate_for_blocks_with_end(
 				let mut left_state = state.clone();
 				let mut right_state = state.clone();
 
-				log::info!("-- BRANCHING --");
+				log::trace!("-- BRANCHING --");
 				let left_end = allocate_for_blocks_with_end(
 					scope,
 					out,
@@ -712,7 +711,7 @@ fn allocate_for_blocks_with_end(
 					left_start,
 					merge_point,
 				)?;
-				log::info!("-- RETURNING TO BRANCH --");
+				log::trace!("-- RETURNING TO BRANCH --");
 				let right_end = allocate_for_blocks_with_end(
 					scope,
 					out,
@@ -721,8 +720,7 @@ fn allocate_for_blocks_with_end(
 					right_start,
 					merge_point,
 				)?;
-				log::info!("-- CONTINUING AFTER MERGE -- ");
-				dbg!(&left_state.general_purpose, &right_state.general_purpose);
+				log::trace!("-- CONTINUING AFTER MERGE -- ");
 
 				let target_state = &scope[usize::from(merge_point)].intro;
 
@@ -755,7 +753,7 @@ fn allocate_for_blocks_with_end(
 						)
 					};
 
-				// Clear old information
+				// Clear old tracermation
 				state.general_purpose.iter_mut().for_each(|x| *x = None);
 				state.floating_point.iter_mut().for_each(|x| *x = None);
 				state.stack.iter_mut().for_each(|x| *x = None);
@@ -766,7 +764,6 @@ fn allocate_for_blocks_with_end(
 					state.stack.push(None);
 				}
 
-				eprintln!("-----------------------------------------------------");
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
 				for PhiNode {
@@ -938,12 +935,12 @@ fn handle_single_block(
 					);
 				}
 
-				eprintln!(
+				/*log::trace!(
 					"[{}]: Replacing {:?} (at: {gp_idx}) with {:?} (saving: {need_to_save_old_value})",
 					line!(),
 					state.general_purpose[gp_idx],
 					Source::Register(*target),
-				);
+				);*/
 				state.general_purpose[gp_idx] = Some(Source::Register(*target));
 
 				new_block.block.push(expr);
@@ -952,7 +949,7 @@ fn handle_single_block(
 			SimpleExpression::FunctionCall(_) => todo!(),
 			_ => todo!(),
 		}
-		eprintln!(
+		log::trace!(
 			"[{}]: {line:?}\nRegs: {:#?}\nStack: {:#?}\n",
 			line!(),
 			&state.general_purpose,
@@ -963,7 +960,6 @@ fn handle_single_block(
 		SimpleBlockEnd::Return(_) => BlockEnd::Return,
 		SimpleBlockEnd::One(o) => BlockEnd::One(o),
 		SimpleBlockEnd::Two(target, l, r) => {
-			dbg!(target, &state);
 			let condition = state.find(target).unwrap_or_else(|| {
 				// TODO: Load value from stack
 				todo!();

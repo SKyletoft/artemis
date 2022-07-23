@@ -7,8 +7,8 @@ use air::{
 use anyhow::Result;
 use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
 use clap::Parser as ClapParser;
+use log::Level;
 use pest::Parser as PestParser;
-use simple_logger::SimpleLogger;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Target {
@@ -44,8 +44,8 @@ struct Config {
 }
 
 fn main() -> Result<()> {
-	SimpleLogger::new().init().expect("Logging init failure");
-	log::info!("Logging initialised");
+	simple_logger::init_with_level(Level::Info)?;
+	log::trace!("Logging initialised");
 
 	let config = Config::parse();
 	if config.files.is_empty() {
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
 		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
 
 	let assembler = x86_64::assemble(&allocated[0])?;
-	dbg!(&assembler);
+	eprintln!("{}", &assembler);
 
 	fs::write("a.asm", assembler)?;
 
