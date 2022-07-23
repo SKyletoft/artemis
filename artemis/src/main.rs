@@ -25,15 +25,8 @@ fn main() -> Result<()> {
 	let ssa = simplify::simplify(&detyped)?;
 	dbg!(&ssa);
 
-	let allocated = register_allocation::register_allocate(
-		&ssa,
-		&Configuration {
-			general_purpose_registers: 20,
-			floating_point_registers: 2,
-			argument_registers: 2,
-			temporary_registers: 0,
-		},
-	)?;
+	let allocated =
+		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
 	dbg!(allocated);
 
 	println!("\n---------------------------------------------------\n\n{source}");
