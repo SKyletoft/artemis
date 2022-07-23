@@ -23,12 +23,9 @@ use crate::{
 // Return value in rax (+ higher bits in rdx for 128 bit values)
 
 /// General purpose registers, in order of priority
-const GP: [AsmRegister64; 14] = {
-	use iced_x86::code_asm::gpr64::*;
-	[
-		rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11, rbx, r12, r13, r14, r15,
-	]
-};
+const GP: [AsmRegister64; 14] = [
+	rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11, rbx, r12, r13, r14, r15,
+];
 
 pub fn assemble(construct: &CodeConstruct) -> Result<String> {
 	match construct {
