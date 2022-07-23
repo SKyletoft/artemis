@@ -1,6 +1,9 @@
-use std::{env, fs};
+use std::{env, fs, process::Command};
 
-use air::register_allocation::{self, Configuration};
+use air::{
+	register_allocation::{self, Configuration},
+	x86_64,
+};
 use anyhow::Result;
 use artemis::{detype, ordered, simplify, type_check, GeneratedParser, Rule};
 use pest::Parser;
@@ -19,11 +22,25 @@ fn main() -> Result<()> {
 	let detyped = detype::detype(&ordered)?;
 
 	let ssa = simplify::simplify(&detyped)?;
-	dbg!(&ssa);
 
 	let allocated =
 		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
-	dbg!(allocated);
+
+	let assembler = x86_64::assemble(&allocated[0])?;
+	dbg!(&assembler);
+
+	fs::write("a.asm", assembler)?;
+
+	let nasm_raw = Command::new("nasm")
+		.arg("a.asm")
+		.args(["-o", "a.o"])
+		.args(["-f", "elf64"])
+		.output()?
+		.stderr;
+	let nasm_string = String::from_utf8(nasm_raw)?;
+	if !nasm_string.is_empty() {
+		log::error!("Nasm: {nasm_string}");
+	}
 
 	println!("\n---------------------------------------------------\n\n{source}");
 
