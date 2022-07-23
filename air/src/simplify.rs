@@ -7,6 +7,7 @@ use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
+/// `usize`
 #[derive(
 	Debug,
 	Clone,
@@ -31,6 +32,7 @@ impl fmt::Display for Register {
 	}
 }
 
+/// `usize`
 #[derive(
 	Debug,
 	Clone,
@@ -103,7 +105,9 @@ pub struct Block {
 /// Registers | Value
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Variantly, Hash)]
 pub enum Source {
+	/// `Register`
 	Register(Register),
+	/// `u64`
 	Value(u64),
 }
 
