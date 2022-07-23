@@ -345,85 +345,66 @@ pub fn register_allocate(
 		.collect()
 }
 
+// TODO: Prioritise going into a φ-node immediately
+fn find_empty_slot(
+	pos: (usize, usize),
+	registers: &[Option<Source>],
+	scope: &[SimpleBlock],
+	protected_registers: &[Source],
+) -> Option<usize> {
+	registers.iter().enumerate().position(|(idx, &reg)| {
+		// Completely unused register
+		let inner_reg = if let Some(r) = reg {
+			r
+		} else {
+			return true;
+		};
+
+		// Don't select anything we need in the same operation
+		if protected_registers.contains(&inner_reg) {
+			return false;
+		}
+
+		// Register that has been used for the last time
+		inner_reg.lines_till_last_use(scope, pos).is_none()
+	})
+}
 fn select_register(
 	is_floating_point: bool,
 	pos: (usize, usize),
-	state: &State,
-	last_use_of_register: &HashMap<Source, (usize, usize)>,
-	protected_registers: &[Register],
-) -> Register {
+	state: &mut State,
+	scope: &[SimpleBlock],
+	protected_registers: &[Source],
+) -> (Register, bool) {
 	assert!(!is_floating_point, "Todo: floating point");
 
 	// Try to find an unused register
 	if let Some(first_unused) =
-		state.general_purpose
-			.iter()
-			.enumerate()
-			.position(|(idx, &reg)| {
-				// Completely unused register
-				let inner_reg = if let Some(r) = reg {
-					r
-				} else {
-					return true;
-				};
-
-				// Don't select anything we need in the same operation
-				if protected_registers
-					.contains(&Register::GeneralPurpose(idx as u64))
-				{
-					return false;
-				}
-
-				// Register that has been used for the last time
-				inner_reg.has_been_used_for_the_last_time(pos, last_use_of_register)
-			}) {
-		return Register::GeneralPurpose(first_unused as u64);
+		find_empty_slot(pos, &state.general_purpose, scope, protected_registers)
+	{
+		return (Register::GeneralPurpose(first_unused), false);
 	}
 
-	todo!()
-}
+	// Select which register to push to the stack instead
+	let (slot, store_old_value) = state
+		.general_purpose
+		.iter()
+		.enumerate()
+		.filter(|(_, r)| !r.map(|s| protected_registers.contains(&s)).unwrap_or(false))
+		.map(|(idx, register)| {
+			let reg = register.expect("Any empty register slots should've been found in the above attempt")
+				.lines_till_last_use(scope, pos);
+			(idx, reg)
+		})
+		.min_by(|&lhs, &rhs| match (lhs.1, rhs.1) {
+			(None, _) => Ordering::Less,
+			(_, None) => Ordering::Greater,
+			(Some(x), Some(y)) => x.cmp(&y),
+		})
+		.map(|(x, y)| (x, y.is_some()))
+		.expect("There cannot be 0 registers");
 
-fn collect_last_use_of_registers_in_block(
-	scope: &[SimpleBlock],
-) -> HashMap<Source, (usize, usize)> {
-	let mut map: HashMap<Source, (usize, usize)> = HashMap::new();
-	for (block_idx, block) in scope.iter().enumerate() {
-		for (line_idx, line) in block.block.iter().enumerate() {
-			match line {
-				SimpleExpression::BinOp(SimpleBinOp {
-					lhs, rhs, target, ..
-				}) => {
-					map.insert(*lhs, (block_idx, line_idx));
-					map.insert(*rhs, (block_idx, line_idx));
-					map.insert(
-						Source::Register(*target),
-						(block_idx, line_idx),
-					);
-				}
-				SimpleExpression::UnOp(SimpleUnOp { lhs, target, .. }) => {
-					map.insert(*lhs, (block_idx, line_idx));
-					map.insert(
-						Source::Register(*target),
-						(block_idx, line_idx),
-					);
-				}
-				SimpleExpression::FunctionCall(SimpleFunctionCall {
-					args,
-					target,
-					..
-				}) => {
-					for arg in args.iter() {
-						map.insert(*arg, (block_idx, line_idx));
-					}
-					map.insert(
-						Source::Register(*target),
-						(block_idx, line_idx),
-					);
-				}
-			}
-		}
-	}
-	map
+	(Register::GeneralPurpose(slot), store_old_value)
 }
 
 /// Finds the first block that both paths of a split will both reach
