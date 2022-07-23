@@ -1,8 +1,4 @@
-use std::{
-	collections::{HashMap, HashSet},
-	fmt,
-	hash::Hash,
-};
+use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hash};
 
 use anyhow::{bail, Result};
 use derive_more::{Deref, DerefMut};
@@ -13,8 +9,8 @@ use crate::{
 	error::Error,
 	simplify::{
 		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
-		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
-		SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression, SimpleOp,
+		Source,
 	},
 };
 
