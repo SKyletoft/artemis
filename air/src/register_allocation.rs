@@ -353,7 +353,7 @@ fn find_empty_slot(
 	scope: &[SimpleBlock],
 	protected_registers: &[Source],
 ) -> Option<usize> {
-	registers.iter().enumerate().position(|(idx, &reg)| {
+	registers.iter().position(|&reg| {
 		// Completely unused register
 		let inner_reg = if let Some(r) = reg {
 			r
