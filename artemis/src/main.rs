@@ -13,14 +13,10 @@ fn main() -> Result<()> {
 	let source_file_name = env::args().nth(1).expect("No source file provided");
 	let source = fs::read_to_string(&source_file_name)?;
 	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
-	// dbg!(&ast);
 	let mut ordered = ordered::order(ast)?;
-	dbg!(&ordered);
 	type_check::check_program(&mut ordered)?;
-	dbg!(&ordered);
 
 	let detyped = detype::detype(&ordered)?;
-	dbg!(&detyped);
 
 	let ssa = simplify::simplify(&detyped)?;
 	dbg!(&ssa);
