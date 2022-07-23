@@ -9,6 +9,7 @@ pub enum Error {
 	ReturnedNonExistantBlock,
 	MissingRegister,
 	MismatchedRegisterTypes,
+	InvalidIR,
 }
 
 impl fmt::Display for Error {
@@ -22,6 +23,7 @@ impl fmt::Display for Error {
 			ReturnedNonExistantBlock => write!(f, "Returned an end index to a block that doesn't exist (out of bounds or None)"),
 			MissingRegister => write!(f, "Value of return value from block is not in the active register bank"),
 			MismatchedRegisterTypes => write!(f, "Registers weren't both GP or both FP"),
+			InvalidIR => write!(f, "Invalid IR (GP instruction with FP register?)"),
 		}
 	}
 }

@@ -5,6 +5,7 @@ pub enum Error {
 	ParseError,
 	Internal,
 	TypeError,
+	InvalidTarget,
 }
 
 impl fmt::Display for Error {
