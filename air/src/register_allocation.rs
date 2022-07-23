@@ -303,7 +303,7 @@ impl fmt::Debug for Expression {
 #[derive(Clone, Copy, PartialEq, Variantly)]
 pub enum BlockEnd {
 	#[variantly(rename = "ret")]
-	Return(Register),
+	Return,
 	One(BlockId),
 	Two(Register, BlockId, BlockId),
 }
@@ -311,7 +311,7 @@ pub enum BlockEnd {
 impl fmt::Debug for BlockEnd {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Self::Return(reg) => write!(f, "ret {reg}"),
+			Self::Return => write!(f, "ret"),
 			Self::One(target) => write!(f, "{target}"),
 			Self::Two(reg, left, right) => write!(f, "{reg} ? {left}, {right}"),
 		}
@@ -320,7 +320,7 @@ impl fmt::Debug for BlockEnd {
 
 impl Default for BlockEnd {
 	fn default() -> Self {
-		BlockEnd::Return(Register::GeneralPurpose(0))
+		BlockEnd::Return
 	}
 }
 
