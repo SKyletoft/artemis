@@ -1,7 +1,11 @@
 use anyhow::{bail, Result};
 use iced_x86::{
-	code_asm::{AsmRegister64, CodeAssembler},
-	Formatter, NasmFormatter,
+	code_asm::{gpr64::*, AsmRegister64, CodeAssembler, CodeLabel},
+	Formatter, IntelFormatter, NasmFormatter,
+};
+use object::{
+	write::{elf::Writer, Object},
+	Architecture, BinaryFormat, Endianness,
 };
 
 use crate::{
