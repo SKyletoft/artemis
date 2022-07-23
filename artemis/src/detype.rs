@@ -83,6 +83,7 @@ pub enum Op {
 	Delta,
 	Times,
 	Div,
+	UDiv,
 	Exp,
 	FPlus,
 	FMinus,
@@ -103,9 +104,16 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
-pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, bool)> {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Type {
+	Signed,
+	Unsigned,
+	Floating
+}
+
+pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, Type)> {
 	let mut inner_ctx = type_check::copy_for_inner_scope(ctx);
-	let mut last = true;
+	let mut last = Type::Floating;
 	let mut vec = Vec::with_capacity(block.len());
 	for line in block.iter() {
 		let (line, res) = detype_expr(line, &mut inner_ctx)?;
@@ -115,7 +123,7 @@ pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Exp
 	Ok((vec, last))
 }
 
-pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Subexpr, bool)> {
+pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Subexpr, Type)> {
 	let res = match subexpr {
 		OrderedSubexpr::BinOp(OrderedBinOp { lhs, op, rhs }) => {
 			let (lhs, left_float) = detype_subexpr(lhs, ctx)?;
@@ -129,18 +137,19 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 				bail!(Error::Internal);
 			}
 			let op = match (op, left_float) {
-				(OrderedOp::Plus, true) => Op::FPlus,
-				(OrderedOp::Plus, false) => Op::Plus,
-				(OrderedOp::Minus, true) => Op::FMinus,
-				(OrderedOp::Minus, false) => Op::Minus,
-				(OrderedOp::Delta, true) => Op::FDelta,
-				(OrderedOp::Delta, false) => Op::Delta,
-				(OrderedOp::Times, true) => Op::FTimes,
-				(OrderedOp::Times, false) => Op::Times,
-				(OrderedOp::Div, true) => Op::FDiv,
-				(OrderedOp::Div, false) => Op::Div,
-				(OrderedOp::Exp, true) => Op::FExp,
-				(OrderedOp::Exp, false) => Op::Exp,
+				(OrderedOp::Plus, Type::Floating) => Op::FPlus,
+				(OrderedOp::Plus, _) => Op::Plus,
+				(OrderedOp::Minus, Type::Floating) => Op::FMinus,
+				(OrderedOp::Minus, _) => Op::Minus,
+				(OrderedOp::Delta, Type::Floating) => Op::FDelta,
+				(OrderedOp::Delta, _) => Op::Delta,
+				(OrderedOp::Times, Type::Floating) => Op::FTimes,
+				(OrderedOp::Times, _) => Op::Times,
+				(OrderedOp::Div, Type::Floating) => Op::FDiv,
+				(OrderedOp::Div, Type::Signed) => Op::Div,
+				(OrderedOp::Div, Type::Unsigned) => Op::UDiv,
+				(OrderedOp::Exp, Type::Floating) => Op::FExp,
+				(OrderedOp::Exp, _) => Op::Exp,
 				(OrderedOp::Not, _) => Op::Not,
 				(OrderedOp::And, _) => Op::And,
 				(OrderedOp::Or, _) => Op::Or,
@@ -162,10 +171,10 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 			let (condition, cond_float) = detype_subexpr(condition, ctx)?;
 			let (lhs, left_float) = detype_block(lhs, ctx)?;
 			let (rhs, right_float) = detype_block(rhs, ctx)?;
-			if left_float != right_float || cond_float {
+			if left_float != right_float || cond_float == Type::Floating {
 				log::error!(
 					"Internal [{}]: Incorrect floatiness in typechecked context\n\
-					{cond_float} {left_float} {right_float}",
+					{cond_float:?} {left_float:?} {right_float:?}",
 					line!()
 				);
 				bail!(Error::Internal);
@@ -182,10 +191,10 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 			(Subexpr::Block(res), is_float)
 		}
 		OrderedSubexpr::Literal(l) => match l {
-			OrderedLiteral::Integer(l) => (Subexpr::Literal(*l), false),
-			OrderedLiteral::Float(f) => (Subexpr::Literal(f.to_bits()), true),
-			OrderedLiteral::Boolean(b) => (Subexpr::Literal(*b as u64), false),
-			OrderedLiteral::Unit => (Subexpr::Unit, false),
+			OrderedLiteral::Float(f) => (Subexpr::Literal(f.to_bits()), Type::Floating),
+			OrderedLiteral::Boolean(b) => (Subexpr::Literal(*b as u64), Type::Unsigned),
+			OrderedLiteral::Unit => (Subexpr::Unit, Type::Unsigned),
+			OrderedLiteral::Integer(l) => (Subexpr::Literal(*l), Type::Unsigned),
 		},
 		OrderedSubexpr::Variable(name) => {
 			let res = Subexpr::Variable(name.clone());
@@ -203,7 +212,7 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					Error::Internal
 				})?
 				.raw;
-			let is_float = raw == RawType::Real;
+			let is_float = if raw == RawType::Real {Type::Floating} else {Type::Unsigned};
 			(res, is_float)
 		}
 		OrderedSubexpr::Tuple(_) => todo!("I should probably get rid of tuples here"),
@@ -233,7 +242,7 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					Error::Internal
 				})?
 				.return_type;
-			let is_float = raw == RawType::Real;
+			let is_float = if raw == RawType::Real {Type::Floating} else {Type::Unsigned};
 			(res, is_float)
 		}
 	};
@@ -247,8 +256,8 @@ pub fn detype_declaration(
 		value,
 	}: &OrderedDeclaration,
 	ctx: &mut Context,
-) -> Result<(Declaration, bool)> {
-	let (value, is_float) = detype_subexpr(value, ctx)?;
+) -> Result<(Declaration, Type)> {
+	let (value, typ) = detype_subexpr(value, ctx)?;
 	let res = Declaration {
 		name: name.clone(),
 		value,
@@ -257,22 +266,22 @@ pub fn detype_declaration(
 		name.clone(),
 		(TypeRecord::Variable(type_name.clone()), true),
 	);
-	Ok((res, is_float))
+	Ok((res, typ))
 }
 
 pub fn detype_assignment(
 	OrderedAssignment { name, value }: &OrderedAssignment,
 	ctx: &mut Context,
-) -> Result<(Assignment, bool)> {
-	let (value, is_float) = detype_subexpr(value, ctx)?;
+) -> Result<(Assignment, Type)> {
+	let (value, typ) = detype_subexpr(value, ctx)?;
 	let res = Assignment {
 		name: name.clone(),
 		value,
 	};
-	Ok((res, is_float))
+	Ok((res, typ))
 }
 
-pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, bool)> {
+pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, Type)> {
 	let res = match expr {
 		OrderedExpr::Subexpr(s) => {
 			let (subexpr, is_float) = detype_subexpr(s, ctx)?;

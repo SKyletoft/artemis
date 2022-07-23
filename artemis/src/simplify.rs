@@ -53,6 +53,7 @@ pub fn simplify_subexpr(
 				Op::Times => SimpleOp::Mul,
 				Op::FTimes => SimpleOp::FMul,
 				Op::Div => SimpleOp::Div,
+				Op::UDiv => SimpleOp::UDiv,
 				Op::FDiv => SimpleOp::FDiv,
 				Op::And => SimpleOp::And,
 				Op::Or => SimpleOp::Or,

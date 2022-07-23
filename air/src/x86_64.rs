@@ -63,6 +63,7 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				Op::Abs => todo!(),
 				Op::Mul => assembler.imul_2(GP[l], GP[r])?,
 				Op::Div => todo!(),
+				Op::UDiv => todo!(),
 				Op::And => todo!(),
 				Op::Or => todo!(),
 				Op::Xor => todo!(),
@@ -90,6 +91,11 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 					assembler.imul_2(GP[t], GP[r])?
 				}
 				Op::Div => {
+					assembler.mov(GP[t], GP[l])?;
+					// assembler.idiv(GP[t], GP[r])?
+					todo!()
+				}
+				Op::UDiv => {
 					assembler.mov(GP[t], GP[l])?;
 					// assembler.div(GP[t], GP[r])?
 					todo!()
@@ -137,6 +143,7 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				Op::Abs => todo!(),
 				Op::Mul => todo!(),
 				Op::Div => todo!(),
+				Op::UDiv => todo!(),
 				Op::FAdd => todo!(),
 				Op::FSub => todo!(),
 				Op::FAbs => todo!(),
