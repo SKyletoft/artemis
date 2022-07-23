@@ -27,6 +27,52 @@ pub struct Configuration {
 	argument_registers: usize,
 	temporary_registers: usize,
 }
+
+impl Configuration {
+	pub const AARCH64: Configuration = Configuration {
+		general_purpose_registers: 31,
+		floating_point_registers: 32,
+		argument_registers: 31,
+		temporary_registers: 0,
+	};
+	pub const X86_64: Configuration = Configuration {
+		general_purpose_registers: 14,
+		floating_point_registers: 8,
+		argument_registers: 6,
+		temporary_registers: 9,
+	};
+
+	pub fn new(
+		general_purpose_registers: usize,
+		floating_point_registers: usize,
+		argument_registers: usize,
+		temporary_registers: usize,
+	) -> Self {
+		assert!(general_purpose_registers > 0);
+		// assert!(floating_point_registers > 0);
+		Self {
+			general_purpose_registers,
+			floating_point_registers,
+			argument_registers,
+			temporary_registers,
+		}
+	}
+}
+
+impl Default for Configuration {
+	fn default() -> Self {
+		#[cfg(target_arch = "x86_64")]
+		return Configuration::X86_64;
+		#[cfg(target_arch = "aarch64")]
+		return Configuration::AARCH64;
+		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+		return Configuration {
+			general_purpose_registers: 8,
+			floating_point_registers: 8,
+			argument_registers: 0,
+			temporary_registers: 0,
+		};
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
