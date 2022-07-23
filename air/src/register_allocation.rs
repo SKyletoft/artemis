@@ -239,8 +239,33 @@ impl RegisterSet {
 struct State {
 	general_purpose: RegisterSet,
 	floating_point: RegisterSet,
-	stack: Vec<SimpleRegister>,
+	stack: Vec<Option<Source>>,
 	max_stack_size: usize,
+}
+
+impl State {
+	/// Checks if a Register is currently in the register banks or on the stack
+	pub fn contains(&self, source: SimpleRegister) -> bool {
+		let wrapped = Some(Source::Register(source));
+		self.general_purpose.contains(&wrapped)
+			|| self.floating_point.contains(&wrapped)
+			|| self.stack.contains(&wrapped)
+	}
+
+	/// Finds the location of a source in either of the register banks but **NOT** on the stack
+	pub fn find(&self, source: Source) -> Option<Register> {
+		let wrapped = Some(source);
+		self.general_purpose
+			.iter()
+			.position(|r| r == &wrapped)
+			.map(Register::GeneralPurpose)
+			.or_else(|| {
+				self.floating_point
+					.iter()
+					.position(|r| r == &wrapped)
+					.map(Register::FloatingPoint)
+			})
+	}
 }
 
 impl From<&Configuration> for State {
