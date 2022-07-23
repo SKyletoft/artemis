@@ -27,7 +27,7 @@ const GP: [AsmRegister64; 14] = [
 	rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11, rbx, r12, r13, r14, r15,
 ];
 
-pub fn assemble(construct: &CodeConstruct) -> Result<String> {
+pub fn assemble(construct: &CodeConstruct) -> Result<Vec<u8>> {
 	match construct {
 		CodeConstruct::Function { name, blocks } => assemble_function(name, blocks),
 		CodeConstruct::Variable { .. } => todo!(),
@@ -35,22 +35,37 @@ pub fn assemble(construct: &CodeConstruct) -> Result<String> {
 	}
 }
 
-fn assemble_function(name: &str, blocks: &[Block]) -> Result<String> {
-	let mut assembler = CodeAssembler::new(64)?;
-	let mut formatter = NasmFormatter::new();
+pub fn build_object(constructs: &[CodeConstruct]) -> Result<Object> {
+	let mut buffer = Vec::new();
+	let writer = Writer::new(Endianness::Big, true, &mut buffer);
 
-	for block in blocks.iter() {
-		assemble_block(block, &mut assembler)?;
-	}
-
-	let mut out = format!("{name}:\n");
-	for line in assembler.instructions().iter() {
-		formatter.format(line, &mut out);
-	}
-	Ok(out)
+	todo!()
 }
 
-fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -> Result<()> {
+fn assemble_function(name: &str, blocks: &[Block]) -> Result<Vec<u8>> {
+	let mut assembler = CodeAssembler::new(64)?;
+	let mut labels = (0..blocks.len())
+		.map(|_| assembler.create_label())
+		.collect::<Vec<_>>();
+
+	for (idx, block) in blocks.iter().enumerate() {
+		assembler.set_label(&mut labels[idx])?;
+		assemble_block(block, &mut assembler, &mut labels)?;
+	}
+
+	for instruction in assembler.instructions().iter() {
+		eprintln!("{instruction}");
+	}
+
+	let res = assembler.assemble(0)?;
+	Ok(res)
+}
+
+fn assemble_block(
+	Block { block, out }: &Block,
+	assembler: &mut CodeAssembler,
+	labels: &mut [CodeLabel],
+) -> Result<()> {
 	for line in block {
 		match line {
 			&Expression::BinOp(BinOp {
@@ -63,11 +78,60 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				Op::Sub => assembler.sub(GP[l], GP[r])?,
 				Op::Abs => todo!(),
 				Op::Mul => assembler.imul_2(GP[l], GP[r])?,
-				Op::Div => todo!(),
-				Op::UDiv => todo!(),
-				Op::And => todo!(),
-				Op::Or => todo!(),
-				Op::Xor => todo!(),
+				Op::Div => {
+					// x86 only does division of arg / rdx -> (res: rax, rem: rdx)
+					// Therefore we store the old values and restore them afterwards
+					// unless they're the target register
+					assert_ne!(GP[r], rax);
+					assert_ne!(GP[l], rax);
+					assert_ne!(GP[r], rdx);
+					assert_ne!(GP[l], rdx);
+
+					if GP[t] != rax {
+						assembler.push(rax)?;
+					}
+					if GP[t] != rdx {
+						assembler.push(rdx)?;
+					}
+					assembler.mov(rax, GP[l])?;
+					assembler.div(GP[r])?;
+					assembler.mov(GP[t], rax)?;
+					if GP[t] != rdx {
+						assembler.pop(rdx)?;
+					}
+					if GP[t] != rdx {
+						assembler.pop(rax)?;
+					}
+				}
+				Op::UDiv => {
+					// x86 only does division of arg / rdx -> (res: rax, rem: rdx)
+					// Therefore we store the old values and restore them afterwards
+					// unless they're the target register
+					assert_ne!(GP[r], rax);
+					assert_ne!(GP[l], rax);
+					assert_ne!(GP[r], rdx);
+					assert_ne!(GP[l], rdx);
+
+					if GP[t] != rax {
+						assembler.push(rax)?;
+					}
+					if GP[t] != rdx {
+						assembler.push(rdx)?;
+					}
+					assembler.mov(rdx, 0u64)?;
+					assembler.mov(rax, GP[l])?;
+					assembler.div(GP[r])?;
+					assembler.mov(GP[t], rax)?;
+					if GP[t] != rdx {
+						assembler.pop(rdx)?;
+					}
+					if GP[t] != rdx {
+						assembler.pop(rax)?;
+					}
+				}
+				Op::And => assembler.and(GP[t], GP[r])?,
+				Op::Or => assembler.or(GP[l], GP[r])?,
+				Op::Xor => assembler.xor(GP[l], GP[r])?,
 				Op::Not => todo!(),
 				Op::StoreMem => todo!(),
 				Op::LoadMem => todo!(),
@@ -138,7 +202,11 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 					bail!(Error::InvalidIR)
 				}
 			},
-			&Expression::UnOp(UnOp { target, op, lhs }) => match op {
+			&Expression::UnOp(UnOp {
+				target: Register::GeneralPurpose(t),
+				op,
+				lhs,
+			}) => match op {
 				Op::Add => todo!(),
 				Op::Sub => todo!(),
 				Op::Abs => todo!(),
@@ -155,7 +223,16 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				Op::Xor => todo!(),
 				Op::Not => todo!(),
 				Op::StoreMem => todo!(),
-				Op::LoadMem => todo!(),
+				Op::LoadMem => match lhs {
+					Register::Literal(v) => assembler.mov(GP[t], v)?,
+					Register::FloatingPoint(_) => bail!(Error::InvalidIR),
+					Register::GeneralPurpose(v) => {
+						assembler.mov(GP[t], GP[v])?
+					}
+					Register::StackPointer => assembler.mov(GP[t], rsp)?,
+					Register::FramePointer => assembler.mov(GP[t], rbp)?,
+					Register::ProgramCounter => bail!(Error::Unsupported),
+				},
 				Op::Move => todo!(),
 			},
 			Expression::FunctionCall(FunctionCall {
@@ -174,8 +251,14 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 	}
 	match out {
 		BlockEnd::Return => assembler.ret()?,
-		BlockEnd::One(_) => todo!(),
-		BlockEnd::Two(..) => todo!(),
+		BlockEnd::One(next) => assembler.jmp(labels[next.usize()])?,
+		&BlockEnd::Two(Register::GeneralPurpose(c), left, right) => {
+			assembler.test(GP[c], GP[c])?;
+			assembler.je(labels[left.usize()])?;
+			assembler.jmp(labels[right.usize()])?;
+		}
+		BlockEnd::Two(Register::Literal(c), ..) => todo!(),
+		_ => todo!(),
 	}
 	Ok(())
 }
