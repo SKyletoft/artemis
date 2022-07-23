@@ -10,6 +10,7 @@ pub enum Error {
 	MissingRegister,
 	MismatchedRegisterTypes,
 	InvalidIR,
+	Unsupported,
 }
 
 impl fmt::Display for Error {
@@ -24,6 +25,7 @@ impl fmt::Display for Error {
 			MissingRegister => write!(f, "Value of return value from block is not in the active register bank"),
 			MismatchedRegisterTypes => write!(f, "Registers weren't both GP or both FP"),
 			InvalidIR => write!(f, "Invalid IR (GP instruction with FP register?)"),
+			Unsupported => write!(f, "Action is unsupported on this platform"),
 		}
 	}
 }
