@@ -238,6 +238,7 @@ pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
 				let ret = SSAConstruct::Function {
 					name: name.clone(),
 					blocks,
+					args: arguments.len(),
 				};
 				Ok(ret)
 			}
