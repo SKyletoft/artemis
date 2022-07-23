@@ -108,7 +108,7 @@ pub enum TopLevelConstruct {
 pub enum Type {
 	Signed,
 	Unsigned,
-	Floating
+	Floating,
 }
 
 pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Expr>, Type)> {
@@ -212,7 +212,11 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					Error::Internal
 				})?
 				.raw;
-			let is_float = if raw == RawType::Real {Type::Floating} else {Type::Unsigned};
+			let is_float = if raw == RawType::Real {
+				Type::Floating
+			} else {
+				Type::Unsigned
+			};
 			(res, is_float)
 		}
 		OrderedSubexpr::Tuple(_) => todo!("I should probably get rid of tuples here"),
@@ -242,7 +246,11 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					Error::Internal
 				})?
 				.return_type;
-			let is_float = if raw == RawType::Real {Type::Floating} else {Type::Unsigned};
+			let is_float = if raw == RawType::Real {
+				Type::Floating
+			} else {
+				Type::Unsigned
+			};
 			(res, is_float)
 		}
 	};
