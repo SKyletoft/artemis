@@ -5,7 +5,7 @@ use iced_x86::{
 };
 
 use crate::register_allocation::{
-	BinOp, Block, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
+	BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 };
 
 // SYSTEMV ABI for x64
@@ -56,7 +56,7 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				rhs: Register::GeneralPurpose(r),
 			}) if t == l => match op {
 				Op::Add => assembler.add(GP[l], GP[r])?,
-				Op::Sub => todo!(),
+				Op::Sub => assembler.sub(GP[l], GP[r])?,
 				Op::Abs => todo!(),
 				Op::Mul => todo!(),
 				Op::Div => todo!(),
@@ -97,14 +97,42 @@ fn assemble_block(Block { block, out }: &Block, assembler: &mut CodeAssembler) -
 				Op::LoadMem => todo!(),
 				Op::Move => todo!(),
 			},
-			Expression::UnOp(UnOp { target, op, lhs }) => todo!(),
+			&Expression::UnOp(UnOp { target, op, lhs }) => match op {
+				Op::Add => todo!(),
+				Op::Sub => todo!(),
+				Op::Abs => todo!(),
+				Op::Mul => todo!(),
+				Op::Div => todo!(),
+				Op::FAdd => todo!(),
+				Op::FSub => todo!(),
+				Op::FAbs => todo!(),
+				Op::FMul => todo!(),
+				Op::FDiv => todo!(),
+				Op::And => todo!(),
+				Op::Or => todo!(),
+				Op::Xor => todo!(),
+				Op::Not => todo!(),
+				Op::StoreMem => todo!(),
+				Op::LoadMem => todo!(),
+				Op::Move => todo!(),
+			},
 			Expression::FunctionCall(FunctionCall {
 				target,
 				scope,
 				args,
-			}) => todo!(),
+			}) => {
+				// Save registers
+				// Load arguments
+				// Copy rax to GP[target]
+				// Restore registers
+			}
 			_ => unreachable!("Invalid IR"),
 		}
 	}
-	todo!()
+	match out {
+		BlockEnd::Return => todo!(),
+		BlockEnd::One(_) => todo!(),
+		BlockEnd::Two(..) => todo!(),
+	}
+	Ok(())
 }
