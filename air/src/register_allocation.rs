@@ -211,8 +211,10 @@ pub enum Expression {
 	FunctionCall(FunctionCall),
 }
 
-/// Vec<Option<Source>>;
+/// `Vec<Option<Source>>`
 #[derive(Debug, Clone, PartialEq, Deref, DerefMut)]
+#[deref(forward)]
+#[repr(transparent)]
 pub struct RegisterSet(Vec<Option<Source>>);
 
 impl RegisterSet {
@@ -327,10 +329,10 @@ pub fn register_allocate(
 	ssa.iter()
 		.map(|construct| {
 			let res = match construct {
-				SSAConstruct::Function { name, blocks } => {
+				SSAConstruct::Function { name, blocks, args } => {
 					CodeConstruct::Function {
 						name: name.clone(),
-						blocks: allocate_for_blocks(blocks, config)?,
+						blocks: allocate_for_blocks(blocks, config, *args)?,
 					}
 				}
 				SSAConstruct::Variable { .. } => todo!(),
