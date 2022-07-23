@@ -777,15 +777,11 @@ fn allocate_for_blocks_with_end<'a>(
 }
 
 fn handle_single_block(
-	SimpleBlock {
-		intro,
-		block,
-		out: _,
-	}: &SimpleBlock,
+	SimpleBlock { intro, block, out }: &SimpleBlock,
 	block_idx: usize,
 	config: &Configuration,
 	state: &mut State,
-	last_use_of_register: &HashMap<Source, (usize, usize)>,
+	scope: &[SimpleBlock],
 ) -> Result<Block> {
 	assert!(
 		intro.len() <= config.argument_registers as usize,
@@ -793,12 +789,10 @@ fn handle_single_block(
 	);
 	let mut new_block = Block {
 		block: SmallVec::new(),
-		out: BlockEnd::Return(Register::GeneralPurpose(0)),
+		out: BlockEnd::Return,
 	};
 
-	for (value, register) in intro.iter().zip(state.general_purpose.iter_mut()) {
-		*register = Some(Source::Register(value.target));
-	}
+	assert!(intro.iter().all(|reg| state.contains(reg.target)));
 
 	for (line_idx, line) in block.iter().enumerate() {
 		match line {
@@ -814,8 +808,8 @@ fn handle_single_block(
 					(block_idx, line_idx),
 					false,
 					&mut new_block,
-					last_use_of_register,
-					&[],
+					scope,
+					&[*lhs, *rhs],
 				);
 				let rhs_register = get_or_load_and_get_value(
 					rhs,
@@ -823,16 +817,18 @@ fn handle_single_block(
 					(block_idx, line_idx),
 					false,
 					&mut new_block,
-					last_use_of_register,
-					&[lhs_register],
+					scope,
+					&[*lhs, *rhs],
 				);
-				let recommended_register = select_register(
-					false,
-					(block_idx, line_idx),
-					state,
-					last_use_of_register,
-					&[lhs_register, rhs_register],
-				);
+				let (recommended_register, need_to_save_old_value) =
+					select_register(
+						false,
+						(block_idx, line_idx),
+						state,
+						scope,
+						&[],
+					);
+
 				let expr = Expression::BinOp(BinOp {
 					target: recommended_register,
 					op: op.into(),
@@ -843,6 +839,25 @@ fn handle_single_block(
 				let gp_idx = recommended_register
 					.general_purpose()
 					.ok_or(Error::WrongRegisterType)? as usize;
+
+				if need_to_save_old_value {
+					save_on_stack(
+						&mut state.general_purpose,
+						(block_idx, line_idx),
+						gp_idx,
+						&mut new_block,
+						scope,
+						recommended_register,
+						&mut state.stack,
+					);
+				}
+
+				eprintln!(
+					"[{}]: Replacing {:?} (at: {gp_idx}) with {:?} (saving: {need_to_save_old_value})",
+					line!(),
+					state.general_purpose[gp_idx],
+					Source::Register(*target),
+				);
 				state.general_purpose[gp_idx] = Some(Source::Register(*target));
 
 				new_block.block.push(expr);
@@ -851,7 +866,26 @@ fn handle_single_block(
 			SimpleExpression::FunctionCall(_) => todo!(),
 			_ => todo!(),
 		}
+		eprintln!(
+			"[{}]: {line:?}\nRegs: {:#?}\nStack: {:#?}\n",
+			line!(),
+			&state.general_purpose,
+			&state.stack
+		);
 	}
+	let new_out = match *out {
+		SimpleBlockEnd::Return(_) => BlockEnd::Return,
+		SimpleBlockEnd::One(o) => BlockEnd::One(o),
+		SimpleBlockEnd::Two(target, l, r) => {
+			dbg!(target, &state);
+			let condition = state.find(target).unwrap_or_else(|| {
+				// TODO: Load value from stack
+				todo!();
+			});
+			BlockEnd::Two(condition, l, r)
+		}
+	};
+	new_block.out = new_out;
 
 	Ok(new_block)
 }
