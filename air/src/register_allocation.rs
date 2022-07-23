@@ -615,10 +615,34 @@ fn get_or_load_and_get_value(
 	new_register
 }
 
-fn allocate_for_blocks(scope: &[SimpleBlock], config: &Configuration) -> Result<Vec<Block>> {
-	let last_use_of_register = collect_last_use_of_registers_in_block(scope);
+fn allocate_for_blocks(
+	scope: &[SimpleBlock],
+	config: &Configuration,
+	args: usize,
+) -> Result<Vec<Block>> {
 	let mut state = State::from(config);
 	let mut blocks = vec![None; scope.len()];
+
+	// Copy in the arguments into registers
+	for (register, arg) in state
+		.general_purpose
+		.iter_mut()
+		.zip((0..args).map(|x| Some(Source::Register(x.into()))))
+		.take(config.argument_registers as usize)
+	{
+		*register = arg;
+	}
+	// And copy those that don't fit into registers onto the stack
+	for arg in (config.argument_registers as usize)..args {
+		state.stack.push(Some(Source::Register(arg.into())));
+	}
+
+	eprintln!(
+		"[{}]: Start\nRegs: {:#?}\nStack: {:#?}\n",
+		line!(),
+		&state.general_purpose,
+		&state.stack
+	);
 
 	allocate_for_blocks_with_end(
 		scope,
@@ -627,10 +651,8 @@ fn allocate_for_blocks(scope: &[SimpleBlock], config: &Configuration) -> Result<
 		&mut state,
 		0.into(),
 		usize::MAX.into(),
-		&last_use_of_register,
 	)?;
 
-	dbg!(&blocks);
 	let converted = blocks
 		.into_iter()
 		.collect::<Option<Vec<_>>>()
@@ -638,16 +660,15 @@ fn allocate_for_blocks(scope: &[SimpleBlock], config: &Configuration) -> Result<
 	Ok(converted)
 }
 
-/// Converts blocks until it hits the end id (exclusive) or a block that returns from the function.
+/// Converts blocks until it hits the end id (exclusive) or a block that returns from the scope.
 /// Returns the last processed block before the end id
-fn allocate_for_blocks_with_end<'a>(
+fn allocate_for_blocks_with_end(
 	scope: &[SimpleBlock],
-	out: &'a mut Vec<Option<Block>>,
+	out: &mut Vec<Option<Block>>,
 	config: &Configuration,
 	state: &mut State,
 	start: BlockId,
 	end: BlockId,
-	last_use_of_register: &HashMap<Source, (usize, usize)>,
 ) -> Result<BlockId> {
 	let mut next_id = start;
 	let mut old_id = start;
@@ -661,20 +682,15 @@ fn allocate_for_blocks_with_end<'a>(
 		}
 
 		old_id = next_id;
-		let new = handle_single_block(
-			block,
-			next_id.into(),
-			config,
-			state,
-			last_use_of_register,
-		)?;
-		// TODO: Move stuff into correct registers for the next block
-		// TODO: Set jump target
+		let new = handle_single_block(block, next_id.into(), config, state, scope)?;
 		out[usize::from(old_id)] = Some(new);
 
 		next_id = match block.out {
 			SimpleBlockEnd::Return(_) => usize::MAX.into(),
-			SimpleBlockEnd::One(id) => id,
+			SimpleBlockEnd::One(id) => {
+				// TODO: Take care of φ-nodes if the next block is already generated
+				id
+			}
 			SimpleBlockEnd::Two(_, left_start, right_start) => {
 				let merge_point =
 					find_merge(scope, next_id).ok_or(Error::PathsDoNotMerge)?;
@@ -682,6 +698,7 @@ fn allocate_for_blocks_with_end<'a>(
 				let mut left_state = state.clone();
 				let mut right_state = state.clone();
 
+				log::info!("-- BRANCHING --");
 				let left_end = allocate_for_blocks_with_end(
 					scope,
 					out,
@@ -689,8 +706,8 @@ fn allocate_for_blocks_with_end<'a>(
 					&mut left_state,
 					left_start,
 					merge_point,
-					last_use_of_register,
 				)?;
+				log::info!("-- RETURNING TO BRANCH --");
 				let right_end = allocate_for_blocks_with_end(
 					scope,
 					out,
@@ -698,8 +715,9 @@ fn allocate_for_blocks_with_end<'a>(
 					&mut right_state,
 					right_start,
 					merge_point,
-					last_use_of_register,
 				)?;
+				log::info!("-- CONTINUING AFTER MERGE -- ");
+				dbg!(&left_state.general_purpose, &right_state.general_purpose);
 
 				let target_state = &scope[usize::from(merge_point)].intro;
 
@@ -710,13 +728,40 @@ fn allocate_for_blocks_with_end<'a>(
 							left_end.into(),
 							right_end.into(),
 						);
+						// If these ever fail there needs to be an extra block added at the end of
+						// that block where handling of phi-node stuff can happen
+						assert!(matches!(
+							l,
+							Some(Block {
+								out: BlockEnd::One(_),
+								..
+							})
+						));
+						assert!(matches!(
+							r,
+							Some(Block {
+								out: BlockEnd::One(_),
+								..
+							})
+						));
 						(
 							&mut l.as_mut().ok_or(Error::ReturnedNonExistantBlock)?.block,
 							&mut r.as_mut().ok_or(Error::ReturnedNonExistantBlock)?.block,
 						)
 					};
-				state.general_purpose.reset();
 
+				// Clear old information
+				state.general_purpose.iter_mut().for_each(|x| *x = None);
+				state.floating_point.iter_mut().for_each(|x| *x = None);
+				state.stack.iter_mut().for_each(|x| *x = None);
+
+				// Fill out stack to the longest stack for mergability
+				let max_stack = left_state.stack.len().max(right_state.stack.len());
+				for _ in state.stack.len()..max_stack {
+					state.stack.push(None);
+				}
+
+				eprintln!("-----------------------------------------------------");
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
 				for PhiNode {
@@ -728,14 +773,18 @@ fn allocate_for_blocks_with_end<'a>(
 					assert_eq!(right.from, right_end);
 
 					// TODO: This can error if the value has been pushed to the stack
+					// TODO: This can error if a branch returned early due to it being
+					//       generated by a different path (should be caught by assert)
 					let left_position = left_state
 						.general_purpose
 						.index_of(&left.value)
-						.ok_or(Error::MissingRegister)?;
+						.ok_or(Error::MissingRegister)
+						.unwrap();
 					let right_position = right_state
 						.general_purpose
 						.index_of(&right.value)
-						.ok_or(Error::MissingRegister)?;
+						.ok_or(Error::MissingRegister)
+						.unwrap();
 
 					state.general_purpose[left_position] =
 						Some(Source::Register(*target));
@@ -744,34 +793,66 @@ fn allocate_for_blocks_with_end<'a>(
 						swap_registers(
 							right_end_block,
 							&mut right_state,
-							Register::GeneralPurpose(
-								left_position as u64,
-							),
-							Register::GeneralPurpose(
-								right_position as u64,
-							),
+							Register::GeneralPurpose(left_position),
+							Register::GeneralPurpose(right_position),
 						)?;
 					}
 				}
 
+				let merge_remaining =
+					|left: &[Option<Source>],
+					 right: &[Option<Source>],
+					 state: &mut [Option<Source>]| {
+						for (&left_reg, merge_reg) in left
+							.iter()
+							.zip(right.iter())
+							.zip(state.iter_mut())
+							.filter(|((a, b), _)| a == b)
+							.map(|((a, _), b)| (a, b))
+						{
+							*merge_reg = left_reg;
+						}
+
+						// TODO: There might be values that end up on the stack in
+						// both the left and right branches but end up on the
+						// stack in different positions.
+						// This will crash early in those cases
+						assert!(
+							left.iter().enumerate().all(
+								|(idx, val)| val.is_none()
+									|| right.iter()
+										.position(|r_val| {
+											r_val == val
+										})
+										.map(|r_idx| idx
+											== r_idx)
+										.unwrap_or(true)
+							),
+							"\n{left:?}\n{right:?}"
+						);
+					};
 				// And keep whatever values are the same still in both paths
-				for (idx, (left_register, _)) in left_state
-					.general_purpose
-					.iter()
-					.zip(right_state.general_purpose.iter())
-					.enumerate()
-					.filter(|(_, (a, b))| a == b)
-				{
-					state.general_purpose[idx] = *left_register;
-				}
+				merge_remaining(
+					&left_state.general_purpose,
+					&right_state.general_purpose,
+					&mut state.general_purpose,
+				);
+				merge_remaining(
+					&left_state.floating_point,
+					&right_state.floating_point,
+					&mut state.floating_point,
+				);
+				merge_remaining(
+					&left_state.stack,
+					&right_state.stack,
+					&mut state.stack,
+				);
 
 				merge_point
 			}
 		};
 		next = scope.get(usize::from(next_id));
 	}
-
-	// dbg!(&out);
 
 	Ok(old_id)
 }
