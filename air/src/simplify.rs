@@ -57,6 +57,16 @@ impl fmt::Display for BlockId {
 	}
 }
 
+impl BlockId {
+	pub fn u64(self) -> u64 {
+		self.0 as u64
+	}
+
+	pub fn usize(self) -> usize {
+		self.0
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Context {
 	pub variables: HashMap<SmallString, Source>,
