@@ -537,6 +537,33 @@ fn get_two_references_from_slice<T>(
 	unsafe { (&mut *ptr.add(left), &mut *ptr.add(right)) }
 }
 
+fn save_on_stack(
+	register_set: &mut RegisterSet,
+	pos: (usize, usize),
+	idx: usize,
+	block: &mut Block,
+	scope: &[SimpleBlock],
+	new_register: Register,
+	stack: &mut Vec<Option<Source>>,
+) {
+	// TODO: Replace with if let when if let chains are stabilised
+	if let Some(Source::Register(reg)) = register_set[idx] {
+		block.block.push(Expression::BinOp(BinOp {
+			target: new_register,
+			op: Op::StoreMem,
+			lhs: Register::StackPointer,
+			rhs: Register::Literal(stack.len() as u64),
+		}));
+
+		let stack_value = Some(Source::Register(reg));
+		if let Some(empty_idx) = find_empty_slot(pos, stack, scope, &[]) {
+			stack[empty_idx] = stack_value;
+		} else {
+			stack.push(stack_value);
+		}
+	}
+}
+
 /// Find a suitable register for `source`, potentially unloading and throwing existing values on the stack
 fn get_or_load_and_get_value(
 	source: &Source,
@@ -544,44 +571,33 @@ fn get_or_load_and_get_value(
 	pos: (usize, usize),
 	is_floating: bool,
 	block: &mut Block,
-	last_use_of_register: &HashMap<Source, (usize, usize)>,
-	protected_registers: &[Register],
+	scope: &[SimpleBlock],
+	protected_registers: &[Source],
 ) -> Register {
 	assert!(!is_floating);
 	if let Some(idx) = state.general_purpose.index_of(source) {
-		return Register::GeneralPurpose(idx as u64);
+		return Register::GeneralPurpose(idx);
 	}
 
-	let new_register = select_register(
-		is_floating,
-		pos,
-		state,
-		last_use_of_register,
-		protected_registers,
-	);
-	// dbg!(source, &new_register);
+	let (new_register, needs_to_be_saved) =
+		select_register(is_floating, pos, state, scope, protected_registers);
+
 	let (register_idx, register_set) = match new_register {
 		Register::GeneralPurpose(r) => (r, &mut state.general_purpose),
 		Register::FloatingPoint(r) => (r, &mut state.floating_point),
 		_ => unreachable!("`select_register` should only return gp and fp registers?"),
 	};
 
-	// If there's something already there **AND** it's going to be used again **AND** is not a literal value
-	// TODO: Replace with if let when if let chains are stabilised
-	match register_set[register_idx as usize] {
-		// TODO: has_been_used_for_the_last_time
-		Some(r @ Source::Register(reg))
-			if r.has_been_used_for_the_last_time(pos, last_use_of_register) =>
-		{
-			block.block.push(Expression::BinOp(BinOp {
-				target: new_register,
-				op: Op::StoreMem,
-				lhs: Register::StackPointer,
-				rhs: Register::Literal(state.stack.len() as u64),
-			}));
-			state.stack.push(reg);
-		}
-		_ => {}
+	if needs_to_be_saved {
+		save_on_stack(
+			register_set,
+			pos,
+			register_idx as usize,
+			block,
+			scope,
+			new_register,
+			&mut state.stack,
+		);
 	}
 
 	let expr = match source {
@@ -593,14 +609,14 @@ fn get_or_load_and_get_value(
 		Source::Register(r) => {
 			// Push to stack
 
-			eprintln!("hi");
-			dbg!(pos, &source, &state.stack, &register_set, &block);
+			eprintln!("--------------------------------------------------------");
 			// If we're here, we've already checked current registers, meaning search the stack immediately
 			let stack_position = state
 				.stack
 				.iter()
-				.position(|x| x == r)
+				.position(|x| x == &Some(Source::Register(*r)))
 				.expect("Old value wasn't in registers OR on the stack?");
+			state.stack[stack_position] = None;
 			Expression::BinOp(BinOp {
 				target: new_register,
 				op: Op::LoadMem,
@@ -610,6 +626,13 @@ fn get_or_load_and_get_value(
 		}
 	};
 	block.block.push(expr);
+
+	eprintln!(
+		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
+		line!(),
+		register_set[register_idx as usize],
+		*source
+	);
 
 	register_set[register_idx as usize] = Some(*source);
 	new_register
