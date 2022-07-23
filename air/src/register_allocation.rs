@@ -22,10 +22,11 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Configuration {
-	pub general_purpose_registers: u64,
-	pub floating_point_registers: u64,
-	pub argument_registers: u64,
-	pub temporary_registers: u64,
+	general_purpose_registers: usize,
+	floating_point_registers: usize,
+	argument_registers: usize,
+	temporary_registers: usize,
+}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,8 +48,8 @@ pub enum CodeConstruct {
 #[derive(Clone, PartialEq, Eq, Copy, Debug, Hash, Variantly)]
 pub enum Register {
 	Literal(u64),
-	FloatingPoint(u64),
-	GeneralPurpose(u64),
+	FloatingPoint(usize),
+	GeneralPurpose(usize),
 	StackPointer,
 	FramePointer,
 	ProgramCounter,
@@ -173,8 +174,8 @@ pub enum Expression {
 pub struct RegisterSet(Vec<Option<Source>>);
 
 impl RegisterSet {
-	pub fn new(width: u64) -> Self {
-		Self(vec![None; width as usize])
+	pub fn new(width: usize) -> Self {
+		Self(vec![None; width])
 	}
 
 	pub fn index_of(&self, source: &Source) -> Option<usize> {
