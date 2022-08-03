@@ -18,7 +18,10 @@
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
 					buildInputs        = with pkgs; [ nasm mold ];
-					nativeBuildInputs  = with pkgs; [ ];
+					nativeBuildInputs  = with pkgs; [
+						llvmPackages_14.clangUseLLVM
+						gnumake
+					];
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
