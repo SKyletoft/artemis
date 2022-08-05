@@ -4,6 +4,8 @@ Typechecking
 		Objects -> Primitives
 		Primitives -/> Objects
 		Objects -/> Objects
+	C FFI types
+		Probably just int64_t, uint64_t, double and void*
 Syntax
 	allow if {} as if {} else {default}
 	arrays
@@ -13,8 +15,14 @@ Syntax
 		two args with ||>?
 		map with ]>? ]=?
 		fold with `arr ]> default func`?
+			[> for right and ]> for left?
 	partial application with f[x, y] and even f[_, y]
 	enforce referential transparency by library design, making everything with a side effect require an environment token (ZST given by the main arguments)
+	extern function declarations
+	modules
+	anonymous functions for use in functions that take functions and to use folds as for loops
+	range syntax
+		from..to?
 Formatter
 Linker
 	Just rely on mold for now
