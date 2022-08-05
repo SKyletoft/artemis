@@ -1,0 +1,7 @@
+-xc++
+-std=c++20
+-stdlib=libc++
+-Wall
+-Wextra
+-I
+inc

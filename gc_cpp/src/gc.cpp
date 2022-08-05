@@ -1,13 +1,8 @@
-#include "llvm_types.h"
-#include <iostream>
-#include <unordered_map>
+#include "gc.h"
 
 using Layout = usize;
 
 static std::unordered_map<usize, Layout> ALLOCATIONS{};
-
-extern "C" void collect_garbage();
-extern "C" void *allocate(usize size);
 
 extern "C" void *allocate(usize size) {
 	collect_garbage();
