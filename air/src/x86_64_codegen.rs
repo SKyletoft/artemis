@@ -192,7 +192,8 @@ fn assemble_block(
 					todo!()
 				}
 
-				Op::Swap | Op::Abs
+				Op::Swap
+				| Op::Abs
 				| Op::Not
 				| Op::FAdd
 				| Op::FSub
@@ -232,7 +233,10 @@ fn assemble_block(
 					Register::ProgramCounter => bail!(Error::Unsupported),
 				},
 				Op::Move => todo!(),
-				Op::Swap => assembler.xchg(GP[t], GP[lhs.general_purpose().ok_or(Error::InvalidIR)?]),
+				Op::Swap => assembler.xchg(
+					GP[t],
+					GP[lhs.general_purpose().ok_or(Error::InvalidIR)?],
+				),
 			},
 			Expression::FunctionCall(FunctionCall {
 				target,
