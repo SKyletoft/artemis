@@ -2,6 +2,6 @@
 /result
 **None**
 .vscode/**
-a.asm
-a.out
-a.o
+*.asm
+*.out
+*.o
