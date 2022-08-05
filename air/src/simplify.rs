@@ -1,4 +1,8 @@
-use std::{cmp::Ordering, collections::HashMap, fmt};
+use std::{
+	cmp::Ordering,
+	collections::HashMap,
+	fmt::{self, Write},
+};
 
 use anyhow::Result;
 use derive_more::{Add, AddAssign, From, Into};
@@ -64,6 +68,12 @@ impl BlockId {
 
 	pub fn usize(self) -> usize {
 		self.0
+	}
+
+	pub fn label(self, name: &str) -> Result<SmallString> {
+		let mut s = SmallString::from(name);
+		write!(s, "_{}", self.0)?;
+		Ok(s)
 	}
 }
 

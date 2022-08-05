@@ -70,7 +70,7 @@ fn main() -> Result<()> {
 	let allocated =
 		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
 
-	let assembler = x86_64::assemble(&allocated[0])?;
+	let assembler = x86_64_codegen::assemble(&allocated[0])?;
 	eprintln!("{:?}", &assembler);
 
 	fs::write("a.asm", assembler)?;
