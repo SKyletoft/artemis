@@ -130,6 +130,7 @@ pub enum Op {
 	StoreMem,
 	LoadMem,
 	Move,
+	Swap,
 }
 
 impl fmt::Display for Op {
@@ -153,6 +154,7 @@ impl fmt::Display for Op {
 			Op::Move => write!(f, ""),
 			Op::StoreMem => write!(f, "s"),
 			Op::LoadMem => write!(f, "l"),
+			Op::Swap => write!(f, "⇄"),
 		}
 	}
 }
@@ -454,51 +456,6 @@ fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
 	None
 }
 
-/// Swaps two registers of the same type. Returns Err if lhs and rhs are not of the same register type.
-/// Short circuits if they're the same, even if they're of a forbidden type
-fn swap_registers(
-	block: &mut SmallVec<[Expression; 4]>,
-	state: &mut State,
-	lhs: Register,
-	rhs: Register,
-) -> Result<()> {
-	if lhs == rhs {
-		return Ok(());
-	}
-
-	match (lhs, rhs) {
-		(Register::GeneralPurpose(l), Register::GeneralPurpose(r)) => {
-			state.general_purpose.swap(l as usize, r as usize)
-		}
-		(Register::FloatingPoint(l), Register::FloatingPoint(r)) => {
-			state.floating_point.swap(l as usize, r as usize)
-		}
-		_ => bail!(Error::MismatchedRegisterTypes),
-	}
-
-	// https://en.wikipedia.org/wiki/XOR_swap_algorithm
-	block.push(Expression::BinOp(BinOp {
-		target: lhs,
-		op: Op::Xor,
-		lhs,
-		rhs,
-	}));
-	block.push(Expression::BinOp(BinOp {
-		target: rhs,
-		op: Op::Xor,
-		lhs: rhs,
-		rhs: lhs,
-	}));
-	block.push(Expression::BinOp(BinOp {
-		target: lhs,
-		op: Op::Xor,
-		lhs,
-		rhs,
-	}));
-
-	Ok(())
-}
-
 /// Helper function to get two mutable references from the same slice.
 /// Panics if left and right are the same or out of bounds.
 fn get_two_references_from_slice<T>(
@@ -792,12 +749,15 @@ fn allocate_for_blocks_with_end(
 						Some(Source::Register(*target));
 					if left_position != right_position {
 						// TODO: Only swap if right value actually needs preserving
-						swap_registers(
-							right_end_block,
-							&mut right_state,
-							Register::GeneralPurpose(left_position),
-							Register::GeneralPurpose(right_position),
-						)?;
+						right_end_block.push(Expression::UnOp(UnOp {
+							target: Register::GeneralPurpose(
+								left_position,
+							),
+							op: Op::Swap,
+							lhs: Register::GeneralPurpose(
+								right_position,
+							),
+						}));
 					}
 				}
 

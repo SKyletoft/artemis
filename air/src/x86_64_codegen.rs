@@ -135,7 +135,7 @@ fn assemble_block(
 				Op::StoreMem => todo!(),
 				Op::LoadMem => todo!(),
 				Op::Move => todo!(),
-				Op::FAdd | Op::FSub | Op::FAbs | Op::FMul | Op::FDiv => {
+				Op::Swap | Op::FAdd | Op::FSub | Op::FAbs | Op::FMul | Op::FDiv => {
 					bail!(Error::InvalidIR)
 				}
 			},
@@ -192,7 +192,7 @@ fn assemble_block(
 					todo!()
 				}
 
-				Op::Abs
+				Op::Swap | Op::Abs
 				| Op::Not
 				| Op::FAdd
 				| Op::FSub
@@ -232,6 +232,7 @@ fn assemble_block(
 					Register::ProgramCounter => bail!(Error::Unsupported),
 				},
 				Op::Move => todo!(),
+				Op::Swap => assembler.xchg(GP[t], GP[lhs.general_purpose().ok_or(Error::InvalidIR)?]),
 			},
 			Expression::FunctionCall(FunctionCall {
 				target,

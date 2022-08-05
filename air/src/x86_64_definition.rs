@@ -84,6 +84,7 @@ pub enum Instruction {
 	Or(GeneralPurposeRegister, GeneralPurposeRegister),
 	Xor(GeneralPurposeRegister, GeneralPurposeRegister),
 	Test(GeneralPurposeRegister, GeneralPurposeRegister),
+	Xchg(GeneralPurposeRegister, GeneralPurposeRegister),
 	Label(SmallString),
 	Je(SmallString),
 	Jmp(SmallString),
@@ -182,6 +183,10 @@ impl AssemblyBuilder {
 		self.0.push(Lea(a, b, c))
 	}
 
+	pub fn xchg(&mut self, l: GeneralPurposeRegister, r: GeneralPurposeRegister) {
+		self.0.push(Xchg(l, r))
+	}
+
 	pub fn ret(&mut self) {
 		self.0.push(Ret)
 	}
@@ -218,6 +223,7 @@ impl fmt::Display for AssemblyBuilder {
 				Test(l, r) => writeln!(f, "\ttest\t{l}, {r}")?,
 				Je(l) => writeln!(f, "\tje\t{l}")?,
 				Jmp(l) => writeln!(f, "\tjmp\t{l}")?,
+				Xchg(l, r) => writeln!(f, "\txchg\t{l}, {r}")?,
 				Lea(a, b, c) => writeln!(f, "\tlea\t{a}, {b}[{c}]")?,
 				Ret => writeln!(f, "\tret")?,
 			}
