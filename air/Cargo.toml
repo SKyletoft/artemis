@@ -17,6 +17,4 @@ once_cell = "1.10"
 log = "0.4"
 backtrace = "0.3"
 derive_more = "0.99"
-iced-x86 = { version = "1.17", features = [ "code_asm" ] }
 static_assertions = "1.1"
-object = { version = "0.29", features = [ "write_core", "elf" ] }

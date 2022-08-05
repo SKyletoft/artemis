@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf, process::Command, str::FromStr};
 
 use air::{
 	register_allocation::{self, Configuration},
-	x86_64,
+	x86_64_codegen,
 };
 use anyhow::Result;
 use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
