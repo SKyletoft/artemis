@@ -192,6 +192,12 @@ impl AssemblyBuilder {
 	}
 }
 
+impl Default for AssemblyBuilder {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl fmt::Display for AssemblyBuilder {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		for function_name in self.0.iter().filter_map(|x| {
