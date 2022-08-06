@@ -87,6 +87,7 @@ pub enum Instruction {
 	Xchg(GeneralPurposeRegister, GeneralPurposeRegister),
 	Label(SmallString),
 	Je(SmallString),
+	Jne(SmallString),
 	Jmp(SmallString),
 	Lea(
 		GeneralPurposeRegister,
@@ -166,6 +167,10 @@ impl AssemblyBuilder {
 		self.0.push(Label(l))
 	}
 
+	pub fn jne(&mut self, l: SmallString) {
+		self.0.push(Jne(l))
+	}
+
 	pub fn je(&mut self, l: SmallString) {
 		self.0.push(Je(l))
 	}
@@ -228,6 +233,7 @@ impl fmt::Display for AssemblyBuilder {
 				Xor(l, r) => writeln!(f, "\txor\t{l}, {r}")?,
 				Test(l, r) => writeln!(f, "\ttest\t{l}, {r}")?,
 				Je(l) => writeln!(f, "\tje\t{l}")?,
+				Jne(l) => writeln!(f, "\tjne\t{l}")?,
 				Jmp(l) => writeln!(f, "\tjmp\t{l}")?,
 				Xchg(l, r) => writeln!(f, "\txchg\t{l}, {r}")?,
 				Lea(a, b, c) => writeln!(f, "\tlea\t{a}, {b}[{c}]")?,

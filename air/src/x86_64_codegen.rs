@@ -262,7 +262,7 @@ fn assemble_block(
 		BlockEnd::One(next) => assembler.jmp(next.label(name)?),
 		&BlockEnd::Two(Register::GeneralPurpose(c), left, right) => {
 			assembler.test(GP[c], GP[c]);
-			assembler.je(left.label(name)?);
+			assembler.jne(left.label(name)?);
 			assembler.jmp(right.label(name)?);
 		}
 		BlockEnd::Two(Register::Literal(c), ..) => todo!(),
