@@ -313,7 +313,7 @@ impl fmt::Debug for Expression {
 #[derive(Clone, Copy, PartialEq, Variantly)]
 pub enum BlockEnd {
 	#[variantly(rename = "ret")]
-	Return,
+	Return(Register),
 	One(BlockId),
 	Two(Register, BlockId, BlockId),
 }
@@ -321,16 +321,10 @@ pub enum BlockEnd {
 impl fmt::Debug for BlockEnd {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Self::Return => write!(f, "ret"),
+			Self::Return(target) => write!(f, "ret {target}"),
 			Self::One(target) => write!(f, "{target}"),
 			Self::Two(reg, left, right) => write!(f, "{reg} ? {left}, {right}"),
 		}
-	}
-}
-
-impl Default for BlockEnd {
-	fn default() -> Self {
-		BlockEnd::Return
 	}
 }
 
@@ -839,7 +833,7 @@ fn handle_single_block(
 	);
 	let mut new_block = Block {
 		block: SmallVec::new(),
-		out: BlockEnd::Return,
+		out: BlockEnd::Return(Register::Literal(0)),
 	};
 
 	assert!(intro.iter().all(|reg| state.contains(reg.target)));
@@ -924,7 +918,13 @@ fn handle_single_block(
 		);
 	}
 	let new_out = match *out {
-		SimpleBlockEnd::Return(_) => BlockEnd::Return,
+		SimpleBlockEnd::Return(target) => {
+			let condition = state.find(target).unwrap_or_else(|| {
+				// TODO: Load value from stack
+				todo!();
+			});
+			BlockEnd::Return(condition)
+		}
 		SimpleBlockEnd::One(o) => BlockEnd::One(o),
 		SimpleBlockEnd::Two(target, l, r) => {
 			let condition = state.find(target).unwrap_or_else(|| {

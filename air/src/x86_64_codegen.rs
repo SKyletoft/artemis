@@ -253,7 +253,12 @@ fn assemble_block(
 		}
 	}
 	match out {
-		BlockEnd::Return => assembler.ret(),
+		&BlockEnd::Return(Register::GeneralPurpose(c)) => {
+			if GP[c] != RAX {
+				assembler.mov(GeneralPurposeRegister::RAX, GP[c]);
+			}
+			assembler.ret()
+		}
 		BlockEnd::One(next) => assembler.jmp(next.label(name)?),
 		&BlockEnd::Two(Register::GeneralPurpose(c), left, right) => {
 			assembler.test(GP[c], GP[c]);
