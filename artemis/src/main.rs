@@ -103,7 +103,15 @@ fn main() -> Result<()> {
 	log::debug!("SSA:\n{ssa:#?}");
 
 	match config.target.unwrap_or_default() {
-		Target::LinuxAarch64 => todo!("aarch64 backend"),
+		Target::LinuxAarch64 => {
+			let allocated = register_allocation::register_allocate(
+				&ssa,
+				&Configuration::AARCH64,
+			)?;
+			log::debug!("Allocated Registers:\n{allocated:#?}");
+
+			todo!("aarch64 backend")
+		}
 		Target::LinuxX64 => {
 			let allocated = register_allocation::register_allocate(
 				&ssa,
