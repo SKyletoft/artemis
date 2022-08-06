@@ -17,6 +17,17 @@ enum Target {
 	LinuxAarch64,
 }
 
+impl Default for Target {
+	fn default() -> Self {
+		#[cfg(target_arch = "x86_64")]
+		return Target::LinuxX64;
+		#[cfg(target_arch = "aarch64")]
+		return Target::LinuxAarch64;
+		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+		panic!("On a non x64 or Aarch64 platform you must explicitly specify a target");
+	}
+}
+
 impl FromStr for Target {
 	type Err = Error;
 
@@ -62,9 +73,6 @@ fn main() -> Result<()> {
 		log::error!("No input files provided");
 		return Ok(());
 	}
-	if config.target == Some(Target::LinuxAarch64) {
-		todo!("Aarch64 backend");
-	}
 
 	let sources = config
 		.files
@@ -94,24 +102,31 @@ fn main() -> Result<()> {
 	let ssa = simplify::simplify(&detyped)?;
 	log::debug!("SSA:\n{ssa:#?}");
 
-	let allocated =
-		register_allocation::register_allocate(&ssa, &Configuration::X86_64)?;
-	log::debug!("Allocated Registers:\n{allocated:#?}");
+	match config.target.unwrap_or_default() {
+		Target::LinuxAarch64 => todo!("aarch64 backend"),
+		Target::LinuxX64 => {
+			let allocated = register_allocation::register_allocate(
+				&ssa,
+				&Configuration::X86_64,
+			)?;
+			log::debug!("Allocated Registers:\n{allocated:#?}");
 
-	let assembler = x86_64_codegen::assemble(&allocated[0])?;
-	log::debug!("ASM:\n{assembler}");
+			let assembler = x86_64_codegen::assemble(&allocated[0])?;
+			log::debug!("ASM:\n{assembler}");
 
-	fs::write(&config.working_files, assembler)?;
+			fs::write(&config.working_files, assembler)?;
 
-	let nasm_raw = Command::new("nasm")
-		.arg(&config.working_files)
-		.args(["-o", &config.output])
-		.args(["-f", "elf64"])
-		.output()?
-		.stderr;
-	let nasm_string = String::from_utf8(nasm_raw)?;
-	if !nasm_string.is_empty() {
-		log::error!("Nasm: {nasm_string}");
+			let nasm_raw = Command::new("nasm")
+				.arg(&config.working_files)
+				.args(["-o", &config.output])
+				.args(["-f", "elf64"])
+				.output()?
+				.stderr;
+			let nasm_string = String::from_utf8(nasm_raw)?;
+			if !nasm_string.is_empty() {
+				log::error!("Nasm: {nasm_string}");
+			}
+		}
 	}
 
 	Ok(())
