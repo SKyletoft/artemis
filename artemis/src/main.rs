@@ -7,8 +7,9 @@ use air::{
 use anyhow::Result;
 use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
 use clap::Parser as ClapParser;
-use log::Level;
+use log::LevelFilter;
 use pest::Parser as PestParser;
+use simple_logger::SimpleLogger;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Target {
@@ -50,8 +51,11 @@ struct Config {
 }
 
 fn main() -> Result<()> {
-	simple_logger::init_with_level(Level::Info)?;
-	log::trace!("Logging initialised");
+	SimpleLogger::new()
+		.with_level(LevelFilter::Warn) // Default
+		.env() // But overwrite from environment
+		.init()?;
+	log::debug!("Logging initialised");
 
 	let config = Config::parse();
 	if config.files.is_empty() {
@@ -67,19 +71,35 @@ fn main() -> Result<()> {
 		.iter()
 		.map(fs::read_to_string)
 		.collect::<Result<Vec<String>, _>>()?;
+	log::debug!("Raw source code:\n{:#?}", &sources);
+
 	let source = sources
 		.into_iter()
 		.reduce(|l, r| l + &r)
 		.expect("There should be at least one file in the input");
+	log::debug!("Preprocessed source code:\n{source}");
+
 	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
+	log::debug!("Pest output:\n{ast:#?}");
+
 	let mut ordered = ordered::order(ast)?;
+	log::debug!("AST:\n{ordered:#?}");
+
 	type_check::check_program(&mut ordered)?;
+	log::debug!("Inferred types:\n{ordered:#?}");
+
 	let detyped = detype::detype(&ordered)?;
+	log::debug!("Detyped:\n{detyped:#?}");
+
 	let ssa = simplify::simplify(&detyped)?;
+	log::debug!("SSA:\n{ssa:#?}");
+
 	let allocated =
 		register_allocation::register_allocate(&ssa, &Configuration::X86_64)?;
+	log::debug!("Allocated Registers:\n{allocated:#?}");
 
 	let assembler = x86_64_codegen::assemble(&allocated[0])?;
+	log::debug!("ASM:\n{assembler}");
 
 	fs::write(&config.working_files, assembler)?;
 
@@ -93,8 +113,6 @@ fn main() -> Result<()> {
 	if !nasm_string.is_empty() {
 		log::error!("Nasm: {nasm_string}");
 	}
-
-	println!("\n---------------------------------------------------\n\n{source}");
 
 	Ok(())
 }
