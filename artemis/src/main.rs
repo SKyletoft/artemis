@@ -77,7 +77,7 @@ fn main() -> Result<()> {
 	let detyped = detype::detype(&ordered)?;
 	let ssa = simplify::simplify(&detyped)?;
 	let allocated =
-		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
+		register_allocation::register_allocate(&ssa, &Configuration::X86_64)?;
 
 	let assembler = x86_64_codegen::assemble(&allocated[0])?;
 
