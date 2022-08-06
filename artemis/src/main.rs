@@ -37,10 +37,16 @@ struct Config {
 	#[clap(long)]
 	target: Option<Target>,
 
-	files: Vec<PathBuf>,
-
-	#[clap(long, short, default_value_t = 0)]
+	#[clap(long, short = 'O', default_value_t = 0)]
 	optimisation: u8,
+
+	#[clap(long, short, default_value = "a.o")]
+	output: String,
+
+	#[clap(long, default_value = "/tmp/a.asm")]
+	working_files: String,
+
+	files: Vec<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -51,6 +57,9 @@ fn main() -> Result<()> {
 	if config.files.is_empty() {
 		log::error!("No input files provided");
 		return Ok(());
+	}
+	if config.target == Some(Target::LinuxAarch64) {
+		todo!("Aarch64 backend");
 	}
 
 	let sources = config
@@ -71,13 +80,12 @@ fn main() -> Result<()> {
 		register_allocation::register_allocate(&ssa, &Configuration::new(7, 0, 4, 0))?;
 
 	let assembler = x86_64_codegen::assemble(&allocated[0])?;
-	eprintln!("{:?}", &assembler);
 
-	fs::write("a.asm", assembler)?;
+	fs::write(&config.working_files, assembler)?;
 
 	let nasm_raw = Command::new("nasm")
-		.arg("a.asm")
-		.args(["-o", "a.o"])
+		.arg(&config.working_files)
+		.args(["-o", &config.output])
 		.args(["-f", "elf64"])
 		.output()?
 		.stderr;
