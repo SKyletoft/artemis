@@ -72,17 +72,15 @@ fn assemble_block(
 				op: Op::Div,
 				lhs: Register::GeneralPurpose(l),
 				rhs: Register::GeneralPurpose(r),
-			}) =>
-			{
-			todo!()
+			}) => {
+				todo!()
 			}
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
 				op: Op::UDiv,
 				lhs: Register::GeneralPurpose(l),
 				rhs: Register::GeneralPurpose(r),
-			}) => 
-			{
+			}) => {
 				todo!("I hate x86 division so much");
 			}
 			&Expression::BinOp(BinOp {
