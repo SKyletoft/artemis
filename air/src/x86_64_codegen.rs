@@ -17,15 +17,15 @@ use crate::{
 
 // SYSTEMV ABI for x64
 // Stack must be 16-byte aligned and grows downwards
-// Arguments go in rdi, rsi, RDX, rcx, r8, r9
+// Arguments go in rdi, rsi, rdx, rcx, r8, r9
 // Preserve rbx, rsp, rbp, r12, r13, r14, r15
-// Don't care about RAX, rdi, rsi, RDX, rcx, r8, r9, r10, r11
-// Return value in RAX (+ higher bits in RDX for 128 bit values)
+// Don't care about rax, rdi, rsi, rdz, rcx, r8, r9, r10, r11
+// Return value in rax (+ higher bits in rdx for 128 bit values)
 
 /// General purpose registers, in order of priority
 const GP: [GeneralPurposeRegister; 14] = {
 	[
-		RAX, RDI, RSI, RDX, RCX, R8, R9, R10, R11, RBX, R12, R13, R14, R15,
+		RDI, RSI, RDX, RCX, R8, R9, RAX, R10, R11, RBX, R12, R13, R14, R15,
 	]
 };
 
@@ -69,6 +69,24 @@ fn assemble_block(
 		match line {
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
+				op: Op::Div,
+				lhs: Register::GeneralPurpose(l),
+				rhs: Register::GeneralPurpose(r),
+			}) =>
+			{
+			todo!()
+			}
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
+				op: Op::UDiv,
+				lhs: Register::GeneralPurpose(l),
+				rhs: Register::GeneralPurpose(r),
+			}) => 
+			{
+				todo!("I hate x86 division so much");
+			}
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
 				op,
 				lhs: Register::GeneralPurpose(l),
 				rhs: Register::GeneralPurpose(r),
@@ -77,57 +95,6 @@ fn assemble_block(
 				Op::Sub => assembler.sub(GP[l], GP[r]),
 				Op::Abs => todo!(),
 				Op::Mul => assembler.imul(GP[l], GP[r]),
-				Op::Div => {
-					// x86 only does division of arg / RDX -> (res: RAX, rem: RDX)
-					// Therefore we store the old values and restore them afterwards
-					// unless they're the target register
-					assert_ne!(GP[r], RAX);
-					assert_ne!(GP[l], RAX);
-					assert_ne!(GP[r], RDX);
-					assert_ne!(GP[l], RDX);
-
-					if GP[t] != RAX {
-						assembler.push(RAX);
-					}
-					if GP[t] != RDX {
-						assembler.push(RDX);
-					}
-					assembler.mov(RAX, GP[l]);
-					assembler.div(GP[r]);
-					assembler.mov(GP[t], RAX);
-					if GP[t] != RDX {
-						assembler.pop(RDX);
-					}
-					if GP[t] != RDX {
-						assembler.pop(RAX);
-					}
-				}
-				Op::UDiv => {
-					// x86 only does division of arg / RDX -> (res: RAX, rem: RDX)
-					// Therefore we store the old values and restore them afterwards
-					// unless they're the target register
-					assert_ne!(GP[r], RAX);
-					assert_ne!(GP[l], RAX);
-					assert_ne!(GP[r], RDX);
-					assert_ne!(GP[l], RDX);
-
-					if GP[t] != RAX {
-						assembler.push(RAX);
-					}
-					if GP[t] != RDX {
-						assembler.push(RDX);
-					}
-					assembler.mov_lit(RDX, 0u64);
-					assembler.mov(RAX, GP[l]);
-					assembler.div(GP[r]);
-					assembler.mov(GP[t], RAX);
-					if GP[t] != RDX {
-						assembler.pop(RDX);
-					}
-					if GP[t] != RDX {
-						assembler.pop(RAX);
-					}
-				}
 				Op::And => assembler.and(GP[t], GP[r]),
 				Op::Or => assembler.or(GP[l], GP[r]),
 				Op::Xor => assembler.xor(GP[l], GP[r]),
@@ -135,6 +102,7 @@ fn assemble_block(
 				Op::StoreMem => todo!(),
 				Op::LoadMem => todo!(),
 				Op::Move => todo!(),
+				Op::Div | Op::UDiv => unreachable!("Covered by outer pattern"),
 				Op::Swap | Op::FAdd | Op::FSub | Op::FAbs | Op::FMul | Op::FDiv => {
 					bail!(Error::InvalidIR)
 				}
