@@ -291,6 +291,13 @@ impl fmt::Debug for Expression {
 				lhs,
 				rhs,
 			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
+			Expression::UnOp(UnOp {
+				target,
+				op: Op::Swap,
+				lhs,
+			}) => {
+				write!(f, "{target} {} {lhs}", Op::Swap)
+			}
 			Expression::UnOp(UnOp { target, op, lhs }) => {
 				write!(f, "{target} ← {op} {lhs}")
 			}
