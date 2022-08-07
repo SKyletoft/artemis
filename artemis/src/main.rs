@@ -133,6 +133,22 @@ fn main() -> Result<()> {
 			let nasm_string = String::from_utf8(nasm_raw)?;
 			if !nasm_string.is_empty() {
 				log::error!("Nasm: {nasm_string}");
+				return Ok(());
+			}
+
+			let runner = "c_working_files/runtime.o";
+			let crt1_o = format!("{}/lib/crt1.o", "musl"); //std::env!("MUSL"));
+			let libc_a = format!("{}/lib/libc.a", "musl"); //std::env!("MUSL"));
+
+			let mold_raw = Command::new("mold")
+				.arg(&config.output)
+				.args([&crt1_o, &libc_a, runner])
+				.output()?
+				.stderr;
+			let mold_string = String::from_utf8(mold_raw)?;
+			if !mold_string.is_empty() {
+				log::error!("Mold: {mold_string}");
+				return Ok(());
 			}
 		}
 	}

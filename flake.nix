@@ -17,13 +17,20 @@
 					src                = self;
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
-					buildInputs        = with pkgs; [ nasm mold ];
-					nativeBuildInputs  = with pkgs; [];
+					buildInputs        = with pkgs; [ nasm mold musl ];
+					nativeBuildInputs  = with pkgs; [ gcc ];
+					
+					MUSL = "${pkgs.musl}/lib";
+					NASM = "${pkgs.nasm}/bin/nasm";
+					MOLD = "${pkgs.mold}/bin/mold";
 				};
 				defaultPackage = artemis;
 				devShell = pkgs.mkShell {
 					shellHook = ''
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
+						MUSL="${pkgs.musl}/lib"
+						NASM="${pkgs.nasm}/bin/nasm"
+						MOLD="${pkgs.mold}/bin/mold"
 					'';
 					buildInputs       = artemis.buildInputs;
 					nativeBuildInputs = with pkgs; [
