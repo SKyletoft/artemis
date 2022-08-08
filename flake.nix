@@ -11,34 +11,45 @@
 			let
 				pkgs = nixpkgs.legacyPackages.${system};
 			in rec {
-				artemis = pkgs.rustPlatform.buildRustPackage {
+				artemis-unwrapped = pkgs.rustPlatform.buildRustPackage {
 					pname              = "artemis";
 					version            = "0.0.1";
 					src                = self;
 					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
 					cargoLock.lockFile = "${self}/Cargo.lock";
-					buildInputs        = with pkgs; [ nasm mold musl ];
-					nativeBuildInputs  = with pkgs; [ gcc ];
-					
-					MUSL = "${pkgs.musl}/lib";
-					NASM = "${pkgs.nasm}/bin/nasm";
-					MOLD = "${pkgs.mold}/bin/mold";
+					buildInputs        = with pkgs; [ nasm mold ];
+					nativeBuildInputs  = with pkgs; [];
 				};
-				defaultPackage = artemis;
+				artemis-runtime = pkgs.stdenv.mkDerivation rec {
+					pname        = "artemis-runtime";
+					version      = artemis-unwrapped.version;
+					src          = self;
+					buildPhase   = "make -C c_working_files";
+					installPhase = ''
+						mkdir -p $out
+						cp c_working_files/*.o $out
+					'';
+				};
+				artemis-wrapped = pkgs.writeShellScriptBin "artemis" ''
+					export MUSL="${pkgs.musl}/lib"
+					export NASM="${pkgs.nasm}/bin/nasm"
+					export MOLD="${pkgs.mold}/bin/mold"
+					export ARTEMIS_RUNTIME="${artemis-runtime}"
+					${artemis-unwrapped}/bin/artemis $@
+				'';
+				defaultPackage = artemis-wrapped;
 				devShell = pkgs.mkShell {
 					shellHook = ''
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
-						MUSL="${pkgs.musl}/lib"
-						NASM="${pkgs.nasm}/bin/nasm"
-						MOLD="${pkgs.mold}/bin/mold"
+						export MUSL="${pkgs.musl}/lib"
+						export NASM="${pkgs.nasm}/bin/nasm"
+						export MOLD="${pkgs.mold}/bin/mold"
+						export ARTEMIS_RUNTIME="c_working_files"
 					'';
-					buildInputs       = artemis.buildInputs;
+					buildInputs       = artemis-unwrapped.buildInputs;
 					nativeBuildInputs = with pkgs; [
 						rustup
-						valgrind
-						rr
 						tokei
-						lldb
 
 						llvmPackages_14.libcxxStdenv
 						llvmPackages_14.libunwind
@@ -46,7 +57,7 @@
 						llvmPackages_14.libcxxabi
 						clang-tools_14
 						gnumake
-					] ++ artemis.nativeBuildInputs;
+					] ++ artemis-unwrapped.nativeBuildInputs;
 				};
 			}
 		);

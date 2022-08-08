@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, process::Command, str::FromStr};
+use std::{env, fs, path::PathBuf, process::Command, str::FromStr};
 
 use air::{
 	register_allocation::{self, Configuration},
@@ -113,6 +113,20 @@ fn main() -> Result<()> {
 			todo!("aarch64 backend")
 		}
 		Target::LinuxX64 => {
+			// Get overrideable paths for dependencies. Else rely on $PATH
+			let musl = env::var("MUSL")
+				.unwrap_or_else(|_| String::from("/usr/lib/x86_64-linux-musl/lib"));
+			log::trace!("musl: {}", &musl);
+			let nasm = env::var("NASM")
+				.unwrap_or_else(|_| String::from("nasm"));
+			log::trace!("nasm: {}", &nasm);
+			let mold = env::var("MOLD")
+				.unwrap_or_else(|_| String::from("mold"));
+			log::trace!("mold: {}", &mold);
+			let lib = env::var("ARTEMIS_RUNTIME")
+				.unwrap_or_else(|_| String::from("./lib"));
+			log::trace!("lib: {}", &lib);
+
 			let allocated = register_allocation::register_allocate(
 				&ssa,
 				&Configuration::X86_64,
@@ -124,7 +138,7 @@ fn main() -> Result<()> {
 
 			fs::write(&config.working_files, assembler)?;
 
-			let nasm_raw = Command::new("nasm")
+			let nasm_raw = Command::new(nasm)
 				.arg(&config.working_files)
 				.args(["-o", &config.output])
 				.args(["-f", "elf64"])
@@ -132,22 +146,25 @@ fn main() -> Result<()> {
 				.stderr;
 			let nasm_string = String::from_utf8(nasm_raw)?;
 			if !nasm_string.is_empty() {
-				log::error!("Nasm: {nasm_string}");
+				log::error!("{nasm_string}");
 				return Ok(());
 			}
 
-			let runner = "c_working_files/runtime.o";
-			let crt1_o = format!("{}/lib/crt1.o", "musl"); //std::env!("MUSL"));
-			let libc_a = format!("{}/lib/libc.a", "musl"); //std::env!("MUSL"));
 
-			let mold_raw = Command::new("mold")
+			let runner = format!("{}/x64.o", lib);
+			let crt1_o = format!("{}/crt1.o", musl); //std::env!("MUSL"));
+			let libc_a = format!("{}/libc.a", musl); //std::env!("MUSL"));
+
+			log::debug!("Linking: {:#?}", [&config.output, &crt1_o, &libc_a, &runner]);
+
+			let mold_raw = Command::new(mold)
 				.arg(&config.output)
-				.args([&crt1_o, &libc_a, runner])
+				.args([&crt1_o, &libc_a, &runner])
 				.output()?
 				.stderr;
 			let mold_string = String::from_utf8(mold_raw)?;
 			if !mold_string.is_empty() {
-				log::error!("Mold: {mold_string}");
+				log::error!("{mold_string}");
 				return Ok(());
 			}
 		}
