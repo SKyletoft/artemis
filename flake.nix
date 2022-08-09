@@ -9,44 +9,55 @@
 	outputs = { self, nixpkgs, flake-utils }:
 		flake-utils.lib.eachDefaultSystem(system:
 			let
-				pkgs = nixpkgs.legacyPackages.${system};
+				pkgs     = nixpkgs.legacyPackages.${system};
+				pkgs_x86 = nixpkgs.legacyPackages.x86_64-linux;
+				pkgs_arm = nixpkgs.legacyPackages.aarch64-linux;
+				version  = "0.0.1";
+				src      = self;
 			in rec {
-				artemis-unwrapped = pkgs.rustPlatform.buildRustPackage {
-					pname              = "artemis";
-					version            = "0.0.1";
-					src                = self;
-					cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
-					cargoLock.lockFile = "${self}/Cargo.lock";
-					buildInputs        = with pkgs; [ nasm mold ];
-					nativeBuildInputs  = with pkgs; [];
-				};
-				artemis-runtime = pkgs.stdenv.mkDerivation rec {
-					pname        = "artemis-runtime";
-					version      = artemis-unwrapped.version;
-					src          = self;
-					buildPhase   = "make -C c_working_files";
-					installPhase = ''
-						mkdir -p $out
-						cp c_working_files/*.o $out
+				packages = {
+					artemis-unwrapped = pkgs.rustPlatform.buildRustPackage {
+						inherit src version;
+						pname              = "artemis";
+						cargoSha256        = "sha256-ah8IjShmivS6IWL3ku/4/j+WNr/LdUnh1YJnPdaFdcM=";
+						cargoLock.lockFile = "${self}/Cargo.lock";
+					};
+
+					artemis-runtime = pkgs.stdenv.mkDerivation rec {
+						inherit src version;
+						pname        = "artemis-runtime";
+						buildPhase   = "make -C c_working_files";
+						installPhase = ''
+							mkdir -p $out
+							cp c_working_files/*.o $out
+						'';
+					};
+
+					artemis-wrapped = pkgs.writeShellScriptBin "artemis" ''
+						export MOLD="${pkgs.mold}/bin/mold"
+						export MUSL_x86="${pkgs_x86.musl}/lib"
+						export MUSL_ARM="${pkgs_arm.musl}/lib"
+						export NASM="${pkgs.nasm}/bin/nasm"
+						export GNU_AS="${pkgs_arm.gcc}/bin/as"
+						export ARTEMIS_RUNTIME_x86="${self.packages.x86_64-linux.artemis-runtime}"
+						export ARTEMIS_RUNTIME_ARM="${self.packages.aarch64-linux.artemis-runtime}"
+						${packages.artemis-unwrapped}/bin/artemis $@
 					'';
+
+					default = packages.artemis-wrapped;
 				};
-				artemis-wrapped = pkgs.writeShellScriptBin "artemis" ''
-					export MUSL="${pkgs.musl}/lib"
-					export NASM="${pkgs.nasm}/bin/nasm"
-					export MOLD="${pkgs.mold}/bin/mold"
-					export ARTEMIS_RUNTIME="${artemis-runtime}"
-					${artemis-unwrapped}/bin/artemis $@
-				'';
-				defaultPackage = artemis-wrapped;
+
 				devShell = pkgs.mkShell {
 					shellHook = ''
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
-						export MUSL="${pkgs.musl}/lib"
-						export NASM="${pkgs.nasm}/bin/nasm"
 						export MOLD="${pkgs.mold}/bin/mold"
-						export ARTEMIS_RUNTIME="c_working_files"
+						export MUSL_x86="${pkgs_x86.musl}/lib"
+						export MUSL_ARM="${pkgs_arm.musl}/lib"
+						export NASM="${pkgs.nasm}/bin/nasm"
+						export GNU_AS="${pkgs_arm.gcc}/bin/as"
+						export ARTEMIS_RUNTIME_x86="c_working_files"
+						export ARTEMIS_RUNTIME_ARM="${self.packages.aarch64-linux.artemis-runtime}"
 					'';
-					buildInputs       = artemis-unwrapped.buildInputs;
 					nativeBuildInputs = with pkgs; [
 						rustup
 						tokei
@@ -57,7 +68,7 @@
 						llvmPackages_14.libcxxabi
 						clang-tools_14
 						gnumake
-					] ++ artemis-unwrapped.nativeBuildInputs;
+					];
 				};
 			}
 		);

@@ -1,5 +1,5 @@
 runtime.o:
-	gcc -c runtime.c -o x64.o -O0 -g
+	gcc -c runtime.c -o runtime.o -O0 -g
 
 clean:
 	-rm x64.o
