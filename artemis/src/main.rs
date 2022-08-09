@@ -77,17 +77,21 @@ fn main() -> Result<()> {
 	// Get overrideable paths for dependencies. Else rely on $PATH
 	let mold = env::var("MOLD").unwrap_or_else(|_| String::from("mold"));
 	log::trace!("mold:     {}", &mold);
-	let musl_x86 = env::var("MUSL_x86").unwrap_or_else(|_| String::from("/usr/lib/x86_64-linux-musl/lib"));
+	let musl_x86 = env::var("MUSL_x86")
+		.unwrap_or_else(|_| String::from("/usr/lib/x86_64-linux-musl/lib"));
 	log::trace!("musl_x86: {}", &musl_x86);
-	let musl_arm = env::var("MUSL_ARM").unwrap_or_else(|_| String::from("/usr/lib/aarch64-linux-musl/lib"));
+	let musl_arm = env::var("MUSL_ARM")
+		.unwrap_or_else(|_| String::from("/usr/lib/aarch64-linux-musl/lib"));
 	log::trace!("musl_arm: {}", &musl_arm);
 	let nasm = env::var("NASM").unwrap_or_else(|_| String::from("nasm"));
 	log::trace!("nasm:     {}", &nasm);
 	let gnu_as = env::var("GNU_AS").unwrap_or_else(|_| String::from("aarch64-linux-gnu-as"));
 	log::trace!("gnu_as:   {}", &gnu_as);
-	let lib_x86 = env::var("ARTEMIS_RUNTIME_x86").unwrap_or_else(|_| String::from("./lib-x86_64"));
+	let lib_x86 =
+		env::var("ARTEMIS_RUNTIME_x86").unwrap_or_else(|_| String::from("./lib-x86_64"));
 	log::trace!("lib_x86:  {}", &lib_x86);
-	let lib_arm = env::var("ARTEMIS_RUNTIME_ARM").unwrap_or_else(|_| String::from("./lib-aarch64"));
+	let lib_arm =
+		env::var("ARTEMIS_RUNTIME_ARM").unwrap_or_else(|_| String::from("./lib-aarch64"));
 	log::trace!("lib_arm:  {}", &lib_arm);
 
 	let config = Config::parse();
