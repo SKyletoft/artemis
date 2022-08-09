@@ -1,1 +1,1 @@
-(builtins.getFlake (toString ./.)).outputs.defaultPackage.${builtins.currentSystem}
+(builtins.getFlake (toString ./.)).outputs.packages.${builtins.currentSystem}.default
