@@ -670,7 +670,11 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 	}
 }
 
-pub fn order(pairs: Pairs<Rule>) -> Result<Vec<TopLevelConstruct>> {
-	pairs.map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
+pub fn order(mut pairs: Pairs<Rule>) -> Result<Vec<TopLevelConstruct>> {
+	let top = pairs.next().expect("GeneratedParser works on Rule::top");
+	if pairs.next().is_some() || top.as_rule() != Rule::top {
+		panic!("GeneratedParser works on Rule::top?")
+	}
+	top.into_inner().map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
 		.collect()
 }

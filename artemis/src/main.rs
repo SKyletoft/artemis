@@ -130,7 +130,7 @@ fn main() -> Result<()> {
 		.expect("There should be at least one file in the input");
 	log::debug!("Preprocessed source code:\n{source}");
 
-	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
+	let ast = GeneratedParser::parse(Rule::top, &source)?;
 	log::debug!("Pest output:\n{ast:#?}");
 
 	let mut ordered = ordered::order(ast)?;

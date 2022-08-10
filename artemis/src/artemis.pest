@@ -94,3 +94,5 @@ enum_definition = {
 	(plus  | "enum") ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
 	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
 }
+
+top = { function_definition* }
