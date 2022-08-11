@@ -35,6 +35,30 @@ pub fn copy_for_inner_scope(ctx: &Context) -> Context {
 
 pub fn check_program(top_level: &mut [TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
+	for branch in top_level.iter() {
+		if let TopLevelConstruct::Function(Function {
+			name,
+			arguments,
+			return_type,
+			..
+		}) = branch
+		{
+			ctx.insert(
+				name.clone(),
+				(
+					TypeRecord::Function(FunctionType {
+						return_type: return_type.clone(),
+						arguments: arguments
+							.iter()
+							.map(|arg| arg.type_name.clone())
+							.collect(),
+					}),
+					true,
+				),
+			);
+		}
+	}
+	log::trace!("Constructs at global scope: {:#?}", &ctx);
 	for branch in top_level.iter_mut() {
 		match branch {
 			TopLevelConstruct::Function(fun) => {
@@ -76,19 +100,6 @@ fn check_function(
 		);
 		bail!(Error::TypeError);
 	}
-	ctx.insert(
-		name.clone(),
-		(
-			TypeRecord::Function(FunctionType {
-				return_type: return_type.clone(),
-				arguments: arguments
-					.iter()
-					.map(|arg| arg.type_name.clone())
-					.collect(),
-			}),
-			true,
-		),
-	);
 	Ok(())
 }
 
@@ -283,7 +294,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 				.ok_or_else(|| {
 					log::error!(
 						"Internal [{}]: Supposedly checked function is undefined\n\
-						{function_name:?} {ctx:?}",
+						{function_name:?} {ctx:#?}",
 						line!()
 					);
 					Error::Internal
@@ -303,7 +314,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 				expected_args.iter().zip(arguments.iter_mut())
 			{
 				let actual_type = check_subexpr(actual_arg, ctx)?;
-				if expected_arg != &actual_type {
+				if !expected_arg.raw.integer_equality(&actual_type.raw) {
 					log::error!(
 						"Type mismatch in function arguments [{}]: {expected_arg:?} {actual_type:?}", line!()
 					);

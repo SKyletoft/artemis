@@ -12,7 +12,7 @@ use crate::{
 		IfExpr as OrderedIfExpr, Literal as OrderedLiteral, Op as OrderedOp, RawType,
 		Subexpr as OrderedSubexpr, TopLevelConstruct as OrderedTopLevelConstruct,
 	},
-	type_check::{self, Context, TypeRecord},
+	type_check::{self, Context, FunctionType, TypeRecord},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -310,16 +310,35 @@ pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, Type)
 pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruct>> {
 	let mut ctx = exprs
 		.iter()
-		.filter_map(|tlc| match tlc {
+		.map(|tlc| match tlc {
 			OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
 				name,
 				type_name,
 				..
-			}) => Some((
+			}) => (
 				name.clone(),
 				(TypeRecord::Variable(type_name.clone()), true),
-			)),
-			_ => None,
+			),
+			OrderedTopLevelConstruct::Function(OrderedFunction {
+				name,
+				arguments,
+				return_type,
+				..
+			}) => (
+				name.clone(),
+				(
+					TypeRecord::Function(FunctionType {
+						return_type: return_type.clone(),
+						arguments: arguments
+							.iter()
+							.map(|Argument { type_name, .. }| {
+								type_name.clone()
+							})
+							.collect(),
+					}),
+					true,
+				),
+			),
 		})
 		.collect::<HashMap<_, _>>();
 
