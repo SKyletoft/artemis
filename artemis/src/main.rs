@@ -38,7 +38,7 @@ impl FromStr for Target {
 			"aarch64" | "arm" | "arm64" | "Aarch64" | "Arm64" | "AARCH64" | "ARM"
 			| "ARM64" => Ok(Target::LinuxAarch64),
 
-			_ => Err(Error::InvalidTarget),
+			_ => Err(Error::InvalidTarget(line!())),
 		}
 	}
 }

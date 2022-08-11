@@ -2,10 +2,10 @@ use std::{error, fmt};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Error {
-	ParseError,
-	Internal,
-	TypeError,
-	InvalidTarget,
+	ParseError(u32),
+	Internal(u32),
+	TypeError(u32),
+	InvalidTarget(u32),
 }
 
 impl fmt::Display for Error {

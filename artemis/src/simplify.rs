@@ -24,7 +24,7 @@ pub fn simplify_subexpr(
 	let res = match subexpr {
 		Subexpr::BinOp(BinOp { op: Op::Not, .. }) => {
 			log::error!("Internal [{}]: Not as binop", line!());
-			bail!(Error::Internal);
+			bail!(Error::Internal(line!()));
 		}
 		Subexpr::BinOp(BinOp {
 			lhs: _,
@@ -147,7 +147,13 @@ pub fn simplify_subexpr(
 
 			Source::Register(phi_target)
 		}
-		Subexpr::Block(_) => todo!(),
+		Subexpr::Block(exprs) => {
+			let mut last = Source::Value(0);
+			for expr in exprs.iter() {
+				last = simplify_expr(expr, current, blocks, ctx)?;
+			}
+			last
+		}
 		Subexpr::Literal(v) => Source::Value(*v),
 		Subexpr::Variable(v) => match ctx.variables.get(v) {
 			Some(&r) => anyhow::Ok(r),
@@ -214,13 +220,27 @@ pub fn simplify_exprs(
 	Ok((final_id.into(), last_source))
 }
 
+fn simplify_top_subexpr(
+	subexpr: &Subexpr,
+	current: &mut Block,
+	blocks: &mut Vec<Block>,
+	ctx: &mut Context,
+) -> Result<(BlockId, Source)> {
+	let last_source = simplify_subexpr(subexpr, current, blocks, ctx)?;
+	current.out = BlockEnd::Return(last_source);
+	let final_block = mem::take(current);
+	blocks.push(final_block);
+	let final_id = blocks.len() - 1;
+	Ok((final_id.into(), last_source))
+}
+
 pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
 	tlcs.iter()
 		.map(|tlc| match tlc {
 			TopLevelConstruct::Function(Function {
 				name,
 				arguments,
-				block,
+				subexpr,
 			}) => {
 				let mut current = Block::default();
 				let mut blocks = Vec::default();
@@ -234,8 +254,12 @@ pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
 						.collect(),
 					next_register: arguments.len().into(),
 				};
-				let (..) =
-					simplify_exprs(block, &mut current, &mut blocks, &mut ctx)?;
+				let (..) = simplify_top_subexpr(
+					subexpr,
+					&mut current,
+					&mut blocks,
+					&mut ctx,
+				)?;
 				let ret = SSAConstruct::Function {
 					name: name.clone(),
 					blocks,

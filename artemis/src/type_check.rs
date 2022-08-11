@@ -77,7 +77,7 @@ fn check_function(
 		name,
 		arguments,
 		return_type,
-		block,
+		subexpr,
 	}: &mut Function,
 	ctx: &mut Context,
 ) -> Result<()> {
@@ -88,17 +88,14 @@ fn check_function(
 			(TypeRecord::Variable(type_name.clone()), true),
 		);
 	}
-	let mut last = RawType::Unit;
-	for line in block.iter_mut() {
-		last = check_expr(line, &mut inner_ctx)?.raw;
-	}
+	let last = check_subexpr(subexpr, &mut inner_ctx)?.raw;
 	if !last.integer_equality(return_type) {
 		log::error!(
 			"Type mismatch in function return type [{}]: {return_type:?} \
 			{last:?}\nλ{name} {arguments:?} → {return_type:?}",
 			line!()
 		);
-		bail!(Error::TypeError);
+		bail!(Error::TypeError(line!()));
 	}
 	Ok(())
 }
@@ -128,7 +125,7 @@ fn check_declaration(
 			"Same scope shadowing [{}]: {name} already exists in this scope",
 			line!()
 		);
-		bail!(Error::TypeError)
+		bail!(Error::TypeError(line!()))
 	}
 	check_subexpr(value, ctx)?;
 	let actual_type = check_subexpr(value, ctx)?;
@@ -141,7 +138,7 @@ fn check_declaration(
 			"Type mismatch [{}]:\n{type_name:?}\n{actual_type:?}\n{correct_type:?}",
 			line!()
 		);
-		bail!(Error::TypeError);
+		bail!(Error::TypeError(line!()));
 	}
 	let maybe_defaulted = correct_type.default_int();
 	*type_name = maybe_defaulted.clone(); // Write back the type in the case of type inference
@@ -160,7 +157,7 @@ fn check_assignment(
 	let actual_type = check_subexpr(value, ctx)?.raw;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
 		log::error!("Use of undeclared variable [{}]: {name}", line!());
-		Error::TypeError
+		Error::TypeError(line!())
 	})?;
 	if let (TypeRecord::Variable(Type { raw, mutable }), _) = recorded_type {
 		if !raw.integer_equality(&actual_type) {
@@ -168,11 +165,11 @@ fn check_assignment(
 				"Type mismatch [{}]: {recorded_type:?} {actual_type:?}",
 				line!()
 			);
-			bail!(Error::TypeError);
+			bail!(Error::TypeError(line!()));
 		}
 		if !*mutable {
 			log::error!("Write to const [{}]: {name}: {recorded_type:?}", line!());
-			bail!(Error::TypeError);
+			bail!(Error::TypeError(line!()));
 		}
 	}
 	let res = ctx
@@ -182,7 +179,7 @@ fn check_assignment(
 				"Internal [{}]: Supposedly checked variable is undefined",
 				line!()
 			);
-			Error::Internal
+			Error::Internal(line!())
 		})?
 		.clone()
 		.0
@@ -192,7 +189,7 @@ fn check_assignment(
 				"Internal [{}]: Supposedly checked variable was a function",
 				line!()
 			);
-			Error::Internal
+			Error::Internal(line!())
 		})?;
 	Ok(res)
 }
@@ -232,7 +229,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					}
 					_ => {
 						log::error!("Internal [{}]: Unary operator in binop?\n{expr:?}", line!());
-						bail!(Error::Internal);
+						bail!(Error::Internal(line!()));
 					}
 				};
 			if !eq {
@@ -241,7 +238,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					{lhs:?}: {lhs_type:?} {op:?} {rhs:?}: {rhs_type:?}",
 					line!()
 				);
-				bail!(Error::TypeError);
+				bail!(Error::TypeError(line!()));
 			}
 			lhs_type
 		}
@@ -256,7 +253,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					"Type error [{}]: Non boolean condition in if statement\n{condition:?}",
 					line!()
 				);
-				bail!(Error::TypeError);
+				bail!(Error::TypeError(line!()));
 			}
 			let lhs_type = check_block(lhs, ctx)?;
 			let rhs_type = check_block(rhs, ctx)?;
@@ -267,7 +264,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					{lhs_type:?} {rhs_type:?}",
 					line!()
 				);
-				bail!(Error::TypeError);
+				bail!(Error::TypeError(line!()));
 			}
 
 			lhs_type
@@ -297,7 +294,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 						{function_name:?} {ctx:#?}",
 						line!()
 					);
-					Error::Internal
+					Error::Internal(line!())
 				})?
 				.clone()
 				.0
@@ -308,7 +305,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 						{function_name:?} {ctx:?}",
 						line!()
 					);
-					Error::Internal
+					Error::Internal(line!())
 				})?;
 			for (expected_arg, actual_arg) in
 				expected_args.iter().zip(arguments.iter_mut())
@@ -318,7 +315,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					log::error!(
 						"Type mismatch in function arguments [{}]: {expected_arg:?} {actual_type:?}", line!()
 					);
-					bail!(Error::TypeError);
+					bail!(Error::TypeError(line!()));
 				}
 			}
 			Type {
@@ -352,7 +349,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					{name:?} {ctx:?}",
 					line!()
 				);
-				Error::Internal
+				Error::Internal(line!())
 			})?
 			.clone()
 			.0
@@ -363,7 +360,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 					{name:?} {ctx:?}",
 					line!()
 				);
-				Error::Internal
+				Error::Internal(line!())
 			})?,
 	};
 	Ok(res)

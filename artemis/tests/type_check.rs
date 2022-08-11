@@ -235,7 +235,7 @@ fn infer_types() -> Result<()> {
 		name: "f".into(),
 		arguments: SmallVec::new(),
 		return_type: RawType::Unit,
-		block: vec![
+		subexpr: vec![
 			Expr::Declaration(Declaration {
 				name: "x".into(),
 				value: Subexpr::Literal(Literal::Integer(1)),

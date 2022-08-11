@@ -81,7 +81,7 @@ argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 function_definition = {
 	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~
 	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~ ws ~
-	")" ~ ws ~ (("->" | "→") ~ ws ~ raw_type)? ~ ws ~ block
+	")" ~ ws ~ (("->" | "→") ~ ws ~ raw_type)? ~ ws ~ "=" ~ ws ~ expr
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
 
@@ -95,4 +95,4 @@ enum_definition = {
 	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
 }
 
-top = { (function_definition ~ ws)* }
+top = { SOI ~ ws ~ (function_definition ~ ws)* ~ ws ~ EOI }

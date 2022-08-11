@@ -22,7 +22,7 @@ type Block = Vec<Expr>;
 pub struct Function {
 	pub name: SmallString,
 	pub arguments: Vec<SmallString>,
-	pub block: Block,
+	pub subexpr: Subexpr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -134,7 +134,7 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					{lhs:?} {rhs:?}",
 					line!()
 				);
-				bail!(Error::Internal);
+				bail!(Error::Internal(line!()));
 			}
 			let op = match (op, left_float) {
 				(OrderedOp::Plus, Type::Floating) => Op::FPlus,
@@ -177,7 +177,7 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 					{cond_float:?} {left_float:?} {right_float:?}",
 					line!()
 				);
-				bail!(Error::Internal);
+				bail!(Error::Internal(line!()));
 			}
 			let res = Subexpr::IfExpr(IfExpr {
 				condition: Box::new(condition),
@@ -202,14 +202,14 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 				.get(name)
 				.ok_or_else(|| {
 					log::error!("Internal [{}]: Undefined variable in already checked context", line!());
-					Error::Internal
+					Error::Internal(line!())
 				})?
 				.0
 				.clone()
 				.variable()
 				.ok_or_else(|| {
 					log::error!("Internal [{}]: Variable was function in already checked context", line!());
-					Error::Internal
+					Error::Internal(line!())
 				})?
 				.raw;
 			let is_float = if raw == RawType::Real {
@@ -236,14 +236,14 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 				.get(function_name)
 				.ok_or_else(|| {
 					log::error!("Internal [{}]: Undefined function in already checked context", line!());
-					Error::Internal
+					Error::Internal(line!())
 				})?
 				.0
 				.clone()
 				.function()
 				.ok_or_else(|| {
 					log::error!("Internal [{}]: Function was variable in already checked context", line!());
-					Error::Internal
+					Error::Internal(line!())
 				})?
 				.return_type;
 			let is_float = if raw == RawType::Real {
@@ -348,7 +348,7 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 				OrderedTopLevelConstruct::Function(OrderedFunction {
 					name,
 					arguments,
-					block,
+					subexpr,
 					..
 				}) => {
 					let mut inner_ctx = type_check::copy_for_inner_scope(&ctx);
@@ -363,14 +363,14 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 							),
 						);
 					}
-					let (block, _) = detype_block(block, &mut inner_ctx)?;
+					let (subexpr, _) = detype_subexpr(subexpr, &mut inner_ctx)?;
 					TopLevelConstruct::Function(Function {
 						name: name.clone(),
 						arguments: arguments
 							.iter()
 							.map(|Argument { name, .. }| name.clone())
 							.collect(),
-						block,
+						subexpr,
 					})
 				}
 				OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
