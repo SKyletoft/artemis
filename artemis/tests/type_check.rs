@@ -21,8 +21,7 @@ fn assignment_to_same() -> Result<()> {
 		y : ℤ = x;
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 	Ok(())
 }
@@ -34,8 +33,7 @@ fn literals_as_either_type() -> Result<()> {
 		y : ℕ = 1;
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 	Ok(())
 }
@@ -47,8 +45,7 @@ fn reject_integer_conversion() -> Result<()> {
 		y : ℕ = x;
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -60,8 +57,7 @@ fn reject_non_bool_condition() -> Result<()> {
 	let s = "λf() {
 		if 1 {()} else {()}
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -75,8 +71,7 @@ fn reject_same_scope_same_type_shadowing() -> Result<()> {
 		x := 1
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -90,8 +85,7 @@ fn reject_same_scope_different_type_shadowing() -> Result<()> {
 		x := true
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -108,8 +102,7 @@ fn accept_inner_scope_shadowing() -> Result<()> {
 		}
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 	Ok(())
 }
@@ -119,8 +112,7 @@ fn reject_use_of_undeclared_variable() -> Result<()> {
 	let s = "λf() -> ℕ {
 		x
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -132,8 +124,7 @@ fn reject_use_of_undeclared_function() -> Result<()> {
 	let s = "λf() -> ℕ {
 		g()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -147,8 +138,7 @@ fn reject_use_of_variable_as_function() -> Result<()> {
 		y := x()
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -162,8 +152,7 @@ fn reject_assignment_to_const() -> Result<()> {
 		x = 2
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -177,8 +166,7 @@ fn accept_assignment_to_mut() -> Result<()> {
 		x = 2
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 
 	Ok(())
@@ -194,8 +182,7 @@ fn accept_if_returns_same() -> Result<()> {
 		}
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 
 	Ok(())
@@ -210,8 +197,7 @@ fn reject_if_returns_different() -> Result<()> {
 		}
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	let res = type_check::check_program(&mut ordered);
 
 	assert!(res.is_err());
@@ -228,8 +214,7 @@ fn accept_block_return_of_inner_variable() -> Result<()> {
 		}
 		a + 2
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 
 	Ok(())
@@ -244,8 +229,7 @@ fn infer_types() -> Result<()> {
 		w := 4.0
 		()
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 	let expected = vec![TopLevelConstruct::Function(Function {
 		name: "f".into(),
@@ -297,8 +281,7 @@ fn accept_ending_on_declaration() -> Result<()> {
 	let s = "λf () → ℤ {
 		x := 5
 	}";
-	let mut ordered =
-		ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
+	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
 	type_check::check_program(&mut ordered)?;
 
 	Ok(())

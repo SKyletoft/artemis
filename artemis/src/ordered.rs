@@ -675,6 +675,7 @@ pub fn order(mut pairs: Pairs<Rule>) -> Result<Vec<TopLevelConstruct>> {
 	if pairs.next().is_some() || top.as_rule() != Rule::top {
 		panic!("GeneratedParser works on Rule::top?")
 	}
-	top.into_inner().map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
+	top.into_inner()
+		.map(|pair| AST::try_from(pair).and_then(TopLevelConstruct::try_from))
 		.collect()
 }
