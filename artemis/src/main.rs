@@ -162,7 +162,7 @@ fn main() -> Result<()> {
 			)?;
 			log::debug!("Allocated Registers:\n{allocated:#?}");
 
-			let assembler = x86_64_codegen::assemble(&allocated[0])?;
+			let assembler = x86_64_codegen::assemble(&allocated)?;
 			log::debug!("ASM:\n{assembler}");
 
 			fs::write(&assembly_path, assembler)?;

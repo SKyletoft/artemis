@@ -37,23 +37,21 @@ const FP: [FloatingPointRegister; 16] = {
 	]
 };
 
-pub fn assemble(construct: &CodeConstruct) -> Result<String> {
-	match construct {
-		CodeConstruct::Function { name, blocks } => assemble_function(name, blocks),
-		CodeConstruct::Variable { .. } => todo!(),
-		CodeConstruct::ImmediateExpression { .. } => todo!(),
-	}
-}
-
-fn assemble_function(name: &str, blocks: &[Block]) -> Result<String> {
+pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 	let mut assembler = AssemblyBuilder::new();
-	assembler.global(name);
-	assembler.label(SmallString::from(name));
-
-	for (idx, block) in blocks.iter().enumerate() {
-		assemble_block(block, idx.into(), &mut assembler, name)?;
+	for construct in constructs.iter() {
+		match construct {
+			CodeConstruct::Function { name, blocks } => {
+				assembler.global(name);
+				assembler.label(name.clone());
+				for (idx, block) in blocks.iter().enumerate() {
+					assemble_block(block, idx.into(), &mut assembler, name)?;
+				}
+			}
+			CodeConstruct::Variable { .. } => todo!(),
+			CodeConstruct::ImmediateExpression { .. } => todo!(),
+		}
 	}
-
 	let res = format!("{assembler}");
 	Ok(res)
 }
