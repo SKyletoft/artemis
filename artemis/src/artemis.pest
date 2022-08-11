@@ -95,4 +95,4 @@ enum_definition = {
 	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
 }
 
-top = { function_definition* }
+top = { (function_definition ~ ws)* }
