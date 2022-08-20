@@ -9,8 +9,10 @@ Typechecking
 Syntax
 	allow if {} as if {} else {default}
 	arrays
-	structs
-	enums
+	structs/enums
+		structural type system
+		remove void fields during compilation
+		(and but have them in the type system to allow separating enum types)
 	piping with |> and <|
 		two args with ||>?
 		map with ]>? ]=?
@@ -23,9 +25,10 @@ Syntax
 	anonymous functions for use in functions that take functions and to use folds as for loops
 	range syntax
 		from..to?
+	⋂ and ⋃ for object intersections/unions
+		\ for difference?
 Formatter
 Linker
-	Just rely on mold for now
 GC
 	Handle pointers to mid-array
 
@@ -42,8 +45,5 @@ To investigate
 		Reasonable syntax
 			Implicit removal of the fold start value for () returns?
 		What new greek letter for the `for` keyword
-	Merging basic blocks
-		Keep all existing context?
-			Keep register counts but not names
 	Replace all errors with error messages with a unique enum variant (there's a crate for deriving Error apparently)
 
