@@ -67,34 +67,17 @@ struct Config {
 	files: Vec<PathBuf>,
 }
 
-fn main() -> Result<()> {
-	SimpleLogger::new()
-		.with_level(LevelFilter::Warn) // Default
-		.env() // But overwrite from environment
-		.init()?;
-	log::trace!("Logging initialised");
+struct Paths {
+	mold: String,
+	musl_x86: String,
+	musl_arm: String,
+	nasm: String,
+	gnu_as: String,
+	lib_x86: String,
+	lib_arm: String,
+}
 
-	// Get overrideable paths for dependencies. Else rely on $PATH
-	let mold = env::var("MOLD").unwrap_or_else(|_| String::from("mold"));
-	log::trace!("mold:     {}", &mold);
-	let musl_x86 = env::var("MUSL_x86")
-		.unwrap_or_else(|_| String::from("/usr/lib/x86_64-linux-musl/lib"));
-	log::trace!("musl_x86: {}", &musl_x86);
-	let musl_arm = env::var("MUSL_ARM")
-		.unwrap_or_else(|_| String::from("/usr/lib/aarch64-linux-musl/lib"));
-	log::trace!("musl_arm: {}", &musl_arm);
-	let nasm = env::var("NASM").unwrap_or_else(|_| String::from("nasm"));
-	log::trace!("nasm:     {}", &nasm);
-	let gnu_as = env::var("GNU_AS").unwrap_or_else(|_| String::from("aarch64-linux-gnu-as"));
-	log::trace!("gnu_as:   {}", &gnu_as);
-	let lib_x86 =
-		env::var("ARTEMIS_RUNTIME_x86").unwrap_or_else(|_| String::from("./lib-x86_64"));
-	log::trace!("lib_x86:  {}", &lib_x86);
-	let lib_arm =
-		env::var("ARTEMIS_RUNTIME_ARM").unwrap_or_else(|_| String::from("./lib-aarch64"));
-	log::trace!("lib_arm:  {}", &lib_arm);
-
-	let config = Config::parse();
+fn compile(config: Config, paths: Paths) -> Result<()> {
 	if config.files.is_empty() {
 		log::error!("No input files provided");
 		return Ok(());
@@ -167,7 +150,7 @@ fn main() -> Result<()> {
 
 			fs::write(&assembly_path, assembler)?;
 
-			let mut nasm = Command::new(nasm);
+			let mut nasm = Command::new(paths.nasm);
 			nasm.arg(&assembly_path)
 				.args(["-o", &object_path])
 				.args(["-f", "elf64"]);
@@ -179,11 +162,11 @@ fn main() -> Result<()> {
 				return Ok(());
 			}
 
-			let runtime = format!("{}/runtime.o", lib_x86);
-			let crt1_o = format!("{}/crt1.o", musl_x86);
-			let libc_a = format!("{}/libc.a", musl_x86);
+			let runtime = format!("{}/runtime.o", paths.lib_x86);
+			let crt1_o = format!("{}/crt1.o", paths.musl_x86);
+			let libc_a = format!("{}/libc.a", paths.musl_x86);
 
-			let mut mold = Command::new(mold);
+			let mut mold = Command::new(paths.mold);
 			mold.args(["-m", "elf_x86_64"])
 				.args(["-o", &config.output])
 				.args([&crt1_o, &libc_a, &runtime, &object_path]);
@@ -198,4 +181,46 @@ fn main() -> Result<()> {
 	}
 
 	Ok(())
+}
+
+fn main() -> Result<()> {
+	SimpleLogger::new()
+		.with_level(LevelFilter::Warn) // Default
+		.env() // But overwrite from environment
+		.init()?;
+	log::trace!("Logging initialised");
+
+	let config = Config::parse();
+
+	// Get overrideable paths for dependencies. Else rely on $PATH
+	let mold = env::var("MOLD").unwrap_or_else(|_| String::from("mold"));
+	log::trace!("mold:     {}", &mold);
+	let musl_x86 = env::var("MUSL_x86")
+		.unwrap_or_else(|_| String::from("/usr/lib/x86_64-linux-musl/lib"));
+	log::trace!("musl_x86: {}", &musl_x86);
+	let musl_arm = env::var("MUSL_ARM")
+		.unwrap_or_else(|_| String::from("/usr/lib/aarch64-linux-musl/lib"));
+	log::trace!("musl_arm: {}", &musl_arm);
+	let nasm = env::var("NASM").unwrap_or_else(|_| String::from("nasm"));
+	log::trace!("nasm:     {}", &nasm);
+	let gnu_as = env::var("GNU_AS").unwrap_or_else(|_| String::from("aarch64-linux-gnu-as"));
+	log::trace!("gnu_as:   {}", &gnu_as);
+	let lib_x86 =
+		env::var("ARTEMIS_RUNTIME_x86").unwrap_or_else(|_| String::from("./lib-x86_64"));
+	log::trace!("lib_x86:  {}", &lib_x86);
+	let lib_arm =
+		env::var("ARTEMIS_RUNTIME_ARM").unwrap_or_else(|_| String::from("./lib-aarch64"));
+	log::trace!("lib_arm:  {}", &lib_arm);
+
+	let paths = Paths {
+		mold,
+		musl_x86,
+		musl_arm,
+		nasm,
+		gnu_as,
+		lib_x86,
+		lib_arm,
+	};
+
+	compile(config, paths)
 }
