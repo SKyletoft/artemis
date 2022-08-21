@@ -16,7 +16,7 @@ static LOGGER: Lazy<()> = Lazy::new(|| SimpleLogger::new().init().expect("Logger
 
 #[test]
 fn assignment_to_same() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : ℤ = 1
 		y : ℤ = x;
 		()
@@ -28,7 +28,7 @@ fn assignment_to_same() -> Result<()> {
 
 #[test]
 fn literals_as_either_type() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : ℤ = 1
 		y : ℕ = 1;
 		()
@@ -40,7 +40,7 @@ fn literals_as_either_type() -> Result<()> {
 
 #[test]
 fn reject_integer_conversion() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : ℤ = 1
 		y : ℕ = x;
 		()
@@ -54,7 +54,7 @@ fn reject_integer_conversion() -> Result<()> {
 
 #[test]
 fn reject_non_bool_condition() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		if 1 {()} else {()}
 	}";
 	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
@@ -66,7 +66,7 @@ fn reject_non_bool_condition() -> Result<()> {
 
 #[test]
 fn reject_same_scope_same_type_shadowing() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x := 1
 		x := 1
 		()
@@ -80,7 +80,7 @@ fn reject_same_scope_same_type_shadowing() -> Result<()> {
 
 #[test]
 fn reject_same_scope_different_type_shadowing() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x := 1
 		x := true
 		()
@@ -94,7 +94,7 @@ fn reject_same_scope_different_type_shadowing() -> Result<()> {
 
 #[test]
 fn accept_inner_scope_shadowing() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x := 1
 		y := {
 			x := true
@@ -109,7 +109,7 @@ fn accept_inner_scope_shadowing() -> Result<()> {
 
 #[test]
 fn reject_use_of_undeclared_variable() -> Result<()> {
-	let s = "λf() -> ℕ {
+	let s = "λf() -> ℕ = {
 		x
 	}";
 	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
@@ -121,7 +121,7 @@ fn reject_use_of_undeclared_variable() -> Result<()> {
 
 #[test]
 fn reject_use_of_undeclared_function() -> Result<()> {
-	let s = "λf() -> ℕ {
+	let s = "λf() -> ℕ = {
 		g()
 	}";
 	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
@@ -133,7 +133,7 @@ fn reject_use_of_undeclared_function() -> Result<()> {
 
 #[test]
 fn reject_use_of_variable_as_function() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x := 1
 		y := x()
 		()
@@ -147,7 +147,7 @@ fn reject_use_of_variable_as_function() -> Result<()> {
 
 #[test]
 fn reject_assignment_to_const() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : ℤ = 1
 		x = 2
 		()
@@ -161,7 +161,7 @@ fn reject_assignment_to_const() -> Result<()> {
 
 #[test]
 fn accept_assignment_to_mut() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : mut ℤ = 1
 		x = 2
 		()
@@ -174,7 +174,7 @@ fn accept_assignment_to_mut() -> Result<()> {
 
 #[test]
 fn accept_if_returns_same() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x : ℝ = if true {
 			1.0
 		} else {
@@ -189,7 +189,7 @@ fn accept_if_returns_same() -> Result<()> {
 }
 #[test]
 fn reject_if_returns_different() -> Result<()> {
-	let s = "λf() {
+	let s = "λf() = {
 		x := if true {
 			true
 		} else {
@@ -206,7 +206,7 @@ fn reject_if_returns_different() -> Result<()> {
 
 #[test]
 fn accept_block_return_of_inner_variable() -> Result<()> {
-	let s = "λf (x: ℤ) → ℤ {
+	let s = "λf (x: ℤ) → ℤ = {
 		a := {
 			a : mut ℤ = 1
 			a = x + a
@@ -222,7 +222,7 @@ fn accept_block_return_of_inner_variable() -> Result<()> {
 
 #[test]
 fn infer_types() -> Result<()> {
-	let s = "λf () {
+	let s = "λf () = {
 		x := 1
 		y := true
 		z := -2
@@ -286,7 +286,7 @@ fn infer_types() -> Result<()> {
 
 #[test]
 fn accept_ending_on_declaration() -> Result<()> {
-	let s = "λf () → ℤ {
+	let s = "λf () → ℤ = {
 		x := 5
 	}";
 	let mut ordered = ordered::order(GeneratedParser::parse(Rule::top, s.trim())?)?;
