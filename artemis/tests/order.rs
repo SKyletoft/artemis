@@ -11,7 +11,7 @@ use pest::Parser;
 #[test]
 fn add_2() {
 	let s = "1 + 2";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -28,7 +28,7 @@ fn add_2() {
 #[test]
 fn add_3() {
 	let s = "1 + 2 + 3";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -49,7 +49,7 @@ fn add_3() {
 #[test]
 fn mul_front() {
 	let s = "1 * 2 + 3";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -70,7 +70,7 @@ fn mul_front() {
 #[test]
 fn mul_back() {
 	let s = "1 + 2 * 3";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -91,7 +91,7 @@ fn mul_back() {
 #[test]
 fn parenthesis_1() {
 	let s = "(1 + 2) * 3";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -112,7 +112,7 @@ fn parenthesis_1() {
 #[test]
 fn parenthesis_2() {
 	let s = "1 * (2 + 3)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -133,7 +133,7 @@ fn parenthesis_2() {
 #[test]
 fn function_call_0() {
 	let s = "f()";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -149,7 +149,7 @@ fn function_call_0() {
 #[test]
 fn function_call_1() {
 	let s = "f(x)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -165,7 +165,7 @@ fn function_call_1() {
 #[test]
 fn function_call_2() {
 	let s = "f(x, y)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -181,7 +181,7 @@ fn function_call_2() {
 #[test]
 fn function_call_3() {
 	let s = "f(x, y, x + y)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -213,7 +213,7 @@ fn function_call_trailing_comma() {
 #[test]
 fn tuple_1() {
 	let s = "(x, y)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
@@ -229,7 +229,7 @@ fn tuple_1() {
 #[test]
 fn tuple_2() {
 	let s = "(1 + 2, (2 + 3) * 2)";
-	let res = GeneratedParser::parse(Rule::term, s)
+	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()

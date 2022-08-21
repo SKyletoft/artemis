@@ -744,6 +744,11 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				Term::Literal(Literal::Boolean(pair.as_str().parse()?)).into()
 			}
 			Rule::unit => Term::Literal(Literal::Unit).into(),
+			Rule::function_call => {
+				let maybe = MaybeParsed::try_from(pair);
+				dbg!(maybe);
+				todo!("At least I (probably) found it?")
+			}
 			_ => AST::RawToken(pair.as_str().into()),
 		};
 		Ok(res)
