@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, slice};
 
 use air::simplify::{
 	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
@@ -9,41 +9,43 @@ use smallvec::SmallVec;
 
 use crate::{
 	detype::{
-		Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Subexpr,
+		Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
 		TopLevelConstruct,
 	},
 	error::Error,
 };
 
-pub fn simplify_subexpr(
-	subexpr: &Subexpr,
+pub fn simplify_term(
+	term: &Term,
 	current: &mut Block,
 	blocks: &mut Vec<Block>,
 	ctx: &mut Context,
 ) -> Result<Source> {
-	let res = match subexpr {
-		Subexpr::BinOp(BinOp { op: Op::Not, .. }) => {
+	let res = match term {
+		Term::Expr(expr) => simplify_expr(expr, current, blocks, ctx)?,
+		Term::UnOp(..) => todo!("unops"),
+		Term::BinOp(BinOp { op: Op::Not, .. }) => {
 			log::error!("Internal [{}]: Not as binop", line!());
 			bail!(Error::Internal(line!()));
 		}
-		Subexpr::BinOp(BinOp {
+		Term::BinOp(BinOp {
 			lhs: _,
 			op: Op::Delta,
 			rhs: _,
 		}) => todo!("transform into sub + abs"),
-		Subexpr::BinOp(BinOp {
+		Term::BinOp(BinOp {
 			lhs: _,
 			op: Op::FDelta,
 			rhs: _,
 		}) => todo!("transform into sub + abs"),
-		Subexpr::BinOp(BinOp {
+		Term::BinOp(BinOp {
 			lhs: _,
 			op: Op::Exp,
 			rhs: _,
 		}) => todo!("function call?"),
-		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
-			let left = simplify_subexpr(lhs, current, blocks, ctx)?;
-			let right = simplify_subexpr(rhs, current, blocks, ctx)?;
+		Term::BinOp(BinOp { lhs, op, rhs }) => {
+			let left = simplify_expr(lhs.as_ref(), current, blocks, ctx)?;
+			let right = simplify_expr(rhs.as_ref(), current, blocks, ctx)?;
 			let target = ctx.next_register();
 			let simple_operator = match op {
 				Op::Plus => SimpleOp::Add,
@@ -72,24 +74,34 @@ pub fn simplify_subexpr(
 			current.block.push(SimpleExpression::BinOp(this));
 			Source::Register(target)
 		}
-		Subexpr::IfExpr(IfExpr {
+		Term::IfExpr(IfExpr {
 			condition,
 			lhs,
 			rhs,
 		}) => {
-			let cond_reg = simplify_subexpr(condition, current, blocks, ctx)?;
+			let cond_reg = simplify_expr(condition.as_ref(), current, blocks, ctx)?;
 			let last_block = mem::take(current);
 			let curr_idx = blocks.len();
 			blocks.push(last_block);
 			let old_variables = ctx.variables.clone();
 
 			let then_start_id = blocks.len();
-			let (then_end_id, then_source) = simplify_exprs(lhs, current, blocks, ctx)?;
+			let (then_end_id, then_source) = simplify_exprs(
+				slice::from_ref(lhs.as_ref()),
+				current,
+				blocks,
+				ctx,
+			)?;
 			let then_variables =
 				mem::replace(&mut ctx.variables, old_variables.clone());
 
 			let else_start_id = blocks.len();
-			let (else_end_id, else_source) = simplify_exprs(rhs, current, blocks, ctx)?;
+			let (else_end_id, else_source) = simplify_exprs(
+				slice::from_ref(rhs.as_ref()),
+				current,
+				blocks,
+				ctx,
+			)?;
 			let else_variables =
 				mem::replace(&mut ctx.variables, old_variables.clone());
 
@@ -147,29 +159,29 @@ pub fn simplify_subexpr(
 
 			Source::Register(phi_target)
 		}
-		Subexpr::Block(exprs) => {
+		Term::Block(exprs) => {
 			let mut last = Source::Value(0);
 			for expr in exprs.iter() {
 				last = simplify_expr(expr, current, blocks, ctx)?;
 			}
 			last
 		}
-		Subexpr::Literal(v) => Source::Value(*v),
-		Subexpr::Variable(v) => match ctx.variables.get(v) {
+		Term::Literal(v) => Source::Value(*v),
+		Term::Variable(v) => match ctx.variables.get(v) {
 			Some(&r) => anyhow::Ok(r),
 			None => todo!("Handle loading of globals"),
 		}?,
-		Subexpr::Tuple(_) => todo!(
+		Term::Tuple(_) => todo!(
 			"Should tuples even exist at this stage? Should they be a stack thing?\n\
 			These are design questions, not implementation"
 		),
-		Subexpr::FunctionCall(FunctionCall {
+		Term::FunctionCall(FunctionCall {
 			function_name,
 			arguments,
 		}) => {
 			let args = arguments
 				.iter()
-				.map(|s| simplify_subexpr(s, current, blocks, ctx))
+				.map(|s| simplify_expr(s, current, blocks, ctx))
 				.collect::<Result<SmallVec<_>>>()?;
 			let target = ctx.next_register();
 			let call = SimpleFunctionCall {
@@ -180,7 +192,7 @@ pub fn simplify_subexpr(
 			current.block.push(SimpleExpression::FunctionCall(call));
 			Source::Register(target)
 		}
-		Subexpr::Unit => todo!(),
+		Term::Unit => todo!(),
 	};
 	Ok(res)
 }
@@ -192,10 +204,10 @@ pub fn simplify_expr(
 	ctx: &mut Context,
 ) -> Result<Source> {
 	match expr {
-		Expr::Subexpr(s) => simplify_subexpr(s, current, blocks, ctx),
+		Expr::Term(s) => simplify_term(s, current, blocks, ctx),
 		Expr::Declaration(Declaration { name, value })
 		| Expr::Assignment(Assignment { name, value }) => {
-			let source = simplify_subexpr(value, current, blocks, ctx)?;
+			let source = simplify_expr(value, current, blocks, ctx)?;
 			ctx.variables.insert(name.clone(), source);
 			Ok(source)
 		}
@@ -220,27 +232,13 @@ pub fn simplify_exprs(
 	Ok((final_id.into(), last_source))
 }
 
-fn simplify_top_subexpr(
-	subexpr: &Subexpr,
-	current: &mut Block,
-	blocks: &mut Vec<Block>,
-	ctx: &mut Context,
-) -> Result<(BlockId, Source)> {
-	let last_source = simplify_subexpr(subexpr, current, blocks, ctx)?;
-	current.out = BlockEnd::Return(last_source);
-	let final_block = mem::take(current);
-	blocks.push(final_block);
-	let final_id = blocks.len() - 1;
-	Ok((final_id.into(), last_source))
-}
-
 pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
 	tlcs.iter()
 		.map(|tlc| match tlc {
 			TopLevelConstruct::Function(Function {
 				name,
 				arguments,
-				subexpr,
+				expr,
 			}) => {
 				let mut current = Block::default();
 				let mut blocks = Vec::default();
@@ -254,8 +252,8 @@ pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
 						.collect(),
 					next_register: arguments.len().into(),
 				};
-				let (..) = simplify_top_subexpr(
-					subexpr,
+				let _ = simplify_exprs(
+					slice::from_ref(expr),
 					&mut current,
 					&mut blocks,
 					&mut ctx,

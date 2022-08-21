@@ -10,7 +10,7 @@ use crate::{
 		Declaration as OrderedDeclaration, Expr as OrderedExpr,
 		Function as OrderedFunction, FunctionCall as OrderedFunctionCall,
 		IfExpr as OrderedIfExpr, Literal as OrderedLiteral, Op as OrderedOp, RawType,
-		Subexpr as OrderedSubexpr, TopLevelConstruct as OrderedTopLevelConstruct,
+		Term as OrderedTerm, TopLevelConstruct as OrderedTopLevelConstruct,
 	},
 	type_check::{self, Context, FunctionType, TypeRecord},
 };
@@ -22,58 +22,66 @@ type Block = Vec<Expr>;
 pub struct Function {
 	pub name: SmallString,
 	pub arguments: Vec<SmallString>,
-	pub subexpr: Subexpr,
+	pub expr: Expr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
 	pub name: SmallString,
-	pub value: Subexpr,
+	pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
 	pub name: SmallString,
-	pub value: Subexpr,
+	pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
 	pub function_name: SmallString,
-	pub arguments: Vec<Subexpr>,
+	pub arguments: Vec<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-	Subexpr(Subexpr),
+	Term(Term),
 	Declaration(Declaration),
 	Assignment(Assignment),
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
-pub enum Subexpr {
+pub enum Term {
 	BinOp(BinOp),
+	UnOp(UnOp),
 	IfExpr(IfExpr),
 	Block(Block),
 	Literal(u64),
 	Unit,
 	Variable(SmallString),
-	Tuple(Vec<Subexpr>),
+	Tuple(Vec<Expr>),
 	FunctionCall(FunctionCall),
+	Expr(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
-	pub lhs: Box<Subexpr>,
+	pub lhs: Box<Expr>,
 	pub op: Op,
-	pub rhs: Box<Subexpr>,
+	pub rhs: Box<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnOp {
+	pub op: Op,
+	pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
-	pub condition: Box<Subexpr>,
-	pub lhs: Block,
-	pub rhs: Block,
+	pub condition: Box<Expr>,
+	pub lhs: Box<Expr>,
+	pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -123,11 +131,26 @@ pub fn detype_block(block: &[OrderedExpr], ctx: &mut Context) -> Result<(Vec<Exp
 	Ok((vec, last))
 }
 
-pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Subexpr, Type)> {
-	let res = match subexpr {
-		OrderedSubexpr::BinOp(OrderedBinOp { lhs, op, rhs }) => {
-			let (lhs, left_float) = detype_subexpr(lhs, ctx)?;
-			let (rhs, right_float) = detype_subexpr(rhs, ctx)?;
+pub fn detype_term(term: &OrderedTerm, ctx: &mut Context) -> Result<(Term, Type)> {
+	let res = match term {
+		OrderedTerm::UnOp(..) => todo!("unops"),
+		OrderedTerm::Expr(expr) => match expr.as_ref() {
+			OrderedExpr::Term(t) => {
+				let (term, typ) = detype_term(t, ctx)?;
+				(term, typ)
+			}
+			OrderedExpr::Declaration(d) => {
+				let (decl, typ) = detype_declaration(d, ctx)?;
+				(Term::Expr(Box::new(Expr::Declaration(decl))), typ)
+			}
+			OrderedExpr::Assignment(a) => {
+				let (assign, typ) = detype_assignment(a, ctx)?;
+				(Term::Expr(Box::new(Expr::Assignment(assign))), typ)
+			}
+		},
+		OrderedTerm::BinOp(OrderedBinOp { lhs, op, rhs }) => {
+			let (lhs, left_float) = detype_expr(lhs.as_ref(), ctx)?;
+			let (rhs, right_float) = detype_expr(rhs.as_ref(), ctx)?;
 			if left_float != right_float {
 				log::error!(
 					"Internal [{}]: Left and right aren't of same floatiness\n\
@@ -156,21 +179,21 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 				(OrderedOp::Xor, _) => Op::Xor,
 				(OrderedOp::Dot, _) => Op::Dot,
 			};
-			let res = Subexpr::BinOp(BinOp {
+			let res = Term::BinOp(BinOp {
 				lhs: Box::new(lhs),
 				op,
 				rhs: Box::new(rhs),
 			});
 			(res, left_float)
 		}
-		OrderedSubexpr::IfExpr(OrderedIfExpr {
+		OrderedTerm::IfExpr(OrderedIfExpr {
 			condition,
 			lhs,
 			rhs,
 		}) => {
-			let (condition, cond_float) = detype_subexpr(condition, ctx)?;
-			let (lhs, left_float) = detype_block(lhs, ctx)?;
-			let (rhs, right_float) = detype_block(rhs, ctx)?;
+			let (condition, cond_float) = detype_expr(condition.as_ref(), ctx)?;
+			let (lhs, left_float) = detype_expr(lhs.as_ref(), ctx)?;
+			let (rhs, right_float) = detype_expr(rhs.as_ref(), ctx)?;
 			if left_float != right_float || cond_float == Type::Floating {
 				log::error!(
 					"Internal [{}]: Incorrect floatiness in typechecked context\n\
@@ -179,25 +202,25 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 				);
 				bail!(Error::Internal(line!()));
 			}
-			let res = Subexpr::IfExpr(IfExpr {
+			let res = Term::IfExpr(IfExpr {
 				condition: Box::new(condition),
-				lhs,
-				rhs,
+				lhs: Box::new(lhs),
+				rhs: Box::new(rhs),
 			});
 			(res, left_float)
 		}
-		OrderedSubexpr::Block(block) => {
+		OrderedTerm::Block(block) => {
 			let (res, is_float) = detype_block(block, ctx)?;
-			(Subexpr::Block(res), is_float)
+			(Term::Block(res), is_float)
 		}
-		OrderedSubexpr::Literal(l) => match l {
-			OrderedLiteral::Float(f) => (Subexpr::Literal(f.to_bits()), Type::Floating),
-			OrderedLiteral::Boolean(b) => (Subexpr::Literal(*b as u64), Type::Unsigned),
-			OrderedLiteral::Unit => (Subexpr::Unit, Type::Unsigned),
-			OrderedLiteral::Integer(l) => (Subexpr::Literal(*l), Type::Unsigned),
+		OrderedTerm::Literal(l) => match l {
+			OrderedLiteral::Float(f) => (Term::Literal(f.to_bits()), Type::Floating),
+			OrderedLiteral::Boolean(b) => (Term::Literal(*b as u64), Type::Unsigned),
+			OrderedLiteral::Unit => (Term::Unit, Type::Unsigned),
+			OrderedLiteral::Integer(l) => (Term::Literal(*l), Type::Unsigned),
 		},
-		OrderedSubexpr::Variable(name) => {
-			let res = Subexpr::Variable(name.clone());
+		OrderedTerm::Variable(name) => {
+			let res = Term::Variable(name.clone());
 			let raw = ctx
 				.get(name)
 				.ok_or_else(|| {
@@ -219,16 +242,16 @@ pub fn detype_subexpr(subexpr: &OrderedSubexpr, ctx: &mut Context) -> Result<(Su
 			};
 			(res, is_float)
 		}
-		OrderedSubexpr::Tuple(_) => todo!("I should probably get rid of tuples here"),
-		OrderedSubexpr::FunctionCall(OrderedFunctionCall {
+		OrderedTerm::Tuple(_) => todo!("I should probably get rid of tuples here"),
+		OrderedTerm::FunctionCall(OrderedFunctionCall {
 			function_name,
 			arguments,
 		}) => {
 			let arguments = arguments
 				.iter()
-				.map(|arg| detype_subexpr(arg, ctx).map(|(a, _)| a))
+				.map(|arg| detype_expr(arg, ctx).map(|(a, _)| a))
 				.collect::<Result<Vec<_>>>()?;
-			let res = Subexpr::FunctionCall(FunctionCall {
+			let res = Term::FunctionCall(FunctionCall {
 				function_name: function_name.clone(),
 				arguments,
 			});
@@ -265,10 +288,10 @@ pub fn detype_declaration(
 	}: &OrderedDeclaration,
 	ctx: &mut Context,
 ) -> Result<(Declaration, Type)> {
-	let (value, typ) = detype_subexpr(value, ctx)?;
+	let (value, typ) = detype_expr(value.as_ref(), ctx)?;
 	let res = Declaration {
 		name: name.clone(),
-		value,
+		value: Box::new(value),
 	};
 	ctx.insert(
 		name.clone(),
@@ -281,19 +304,19 @@ pub fn detype_assignment(
 	OrderedAssignment { name, value }: &OrderedAssignment,
 	ctx: &mut Context,
 ) -> Result<(Assignment, Type)> {
-	let (value, typ) = detype_subexpr(value, ctx)?;
+	let (value, typ) = detype_expr(value.as_ref(), ctx)?;
 	let res = Assignment {
 		name: name.clone(),
-		value,
+		value: Box::new(value),
 	};
 	Ok((res, typ))
 }
 
 pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, Type)> {
 	let res = match expr {
-		OrderedExpr::Subexpr(s) => {
-			let (subexpr, is_float) = detype_subexpr(s, ctx)?;
-			(Expr::Subexpr(subexpr), is_float)
+		OrderedExpr::Term(s) => {
+			let (term, is_float) = detype_term(s, ctx)?;
+			(Expr::Term(term), is_float)
 		}
 		OrderedExpr::Declaration(d) => {
 			let (decl, is_float) = detype_declaration(d, ctx)?;
@@ -307,10 +330,10 @@ pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, Type)
 	Ok(res)
 }
 
-pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruct>> {
-	let mut ctx = exprs
-		.iter()
-		.map(|tlc| match tlc {
+// Implemented on reference so we don't have to clone thrown away fields
+impl From<&OrderedTopLevelConstruct> for (SmallString, (TypeRecord, bool)) {
+	fn from(tlc: &OrderedTopLevelConstruct) -> Self {
+		match tlc {
 			OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
 				name,
 				type_name,
@@ -339,8 +362,15 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 					true,
 				),
 			),
-		})
-		.collect::<HashMap<_, _>>();
+		}
+	}
+}
+
+pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruct>> {
+	let mut ctx = exprs
+		.iter()
+		.map(<&OrderedTopLevelConstruct>::into)
+		.collect::<Context>();
 
 	exprs.iter()
 		.map(|expr| {
@@ -348,7 +378,7 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 				OrderedTopLevelConstruct::Function(OrderedFunction {
 					name,
 					arguments,
-					subexpr,
+					expr,
 					..
 				}) => {
 					let mut inner_ctx = type_check::copy_for_inner_scope(&ctx);
@@ -363,14 +393,14 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 							),
 						);
 					}
-					let (subexpr, _) = detype_subexpr(subexpr, &mut inner_ctx)?;
+					let (expr, _) = detype_expr(expr, &mut inner_ctx)?;
 					TopLevelConstruct::Function(Function {
 						name: name.clone(),
 						arguments: arguments
 							.iter()
 							.map(|Argument { name, .. }| name.clone())
 							.collect(),
-						subexpr,
+						expr,
 					})
 				}
 				OrderedTopLevelConstruct::Declaration(OrderedDeclaration {
@@ -378,10 +408,10 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 					value,
 					..
 				}) => {
-					let (value, _) = detype_subexpr(value, &mut ctx)?;
+					let (value, _) = detype_expr(value.as_ref(), &mut ctx)?;
 					TopLevelConstruct::Declaration(Declaration {
 						name: name.clone(),
-						value,
+						value: Box::new(value),
 					})
 				}
 			};

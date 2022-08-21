@@ -39,7 +39,7 @@ integer =  { (plus | minus)? ~ digit+ ~ (metrix_prefix | binary_prefix)? }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ (metrix_prefix | binary_prefix)? }
 boolean =  { "𝕋" | "𝔽" | "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
-tuple   =  { "(" ~ ws ~ subexpr ~ (ws ~ "," ~ ws ~ subexpr)+ ~ ws ~ ")" }
+tuple   =  { "(" ~ ws ~ expr ~ (ws ~ "," ~ ws ~ expr)+ ~ ws ~ ")" }
 string  = ${ "\"" ~ inner_s ~ "\"" }
 char    =  { "'" ~ single_char ~ "'" }
 
@@ -50,30 +50,39 @@ single_char =  {
 	| "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-declaration = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ subexpr }
-assignment  = { var_name ~ ws ~ operator? ~ "=" ~ ws ~ subexpr }
+declaration   = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
+assignment    = { var_name ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
+function_call = { var_name ~ ws ~ "(" ~ ws ~ ((expr ~ ws ~ "," ~ ws)* ~ ws ~ expr)? ~ ws ~ ")" }
 
-function_call = { var_name ~ ws ~ "(" ~ ws ~ ((subexpr ~ ws ~ "," ~ ws)* ~ ws ~ subexpr)? ~ ws ~ ")" }
+if_expr = {
+	("?" | "if" | "`if`" ) ~ ws ~ expr ~ ws ~
+	expr ~ ws ~
+	("|" | "else" | "`else`" ) ~ ws ~ expr
+}
+expr = {
+	declaration
+	| assignment
+	| unary_operator ~ ws ~ term
+	| term ~ (ws ~ binary_operator ~ ws ~ term)*
+}
 
 term = {
 	float
 	| integer
 	| boolean
+	| string
+	| char
 	| unit
 	| tuple
-	| "(" ~ ws ~ subexpr ~ ws ~ ")"
 	| block
 	| if_expr
 	| function_call
-	| string
-	| char
+	| declaration
+	| assignment
 	| var_name
 }
-operator = { exp | times | div | plus | minus | delta }
-
-if_expr = { ("?" | "if" | "`if`" ) ~ ws ~ subexpr ~ ws ~ block ~ ws ~ ("|" | "else" | "`else`" ) ~ ws ~ (block | if_expr) }
-subexpr = { term ~ (ws ~ operator ~ ws ~ term)* }
-expr    = { declaration | assignment | subexpr }
+binary_operator = { exp | times | div | plus | minus | delta | and | or | xor }
+unary_operator  = { not | minus }
 
 fn_keyword = { "\\" | "λ" | "fn" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
@@ -96,3 +105,4 @@ enum_definition = {
 }
 
 top = { SOI ~ ws ~ (function_definition ~ ws)* ~ ws ~ EOI }
+

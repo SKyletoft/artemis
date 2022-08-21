@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, slice};
 
 use anyhow::{bail, Result};
 use smallvec::SmallVec;
@@ -8,7 +8,7 @@ use crate::{
 	error::Error,
 	ordered::{
 		Argument, Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr,
-		Literal, Op, RawType, Subexpr, TopLevelConstruct, Type,
+		Literal, Op, RawType, Term, TopLevelConstruct, Type,
 	},
 };
 
@@ -77,7 +77,7 @@ fn check_function(
 		name,
 		arguments,
 		return_type,
-		subexpr,
+		expr,
 	}: &mut Function,
 	ctx: &mut Context,
 ) -> Result<()> {
@@ -88,7 +88,7 @@ fn check_function(
 			(TypeRecord::Variable(type_name.clone()), true),
 		);
 	}
-	let last = check_subexpr(subexpr, &mut inner_ctx)?.raw;
+	let last = check_expr(expr, &mut inner_ctx)?.raw;
 	if !last.integer_equality(return_type) {
 		log::error!(
 			"Type mismatch in function return type [{}]: {return_type:?} \
@@ -127,8 +127,11 @@ fn check_declaration(
 		);
 		bail!(Error::TypeError(line!()))
 	}
-	check_subexpr(value, ctx)?;
-	let actual_type = check_subexpr(value, ctx)?;
+	// TODO: See if stuff works when first call is remove
+	// Chesterton's fence: remnant of before check_term and type_of_term got merged
+	// repeat in next function
+	// check_expr(value, ctx)?;
+	let actual_type = check_expr(value, ctx)?;
 	let correct_type = match type_name.raw {
 		RawType::Inferred => actual_type.clone(),
 		_ => type_name.clone(),
@@ -153,8 +156,8 @@ fn check_assignment(
 	Assignment { name, value }: &mut Assignment,
 	ctx: &mut Context,
 ) -> Result<Type> {
-	check_subexpr(value, ctx)?;
-	let actual_type = check_subexpr(value, ctx)?.raw;
+	// check_expr(value, ctx)?;
+	let actual_type = check_expr(value, ctx)?.raw;
 	let recorded_type = ctx.get(name).ok_or_else(|| {
 		log::error!("Use of undeclared variable [{}]: {name}", line!());
 		Error::TypeError(line!())
@@ -196,17 +199,23 @@ fn check_assignment(
 
 fn check_expr(expr: &mut Expr, ctx: &mut Context) -> Result<Type> {
 	match expr {
-		Expr::Subexpr(s) => check_subexpr(s, ctx),
+		Expr::Term(s) => check_term(s, ctx),
 		Expr::Declaration(d) => check_declaration(d, ctx),
 		Expr::Assignment(a) => check_assignment(a, ctx),
 	}
 }
 
-fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
+fn check_term(expr: &mut Term, ctx: &mut Context) -> Result<Type> {
 	let res = match expr {
-		Subexpr::BinOp(BinOp { lhs, op, rhs }) => {
-			let lhs_type = check_subexpr(lhs, ctx)?;
-			let rhs_type = check_subexpr(rhs, ctx)?;
+		Term::UnOp(_) => todo!(),
+		Term::Expr(e) => match e.as_mut() {
+			Expr::Term(t) => check_term(t, ctx)?,
+			Expr::Declaration(d) => check_declaration(d, ctx)?,
+			Expr::Assignment(a) => check_assignment(a, ctx)?,
+		},
+		Term::BinOp(BinOp { lhs, op, rhs }) => {
+			let lhs_type = check_expr(lhs.as_mut(), ctx)?;
+			let rhs_type = check_expr(rhs.as_mut(), ctx)?;
 			let eq =
 				match op {
 					Op::Plus | Op::Minus | Op::Times | Op::Div | Op::Exp => {
@@ -242,12 +251,12 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 			}
 			lhs_type
 		}
-		Subexpr::IfExpr(IfExpr {
+		Term::IfExpr(IfExpr {
 			condition,
 			lhs,
 			rhs,
 		}) => {
-			let cond_type = check_subexpr(condition, ctx)?;
+			let cond_type = check_expr(condition.as_mut(), ctx)?;
 			if cond_type.raw != RawType::Boolean {
 				log::error!(
 					"Type error [{}]: Non boolean condition in if statement\n{condition:?}",
@@ -255,8 +264,8 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 				);
 				bail!(Error::TypeError(line!()));
 			}
-			let lhs_type = check_block(lhs, ctx)?;
-			let rhs_type = check_block(rhs, ctx)?;
+			let lhs_type = check_block(slice::from_mut(lhs.as_mut()), ctx)?;
+			let rhs_type = check_block(slice::from_mut(rhs.as_mut()), ctx)?;
 
 			if !lhs_type.raw.integer_equality(&rhs_type.raw) {
 				log::error!(
@@ -269,18 +278,18 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 
 			lhs_type
 		}
-		Subexpr::Block(block) => check_block(block, ctx)?,
-		Subexpr::Tuple(tuple) => {
+		Term::Block(block) => check_block(block, ctx)?,
+		Term::Tuple(tuple) => {
 			let types = tuple
 				.iter_mut()
-				.map(|s| check_subexpr(s, ctx))
+				.map(|s| check_expr(s, ctx))
 				.collect::<Result<Vec<Type>>>()?;
 			Type {
 				raw: RawType::Tuple(types),
 				mutable: false,
 			}
 		}
-		Subexpr::FunctionCall(FunctionCall {
+		Term::FunctionCall(FunctionCall {
 			function_name,
 			arguments,
 		}) => {
@@ -310,7 +319,7 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 			for (expected_arg, actual_arg) in
 				expected_args.iter().zip(arguments.iter_mut())
 			{
-				let actual_type = check_subexpr(actual_arg, ctx)?;
+				let actual_type = check_expr(actual_arg, ctx)?;
 				if !expected_arg.raw.integer_equality(&actual_type.raw) {
 					log::error!(
 						"Type mismatch in function arguments [{}]: {expected_arg:?} {actual_type:?}", line!()
@@ -323,23 +332,23 @@ fn check_subexpr(expr: &mut Subexpr, ctx: &mut Context) -> Result<Type> {
 				mutable: false,
 			}
 		}
-		Subexpr::Literal(Literal::Integer(_)) => Type {
+		Term::Literal(Literal::Integer(_)) => Type {
 			raw: RawType::IntegerLiteral,
 			mutable: false,
 		},
-		Subexpr::Literal(Literal::Float(_)) => Type {
+		Term::Literal(Literal::Float(_)) => Type {
 			raw: RawType::Real,
 			mutable: false,
 		},
-		Subexpr::Literal(Literal::Boolean(_)) => Type {
+		Term::Literal(Literal::Boolean(_)) => Type {
 			raw: RawType::Boolean,
 			mutable: false,
 		},
-		Subexpr::Literal(Literal::Unit) => Type {
+		Term::Literal(Literal::Unit) => Type {
 			raw: RawType::Unit,
 			mutable: false,
 		},
-		Subexpr::Variable(name) => ctx
+		Term::Variable(name) => ctx
 			.get(name)
 			.ok_or_else(|| {
 				let bt = backtrace::Backtrace::new();

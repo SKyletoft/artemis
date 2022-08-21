@@ -1,6 +1,7 @@
 use std::mem;
 
 use anyhow::{bail, Result};
+use derive_more::From;
 use pest::{
 	iterators::{Pair, Pairs},
 	Parser,
@@ -18,20 +19,20 @@ pub struct Function {
 	pub name: SmallString,
 	pub arguments: SmallVec<[Argument; 4]>,
 	pub return_type: RawType,
-	pub subexpr: Subexpr,
+	pub expr: Expr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
 	pub name: SmallString,
 	pub type_name: Type,
-	pub value: Subexpr,
+	pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
 	pub name: SmallString,
-	pub value: Subexpr,
+	pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,28 +44,78 @@ pub struct Argument {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
 	pub function_name: SmallString,
-	pub arguments: Vec<Subexpr>,
+	pub arguments: Vec<Expr>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly, From)]
 pub enum Expr {
-	Subexpr(Subexpr),
+	Term(Term),
 	Declaration(Declaration),
 	Assignment(Assignment),
 }
 
+impl TryFrom<AST> for Expr {
+	type Error = Error;
+
+	fn try_from(ast: AST) -> Result<Self, Error> {
+		let res = match ast {
+			AST::Term(s) => Expr::Term(s),
+			AST::Declaration(d) => *d.value,
+			AST::Assignment(a) => *a.value,
+			_ => return Err(Error::ParseError(line!())),
+		};
+
+		Ok(res)
+	}
+}
+
+impl TryFrom<&AST> for Expr {
+	type Error = Error;
+
+	fn try_from(ast: &AST) -> Result<Self, Error> {
+		let res = match ast {
+			AST::Term(s) => Expr::Term(s.clone()),
+			AST::Declaration(d) => *d.value.clone(),
+			AST::Assignment(a) => *a.value.clone(),
+			_ => return Err(Error::ParseError(line!())),
+		};
+
+		Ok(res)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Variantly)]
-pub enum Subexpr {
+pub enum Term {
 	BinOp(BinOp),
+	UnOp(UnOp),
 	IfExpr(IfExpr),
 	Block(Block),
 	Literal(Literal),
 	Variable(SmallString),
-	Tuple(Vec<Subexpr>),
+	Tuple(Vec<Expr>),
 	FunctionCall(FunctionCall),
+	Expr(Box<Expr>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl TryFrom<AST> for Term {
+	type Error = Error;
+
+	fn try_from(value: AST) -> Result<Self, Self::Error> {
+		let res = match value {
+			AST::Declaration(d) => Term::Expr(Box::new(Expr::Declaration(d))),
+			AST::Assignment(a) => Term::Expr(Box::new(Expr::Assignment(a))),
+			AST::Expr(e) => Term::Expr(Box::new(e)),
+			AST::Term(t) => t,
+			AST::IfExpr(i) => Term::IfExpr(i),
+			AST::Literal(l) => Term::Literal(l),
+			AST::Block(b) => Term::Block(b),
+			_ => return Err(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Variantly, From)]
 pub enum Literal {
 	Integer(u64),
 	Float(f64),
@@ -73,17 +124,23 @@ pub enum Literal {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BinOp {
-	pub lhs: Box<Subexpr>,
+pub struct UnOp {
 	pub op: Op,
-	pub rhs: Box<Subexpr>,
+	pub rhs: Box<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinOp {
+	pub lhs: Box<Expr>,
+	pub op: Op,
+	pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
-	pub condition: Box<Subexpr>,
-	pub lhs: Block,
-	pub rhs: Block,
+	pub condition: Box<Expr>,
+	pub lhs: Box<Expr>,
+	pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,7 +158,7 @@ pub enum Op {
 	Dot,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum RawType {
 	Integer,
 	Natural,
@@ -109,6 +166,7 @@ pub enum RawType {
 	IntegerLiteral,
 	Boolean,
 	Unit,
+	#[variantly(rename = "StructType")]
 	Struct(SmallString),
 	Tuple(Vec<Type>),
 	Inferred,
@@ -150,7 +208,7 @@ impl Type {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, PartialEq, Variantly)]
+#[derive(Debug, Clone, PartialEq, Variantly, From)]
 pub enum TopLevelConstruct {
 	Function(Function),
 	Declaration(Declaration),
@@ -161,8 +219,8 @@ impl TryFrom<AST> for TopLevelConstruct {
 
 	fn try_from(value: AST) -> Result<Self, Self::Error> {
 		match value.clone() {
-			AST::Declaration(d) => Ok(TopLevelConstruct::Declaration(d)),
-			AST::Function(f) => Ok(TopLevelConstruct::Function(f)),
+			AST::Declaration(d) => Ok(d.into()),
+			AST::Function(f) => Ok(f.into()),
 			_ => {
 				log::error!("Illegal construct at top level: {value:?}");
 				bail!(Error::ParseError(line!()))
@@ -171,14 +229,14 @@ impl TryFrom<AST> for TopLevelConstruct {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Variantly)]
+#[derive(Debug, Clone, PartialEq, Variantly, From)]
 pub enum AST {
 	Declaration(Declaration),
 	Assignment(Assignment),
 	Function(Function),
 	Argument(Argument),
 	Expr(Expr),
-	Subexpr(Subexpr),
+	Term(Term),
 	IfExpr(IfExpr),
 	#[variantly(rename = "TypeLiteral")]
 	Type(Type),
@@ -218,97 +276,114 @@ enum MaybeParsed {
 	Empty,
 }
 
+impl From<Term> for Result<MaybeParsed> {
+	fn from(t: Term) -> Self {
+		Ok(MaybeParsed::Parsed(AST::Term(t)))
+	}
+}
+
 impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'a, Rule>) -> Result<MaybeParsed, Self::Error> {
-		match pair.as_rule() {
-			Rule::term => {
-				let inner = pair
-					.into_inner()
+		log::trace!(
+			"[{}]: {:#?}\n{:#?}\n{:#?}",
+			line!(),
+			pair.as_rule(),
+			pair.as_str(),
+			&pair
+		);
+		let rule = pair.as_rule();
+		let mut inner = pair.clone().into_inner();
+		match rule {
+			Rule::tuple => {
+				let tuple = inner
+					.map(|pair| {
+						let expr = AST::try_from(pair)?
+							.expr()
+							.ok_or(Error::ParseError(line!()))?;
+						Ok(expr)
+					})
+					.collect::<Result<Vec<_>>>()?;
+				Ok(MaybeParsed::Parsed(AST::Term(Term::Tuple(tuple))))
+			}
+			Rule::block => {
+				let block = inner
+					.map(|pair| {
+						let ast = AST::try_from(pair)?;
+						let expr = ast
+							.expr()
+							.ok_or(Error::ParseError(line!()))?;
+						Ok(expr)
+					})
+					.collect::<Result<Block>>()?;
+				Ok(MaybeParsed::Parsed(AST::Block(block)))
+			}
+			// Parentheses
+			Rule::term => inner
+				.next()
+				.and_then(|pair| {
+					let ast = AST::try_from(pair.clone());
+					log::trace!(
+						"[{}]: {:#?} → {:#?}",
+						line!(),
+						&pair.as_str(),
+						&ast
+					);
+					let res: Term = ast.ok()?.try_into().ok()?;
+					Some(res)
+				})
+				.ok_or(Error::ParseError(line!()))?
+				.into(),
+			Rule::if_expr => Term::IfExpr(
+				inner.next()
+					.and_then(|pair| AST::try_from(pair).ok()?.if_expr())
+					.ok_or(Error::ParseError(line!()))?,
+			)
+			.into(),
+			Rule::function_call => {
+				let mut inner_2 = inner
 					.next()
-					.expect("Rule should always contain exactly one subrule");
-				let subexpr = match inner.as_rule() {
-					Rule::float => Subexpr::Literal(Literal::Float(
-						inner.as_str().parse()?,
-					)),
-					Rule::integer => {
-						// Try to parse as unsigned, on fail, retry as signed
-						// instead and bitcast to unsigned because our IR
-						// only supports unsigned
-						let val = inner.as_str().parse::<u64>().or_else(
-							|_| -> Result<u64> {
-								Ok(inner.as_str().parse::<i64>()?
-									as u64)
-							},
-						)?;
-						Subexpr::Literal(Literal::Integer(val))
-					}
-					Rule::boolean => Subexpr::Literal(Literal::Boolean(
-						inner.as_str().parse()?,
-					)),
-					Rule::unit => Subexpr::Literal(Literal::Unit),
-					Rule::tuple => {
-						let tuple = inner
-							.into_inner()
-							.map(|pair| {
-								let expr = AST::try_from(pair)?
-									.subexpr()
-									.ok_or(
-										Error::ParseError(
-											line!(),
-										),
-									)?;
-								Ok(expr)
-							})
-							.collect::<Result<Vec<_>>>()?;
-						Subexpr::Tuple(tuple)
-					}
-					// Parentheses
-					Rule::subexpr => AST::try_from(inner)?
-						.subexpr()
-						.ok_or(Error::ParseError(line!()))?,
-					Rule::block => {
-						let vec = AST::try_from(inner)?
-							.block()
-							.ok_or(Error::ParseError(line!()))?;
-						Subexpr::Block(vec)
-					}
-					Rule::if_expr => AST::try_from(inner)?
-						.subexpr()
-						.ok_or(Error::ParseError(line!()))?,
-					Rule::function_call => {
-						let mut inner_2 = inner
-							.into_inner()
-							.map(AST::try_from)
-							.collect::<Result<SmallVec<[AST; 8]>>>()?;
-						// There is always at least the name of the function being called
-						if inner_2.is_empty() {
-							bail!(Error::Internal(line!()));
-						}
-						let function_name = inner_2
-							.remove(0)
-							.subexpr()
-							.and_then(Subexpr::variable)
-							.ok_or(Error::Internal(line!()))?;
-						let arguments = inner_2
-							.into_iter()
-							.map(AST::subexpr)
-							.collect::<Option<Vec<_>>>()
-							.ok_or(Error::ParseError(line!()))?;
-						Subexpr::FunctionCall(FunctionCall {
-							function_name,
-							arguments,
-						})
-					}
-					Rule::var_name => Subexpr::Variable(inner.as_str().into()),
+					.expect("There should be exactly one thing?")
+					.into_inner()
+					.map(AST::try_from)
+					.collect::<Result<SmallVec<[AST; 8]>>>()?;
+				// There is always at least the name of the function being called
+				if inner_2.is_empty() {
+					bail!(Error::Internal(line!()));
+				}
+				let function_name = inner_2
+					.remove(0)
+					.term()
+					.and_then(Term::variable)
+					.ok_or(Error::Internal(line!()))?;
+				let arguments = inner_2
+					.into_iter()
+					.map(AST::expr)
+					.collect::<Option<Vec<_>>>()
+					.ok_or(Error::ParseError(line!()))?;
+				Ok(MaybeParsed::Parsed(AST::Term(Term::FunctionCall(
+					FunctionCall {
+						function_name,
+						arguments,
+					},
+				))))
+			}
+			Rule::var_name => Term::Variable(inner.as_str().into()).into(),
+			Rule::unary_operator => {
+				let inner_op = inner
+					.next()
+					.expect("Rule should always contain exactly one subrule")
+					.as_rule();
+				let op = match inner_op {
+					Rule::minus => Op::Minus,
+					Rule::not => Op::Not,
 					_ => bail!(Error::Internal(line!())),
 				};
-				Ok(MaybeParsed::Parsed(AST::Subexpr(subexpr)))
+				Ok(MaybeParsed::Operator(op))
 			}
-			Rule::operator => {
-				let inner_op = pair
-					.into_inner()
+			Rule::binary_operator => {
+				let inner_op = inner
 					.next()
 					.expect("Rule should always contain exactly one subrule")
 					.as_rule();
@@ -319,7 +394,6 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 					Rule::times => Op::Times,
 					Rule::div => Op::Div,
 					Rule::exp => Op::Exp,
-					Rule::not => Op::Not,
 					Rule::and => Op::And,
 					Rule::or => Op::Or,
 					Rule::xor => Op::Xor,
@@ -327,7 +401,11 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 				};
 				Ok(MaybeParsed::Operator(op))
 			}
-			_ => unreachable!(),
+
+			_ => {
+				let ast = AST::try_from(pair)?;
+				Ok(MaybeParsed::Parsed(ast))
+			}
 		}
 	}
 }
@@ -342,19 +420,19 @@ fn replace_bin_op(tokens: &mut SmallVec<[MaybeParsed; 4]>, idx: usize) -> Result
 		.ok_or(Error::Internal(line!()))?;
 	let lhs = mem::replace(&mut tokens[idx - 1], MaybeParsed::Empty)
 		.parsed()
-		.and_then(AST::subexpr)
+		.and_then(AST::term)
 		.ok_or(Error::ParseError(line!()))?;
 	let rhs = tokens
 		.remove(idx)
 		.parsed()
-		.and_then(AST::subexpr)
+		.and_then(AST::term)
 		.ok_or(Error::ParseError(line!()))?;
-	let res = Subexpr::BinOp(BinOp {
-		lhs: Box::new(lhs),
+	let res = Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(lhs)),
 		op,
-		rhs: Box::new(rhs),
+		rhs: Box::new(Expr::Term(rhs)),
 	});
-	tokens[idx - 1] = MaybeParsed::Parsed(AST::Subexpr(res));
+	tokens[idx - 1] = MaybeParsed::Parsed(AST::Term(res));
 	Ok(())
 }
 
@@ -363,7 +441,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 
 	fn try_from(pair: Pair<'a, Rule>) -> Result<Self, Self::Error> {
 		let res = match pair.as_rule() {
-			Rule::var_name => AST::Subexpr(Subexpr::Variable(pair.as_str().into())),
+			Rule::var_name => AST::Term(Term::Variable(pair.as_str().into())),
 			Rule::type_name => {
 				let mut inner = pair
 					.into_inner()
@@ -424,8 +502,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					bail!(Error::Internal(line!()));
 				}
 
-				let value = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
-					.ok_or(Error::ParseError(line!()))?;
+				let expr = inner.pop().expect("Length checked above").try_into()?;
 				let type_name = remove_by_pattern!(&mut inner, AST::Type(a), a)
 					.unwrap_or(Type {
 						raw: RawType::Inferred,
@@ -433,18 +510,19 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					});
 				let name = remove_by_pattern!(
 					&mut inner,
-					AST::Subexpr(Subexpr::Variable(a)),
+					AST::Term(Term::Variable(a)),
 					a
 				)
 				.ok_or(Error::ParseError(line!()))?;
 				AST::Declaration(Declaration {
 					name,
 					type_name,
-					value,
+					value: Box::new(expr),
 				})
 			}
 			Rule::assignment => {
-				let mut inner = pair
+				log::trace!("[{}]: {:#?}", line!(), &pair);
+				let inner = pair
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
@@ -453,54 +531,40 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					bail!(Error::Internal(line!()));
 				}
 
-				let rhs = remove_by_pattern!(&mut inner, AST::Subexpr(a), a)
-					.ok_or(Error::ParseError(line!()))?;
-				let op = remove_by_pattern!(&mut inner, AST::RawToken(a), a);
-				let name = remove_by_pattern!(
-					&mut inner,
-					AST::Subexpr(Subexpr::Variable(a)),
-					a
-				)
-				.ok_or(Error::ParseError(line!()))?;
-
-				let value = if let Some(op) = op {
-					let mut op_tokens = GeneratedParser::parse(
-						Rule::operator,
-						op.as_str(),
-					)?
-					.map(MaybeParsed::try_from)
-					.collect::<Result<SmallVec<[MaybeParsed; 1]>>>()?;
-					if op_tokens.len() != 1 {
-						bail!(Error::Internal(line!()));
+				match inner.as_slice() {
+					[AST::Term(Term::Variable(name)), val] => {
+						let value = Box::new(val.try_into()?);
+						AST::Assignment(Assignment {
+							name: name.clone(),
+							value,
+						})
 					}
-					let op = op_tokens
+					[AST::Term(Term::Variable(name)), AST::RawToken(t), val] => {
+						let rhs = todo!(); //Box::new(val.try_into()?);
+						let op = GeneratedParser::parse(
+							Rule::binary_operator,
+							t.as_str(),
+						)?
+						.map(MaybeParsed::try_from)
+						.collect::<Result<SmallVec<[MaybeParsed; 1]>>>()?
 						.pop()
 						.map(MaybeParsed::try_from)
 						.expect("Length checked above")?
 						.operator()
 						.ok_or(Error::ParseError(line!()))?;
-					Subexpr::BinOp(BinOp {
-						lhs: Box::new(Subexpr::Variable(name.clone())),
-						op,
-						rhs: Box::new(rhs),
-					})
-				} else {
-					rhs
-				};
-
-				AST::Assignment(Assignment { name, value })
-			}
-			Rule::expr => {
-				let mut inner = pair
-					.into_inner()
-					.map(AST::try_from)
-					.collect::<Result<SmallVec<[AST; 8]>>>()?;
-				if inner.len() != 1 {
-					bail!(Error::Internal(line!()));
+						AST::Term(Term::BinOp(BinOp {
+							lhs: Box::new(Expr::Term(Term::Variable(
+								name.clone(),
+							))),
+							op,
+							rhs,
+						}))
+					}
+					_ => bail!(Error::ParseError(line!())),
 				}
-				inner.pop().unwrap()
 			}
-			Rule::subexpr => {
+			// expr here is what used to be parentheses and can be treated as a pure expression
+			Rule::expr | Rule::term => {
 				let mut tokens = pair
 					.into_inner()
 					.map(MaybeParsed::try_from)
@@ -559,7 +623,10 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				if !matches!(tokens.as_slice(), [MaybeParsed::Parsed(_)]) {
 					bail!(Error::ParseError(line!()));
 				}
-				tokens.remove(0).parsed().ok_or(Error::Internal(line!()))?
+				tokens.pop()
+					.expect("Checked in pattern above")
+					.parsed()
+					.expect("Checked in pattern above")
 			}
 			Rule::fn_keyword => AST::RawToken(pair.as_str().into()),
 			Rule::argument => {
@@ -571,7 +638,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.ok_or(Error::ParseError(line!()))?;
 				let name = remove_by_pattern!(
 					&mut inner,
-					AST::Subexpr(Subexpr::Variable(a)),
+					AST::Term(Term::Variable(a)),
 					a
 				)
 				.ok_or(Error::ParseError(line!()))?;
@@ -584,10 +651,10 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.collect::<Result<SmallVec<[AST; 8]>>>()?;
 				// Reverse order to reduce moves in the SmallVec
 				let last = inner.pop();
-				let subexpr = match last {
-					Some(AST::Subexpr(s)) => s,
-					Some(AST::Declaration(d)) => d.value,
-					Some(AST::Assignment(a)) => a.value,
+				let expr = match last {
+					Some(AST::Term(s)) => Expr::Term(s),
+					Some(AST::Declaration(d)) => *d.value,
+					Some(AST::Assignment(a)) => *a.value,
 					_ => bail!(Error::ParseError(line!())),
 				};
 				let return_type =
@@ -604,7 +671,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 				};
 				let name = remove_by_pattern!(
 					&mut inner,
-					AST::Subexpr(Subexpr::Variable(a)),
+					AST::Term(Term::Variable(a)),
 					a
 				)
 				.ok_or(Error::ParseError(line!()))?;
@@ -618,7 +685,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					name,
 					arguments,
 					return_type,
-					subexpr,
+					expr,
 				})
 			}
 			Rule::block => {
@@ -627,7 +694,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.map(|pair| {
 						AST::try_from(pair).and_then(|node| match node {
 							AST::Expr(e) => Ok(e),
-							AST::Subexpr(s) => Ok(Expr::Subexpr(s)),
+							AST::Term(s) => Ok(Expr::Term(s)),
 							AST::Declaration(d) => {
 								Ok(Expr::Declaration(d))
 							}
@@ -645,38 +712,38 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.into_inner()
 					.map(AST::try_from)
 					.collect::<Result<SmallVec<[AST; 3]>>>()?;
+				log::trace!("[{}]: {:#?}", line!(), &inner);
 				if inner.len() != 3 {
 					bail!(Error::ParseError(line!()));
 				}
-				let else_block = {
-					let ast = inner.pop().expect("Length checked above");
-					match ast {
-						AST::Block(v) => Ok(v),
-						AST::Subexpr(a @ Subexpr::IfExpr(_)) => {
-							Ok(vec![Expr::Subexpr(a)])
-						}
-						AST::IfExpr(else_if) => Ok(vec![Expr::Subexpr(
-							Subexpr::IfExpr(else_if),
-						)]),
-						_ => Err(Error::ParseError(line!())),
-					}
-				}?;
-				let then_block = inner
-					.pop()
-					.expect("Length checked above")
-					.block()
-					.ok_or(Error::ParseError(line!()))?;
-				let condition = inner
-					.pop()
-					.expect("Length checked above")
-					.subexpr()
-					.ok_or(Error::ParseError(line!()))?;
-				AST::Subexpr(Subexpr::IfExpr(IfExpr {
+				let else_block =
+					inner.pop().expect("Length checked above").try_into()?;
+				let then_block =
+					inner.pop().expect("Length checked above").try_into()?;
+				let condition =
+					inner.pop().expect("Length checked above").try_into()?;
+				AST::Term(Term::IfExpr(IfExpr {
 					condition: Box::new(condition),
-					lhs: then_block,
-					rhs: else_block,
+					lhs: Box::new(then_block),
+					rhs: Box::new(else_block),
 				}))
 			}
+			Rule::float => Term::Literal(Literal::Float(pair.as_str().parse()?)).into(),
+			Rule::integer => {
+				// Try to parse as unsigned, on fail, retry as signed
+				// instead and bitcast to unsigned because our IR
+				// only supports unsigned
+				let val = pair.as_str().parse::<u64>().or_else(
+					|_| -> Result<u64> {
+						Ok(pair.as_str().parse::<i64>()? as u64)
+					},
+				)?;
+				Term::Literal(Literal::Integer(val)).into()
+			}
+			Rule::boolean => {
+				Term::Literal(Literal::Boolean(pair.as_str().parse()?)).into()
+			}
+			Rule::unit => Term::Literal(Literal::Unit).into(),
 			_ => AST::RawToken(pair.as_str().into()),
 		};
 		Ok(res)
