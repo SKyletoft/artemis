@@ -27,6 +27,7 @@ Syntax
 		from..to?
 	⋂ and ⋃ for object intersections/unions
 		\ for difference?
+	~= for approx equals for floating points ( abs(a-b) < 1e-6 )
 Formatter
 Linker
 GC
