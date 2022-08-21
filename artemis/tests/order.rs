@@ -1,7 +1,7 @@
 use anyhow::Result;
 use artemis::{
 	ordered::{
-		self, BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Subexpr, Type,
+		BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Term, Type,
 		AST,
 	},
 	GeneratedParser, Rule,
@@ -11,15 +11,15 @@ use pest::Parser;
 #[test]
 fn add_2() {
 	let s = "1 + 2";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+		rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -28,19 +28,19 @@ fn add_2() {
 #[test]
 fn add_3() {
 	let s = "1 + 2 + 3";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+		}))),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
+		rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -49,19 +49,19 @@ fn add_3() {
 #[test]
 fn mul_front() {
 	let s = "1 * 2 + 3";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 			op: Op::Times,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+		}))),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
+		rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -70,19 +70,19 @@ fn mul_front() {
 #[test]
 fn mul_back() {
 	let s = "1 + 2 * 3";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+		rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 			op: Op::Times,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+		}))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -91,19 +91,19 @@ fn mul_back() {
 #[test]
 fn parenthesis_1() {
 	let s = "(1 + 2) * 3";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+		}))),
 		op: Op::Times,
-		rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
+		rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -112,19 +112,19 @@ fn parenthesis_1() {
 #[test]
 fn parenthesis_2() {
 	let s = "1 * (2 + 3)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 		op: Op::Times,
-		rhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+		rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+		}))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -133,12 +133,12 @@ fn parenthesis_2() {
 #[test]
 fn function_call_0() {
 	let s = "f()";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::FunctionCall(FunctionCall {
+	let expected = AST::Term(Term::FunctionCall(FunctionCall {
 		function_name: "f".into(),
 		arguments: vec![],
 	}));
@@ -149,14 +149,14 @@ fn function_call_0() {
 #[test]
 fn function_call_1() {
 	let s = "f(x)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::FunctionCall(FunctionCall {
+	let expected = AST::Term(Term::FunctionCall(FunctionCall {
 		function_name: "f".into(),
-		arguments: vec![Subexpr::Variable("x".into())],
+		arguments: vec![Expr::Term(Term::Variable("x".into()))],
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -165,14 +165,14 @@ fn function_call_1() {
 #[test]
 fn function_call_2() {
 	let s = "f(x, y)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::FunctionCall(FunctionCall {
+	let expected = AST::Term(Term::FunctionCall(FunctionCall {
 		function_name: "f".into(),
-		arguments: vec![Subexpr::Variable("x".into()), Subexpr::Variable("y".into())],
+		arguments: vec![Expr::Term(Term::Variable("x".into())), Expr::Term(Term::Variable("y".into()))],
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -181,21 +181,21 @@ fn function_call_2() {
 #[test]
 fn function_call_3() {
 	let s = "f(x, y, x + y)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::FunctionCall(FunctionCall {
+	let expected = AST::Term(Term::FunctionCall(FunctionCall {
 		function_name: "f".into(),
 		arguments: vec![
-			Subexpr::Variable("x".into()),
-			Subexpr::Variable("y".into()),
-			Subexpr::BinOp(BinOp {
-				lhs: Box::new(Subexpr::Variable("x".into())),
+			Expr::Term(Term::Variable("x".into())),
+			Expr::Term(Term::Variable("y".into())),
+			Expr::Term(Term::BinOp(BinOp {
+				lhs: Box::new(Expr::Term(Term::Variable("x".into()))),
 				op: Op::Plus,
-				rhs: Box::new(Subexpr::Variable("y".into())),
-			}),
+				rhs: Box::new(Expr::Term(Term::Variable("y".into()))),
+			})),
 		],
 	}));
 	assert_eq!(res.len(), 1);
@@ -213,14 +213,14 @@ fn function_call_trailing_comma() {
 #[test]
 fn tuple_1() {
 	let s = "(x, y)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::Tuple(vec![
-		Subexpr::Variable("x".into()),
-		Subexpr::Variable("y".into()),
+	let expected = AST::Term(Term::Tuple(vec![
+		Expr::Term(Term::Variable("x".into())),
+		Expr::Term(Term::Variable("y".into())),
 	]));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -229,26 +229,26 @@ fn tuple_1() {
 #[test]
 fn tuple_2() {
 	let s = "(1 + 2, (2 + 3) * 2)";
-	let res = GeneratedParser::parse(Rule::subexpr, s)
+	let res = GeneratedParser::parse(Rule::term, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
-	let expected = AST::Subexpr(Subexpr::Tuple(vec![
-		Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(Literal::Integer(1))),
+	let expected = AST::Term(Term::Tuple(vec![
+		Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
-		}),
-		Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::BinOp(BinOp {
-				lhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+		})),
+		Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+				lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 				op: Op::Plus,
-				rhs: Box::new(Subexpr::Literal(Literal::Integer(3))),
-			})),
+				rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+			}))),
 			op: Op::Times,
-			rhs: Box::new(Subexpr::Literal(Literal::Integer(2))),
-		}),
+			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+		})),
 	]));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
@@ -310,7 +310,7 @@ fn declaration_with_variable_init() {
 				raw: RawType::Integer,
 				mutable: false,
 			},
-			value: Subexpr::Literal(Literal::Integer(1)),
+			value: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 		}),
 		Expr::Declaration(Declaration {
 			name: "y".into(),
@@ -318,7 +318,7 @@ fn declaration_with_variable_init() {
 				raw: RawType::Integer,
 				mutable: false,
 			},
-			value: Subexpr::Variable("x".into()),
+			value: Box::new(Expr::Term(Term::Variable("x".into()))),
 		}),
 	])];
 	assert_eq!(res.len(), 1);

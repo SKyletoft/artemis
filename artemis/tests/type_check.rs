@@ -1,7 +1,7 @@
 use anyhow::Result;
 use artemis::{
 	ordered::{
-		self, Assignment, Declaration, Expr, Function, Literal, RawType, Subexpr,
+		self, Assignment, Declaration, Expr, Function, Literal, RawType, Term,
 		TopLevelConstruct, Type,
 	},
 	type_check, GeneratedParser, Rule,
@@ -235,10 +235,12 @@ fn infer_types() -> Result<()> {
 		name: "f".into(),
 		arguments: SmallVec::new(),
 		return_type: RawType::Unit,
-		subexpr: vec![
+		expr: Expr::Term(Term::Block(vec![
 			Expr::Declaration(Declaration {
 				name: "x".into(),
-				value: Subexpr::Literal(Literal::Integer(1)),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Integer(
+					1,
+				)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Integer,
@@ -246,7 +248,9 @@ fn infer_types() -> Result<()> {
 			}),
 			Expr::Declaration(Declaration {
 				name: "y".into(),
-				value: Subexpr::Literal(Literal::Boolean(true)),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Boolean(
+					true,
+				)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Boolean,
@@ -254,7 +258,9 @@ fn infer_types() -> Result<()> {
 			}),
 			Expr::Declaration(Declaration {
 				name: "z".into(),
-				value: Subexpr::Literal(Literal::Integer(-2i64 as u64)),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Integer(
+					-2i64 as u64,
+				)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Integer,
@@ -262,14 +268,16 @@ fn infer_types() -> Result<()> {
 			}),
 			Expr::Declaration(Declaration {
 				name: "w".into(),
-				value: Subexpr::Literal(Literal::Float(4.0)),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Float(
+					4.0,
+				)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Real,
 				},
 			}),
-			Expr::Subexpr(Subexpr::Literal(Literal::Unit)),
-		],
+			Expr::Term(Term::Literal(Literal::Unit)),
+		])),
 	})];
 	assert_eq!(ordered, expected);
 

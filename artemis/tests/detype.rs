@@ -4,25 +4,25 @@ use anyhow::Result;
 use artemis::{
 	detype::{
 		self, BinOp as DetypedBinOp, Expr as DetypedExpr, Op as DetypedOp,
-		Subexpr as DetypedSubexpr,
+		Term as DetypedTerm,
 	},
 	ordered::{
 		BinOp as OrderedBinOp, Declaration as OrderedDeclaration, Expr as OrderedExpr,
-		Literal, Op as OrderedOp, RawType, Subexpr as OrderedSubexpr, Type,
+		Literal, Op as OrderedOp, RawType, Term as OrderedTerm, Type,
 	},
 };
 
 #[test]
 fn int_add() -> Result<()> {
-	let ordered = OrderedExpr::Subexpr(OrderedSubexpr::BinOp(OrderedBinOp {
-		lhs: Box::new(OrderedSubexpr::Literal(Literal::Integer(1))),
+	let ordered = OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
+		lhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
 		op: OrderedOp::Plus,
-		rhs: Box::new(OrderedSubexpr::Literal(Literal::Integer(1))),
+		rhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
 	}));
-	let expected = DetypedExpr::Subexpr(DetypedSubexpr::BinOp(DetypedBinOp {
-		lhs: Box::new(DetypedSubexpr::Literal(1)),
+	let expected = DetypedExpr::Term(DetypedTerm::BinOp(DetypedBinOp {
+		lhs: Box::new(DetypedExpr::Term(DetypedTerm::Literal(1))),
 		op: DetypedOp::Plus,
-		rhs: Box::new(DetypedSubexpr::Literal(1)),
+		rhs: Box::new(DetypedExpr::Term(DetypedTerm::Literal(1))),
 	}));
 	let (res, _) = detype::detype_expr(&ordered, &mut HashMap::new())?;
 
@@ -32,15 +32,15 @@ fn int_add() -> Result<()> {
 
 #[test]
 fn float_add() -> Result<()> {
-	let ordered = OrderedExpr::Subexpr(OrderedSubexpr::BinOp(OrderedBinOp {
-		lhs: Box::new(OrderedSubexpr::Literal(Literal::Float(1f64))),
+	let ordered = OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
+		lhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
 		op: OrderedOp::Plus,
-		rhs: Box::new(OrderedSubexpr::Literal(Literal::Float(1f64))),
+		rhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
 	}));
-	let expected = DetypedExpr::Subexpr(DetypedSubexpr::BinOp(DetypedBinOp {
-		lhs: Box::new(DetypedSubexpr::Literal(1f64.to_bits())),
+	let expected = DetypedExpr::Term(DetypedTerm::BinOp(DetypedBinOp {
+		lhs: Box::new(DetypedExpr::Term(DetypedTerm::Literal(1f64.to_bits()))),
 		op: DetypedOp::FPlus,
-		rhs: Box::new(DetypedSubexpr::Literal(1f64.to_bits())),
+		rhs: Box::new(DetypedExpr::Term(DetypedTerm::Literal(1f64.to_bits()))),
 	}));
 	let (res, _) = detype::detype_expr(&ordered, &mut HashMap::new())?;
 
@@ -57,7 +57,7 @@ fn int_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Integer,
 			},
-			value: OrderedSubexpr::Literal(Literal::Integer(1)),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
 		}),
 		OrderedExpr::Declaration(OrderedDeclaration {
 			name: "y".into(),
@@ -65,18 +65,18 @@ fn int_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Integer,
 			},
-			value: OrderedSubexpr::Literal(Literal::Integer(1)),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
 		}),
-		OrderedExpr::Subexpr(OrderedSubexpr::BinOp(OrderedBinOp {
-			lhs: Box::new(OrderedSubexpr::Variable("x".into())),
+		OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
+			lhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("x".into()))),
 			op: OrderedOp::Plus,
-			rhs: Box::new(OrderedSubexpr::Variable("y".into())),
+			rhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("y".into()))),
 		})),
 	];
-	let expected = DetypedExpr::Subexpr(DetypedSubexpr::BinOp(DetypedBinOp {
-		lhs: Box::new(DetypedSubexpr::Variable("x".into())),
+	let expected = DetypedExpr::Term(DetypedTerm::BinOp(DetypedBinOp {
+		lhs: Box::new(DetypedExpr::Term(DetypedTerm::Variable("x".into()))),
 		op: DetypedOp::Plus,
-		rhs: Box::new(DetypedSubexpr::Variable("y".into())),
+		rhs: Box::new(DetypedExpr::Term(DetypedTerm::Variable("y".into()))),
 	}));
 	let (res, _) = detype::detype_block(&ordered, &mut HashMap::new())?;
 
@@ -93,7 +93,7 @@ fn float_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Real,
 			},
-			value: OrderedSubexpr::Literal(Literal::Float(1f64)),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
 		}),
 		OrderedExpr::Declaration(OrderedDeclaration {
 			name: "y".into(),
@@ -101,18 +101,18 @@ fn float_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Real,
 			},
-			value: OrderedSubexpr::Literal(Literal::Float(1f64)),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
 		}),
-		OrderedExpr::Subexpr(OrderedSubexpr::BinOp(OrderedBinOp {
-			lhs: Box::new(OrderedSubexpr::Variable("x".into())),
+		OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
+			lhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("x".into()))),
 			op: OrderedOp::Plus,
-			rhs: Box::new(OrderedSubexpr::Variable("y".into())),
+			rhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("y".into()))),
 		})),
 	];
-	let expected = DetypedExpr::Subexpr(DetypedSubexpr::BinOp(DetypedBinOp {
-		lhs: Box::new(DetypedSubexpr::Variable("x".into())),
+	let expected = DetypedExpr::Term(DetypedTerm::BinOp(DetypedBinOp {
+		lhs: Box::new(DetypedExpr::Term(DetypedTerm::Variable("x".into()))),
 		op: DetypedOp::FPlus,
-		rhs: Box::new(DetypedSubexpr::Variable("y".into())),
+		rhs: Box::new(DetypedExpr::Term(DetypedTerm::Variable("y".into()))),
 	}));
 	let (res, _) = detype::detype_block(&ordered, &mut HashMap::new())?;
 

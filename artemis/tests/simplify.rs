@@ -1,25 +1,25 @@
 use air::simplify::{Block, Context, SimpleBinOp, SimpleExpression, SimpleOp, Source};
 use artemis::{
-	detype::{BinOp, Declaration, Expr, IfExpr, Op, Subexpr},
+	detype::{BinOp, Declaration, Expr, IfExpr, Op, Term},
 	simplify,
 };
 use smallvec::{smallvec, SmallVec};
 
 #[test]
 fn nested_addition() {
-	let s = Subexpr::BinOp(BinOp {
-		lhs: Box::new(Subexpr::BinOp(BinOp {
-			lhs: Box::new(Subexpr::Literal(1)),
+	let s = Term::BinOp(BinOp {
+		lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+			lhs: Box::new(Expr::Term(Term::Literal(1))),
 			op: Op::Plus,
-			rhs: Box::new(Subexpr::Literal(2)),
-		})),
+			rhs: Box::new(Expr::Term(Term::Literal(2))),
+		}))),
 		op: Op::Plus,
-		rhs: Box::new(Subexpr::Literal(3)),
+		rhs: Box::new(Expr::Term(Term::Literal(3))),
 	});
 	let mut blocks = Vec::new();
 	let mut ctx = Context::default();
 	let mut block = Block::default();
-	simplify::simplify_subexpr(&s, &mut block, &mut blocks, &mut ctx).unwrap();
+	simplify::simplify_term(&s, &mut block, &mut blocks, &mut ctx).unwrap();
 
 	let expected: SmallVec<[SimpleExpression; 4]> = smallvec![
 		SimpleExpression::BinOp(SimpleBinOp {
@@ -43,11 +43,11 @@ fn nested_addition() {
 fn simple_branch() {
 	let s = Expr::Declaration(Declaration {
 		name: "x".into(),
-		value: Subexpr::IfExpr(IfExpr {
-			condition: Box::new(Subexpr::Literal(1)),
-			lhs: vec![Expr::Subexpr(Subexpr::Literal(2))],
-			rhs: vec![Expr::Subexpr(Subexpr::Literal(3))],
-		}),
+		value: Box::new(Expr::Term(Term::IfExpr(IfExpr {
+			condition: Box::new(Expr::Term(Term::Literal(1))),
+			lhs: Box::new(Expr::Term(Term::Literal(2))),
+			rhs: Box::new(Expr::Term(Term::Literal(3))),
+		}))),
 	});
 
 	let mut block = Block::default();
