@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hash};
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use derive_more::{Deref, DerefMut};
 use smallvec::SmallVec;
 use variantly::Variantly;
@@ -9,8 +9,8 @@ use crate::{
 	error::Error,
 	simplify::{
 		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
-		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression, SimpleOp,
-		Source,
+		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
+		SimpleFunctionCall, SimpleOp, Source,
 	},
 };
 
