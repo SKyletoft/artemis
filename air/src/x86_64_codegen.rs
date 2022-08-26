@@ -100,7 +100,7 @@ fn assemble_block(
 				Op::Move => todo!(),
 				Op::Div | Op::UDiv => unreachable!("Covered by outer pattern"),
 				Op::Swap | Op::FAdd | Op::FSub | Op::FAbs | Op::FMul | Op::FDiv => {
-					bail!(Error::InvalidIR)
+					bail!(Error::InvalidIR(line!()))
 				}
 			},
 			&Expression::BinOp(BinOp {
@@ -164,7 +164,7 @@ fn assemble_block(
 				| Op::FAbs
 				| Op::FMul
 				| Op::FDiv => {
-					bail!(Error::InvalidIR)
+					bail!(Error::InvalidIR(line!()))
 				}
 			},
 			&Expression::UnOp(UnOp {
@@ -190,16 +190,21 @@ fn assemble_block(
 				Op::StoreMem => todo!(),
 				Op::LoadMem => match lhs {
 					Register::Literal(v) => assembler.mov_lit(GP[t], v),
-					Register::FloatingPoint(_) => bail!(Error::InvalidIR),
+					Register::FloatingPoint(_) => {
+						bail!(Error::InvalidIR(line!()))
+					}
 					Register::GeneralPurpose(v) => assembler.mov(GP[t], GP[v]),
 					Register::StackPointer => assembler.mov(GP[t], RSP),
 					Register::FramePointer => assembler.mov(GP[t], RBP),
-					Register::ProgramCounter => bail!(Error::Unsupported),
+					Register::ProgramCounter => {
+						bail!(Error::Unsupported(line!()))
+					}
 				},
 				Op::Move => todo!(),
 				Op::Swap => assembler.xchg(
 					GP[t],
-					GP[lhs.general_purpose().ok_or(Error::InvalidIR)?],
+					GP[lhs.general_purpose()
+						.ok_or(Error::InvalidIR(line!()))?],
 				),
 			},
 			Expression::FunctionCall(FunctionCall {
@@ -213,7 +218,7 @@ fn assemble_block(
 				// Restore registers
 				todo!()
 			}
-			_ => bail!(Error::InvalidIR),
+			_ => bail!(Error::InvalidIR(line!())),
 		}
 	}
 	match out {
