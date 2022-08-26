@@ -4,7 +4,7 @@ use air::{
 	register_allocation::{self, Configuration},
 	x86_64_codegen,
 };
-use anyhow::Result;
+use anyhow::{bail, Result};
 use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
 use clap::Parser as ClapParser;
 use log::LevelFilter;
@@ -79,8 +79,7 @@ struct Paths {
 
 fn compile(config: Config, paths: Paths) -> Result<()> {
 	if config.files.is_empty() {
-		log::error!("No input files provided");
-		return Ok(());
+		bail!(Error::NoInputFiles(line!()));
 	}
 
 	let assembly_path = {
@@ -110,7 +109,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	let source = sources
 		.into_iter()
 		.reduce(|l, r| l + &r)
-		.expect("There should be at least one file in the input");
+		.ok_or(Error::NoInputFiles(line!()))?;
 	log::debug!("Preprocessed source code:\n{source}");
 
 	let ast = GeneratedParser::parse(Rule::top, &source)?;
@@ -158,8 +157,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 
 			let nasm_output = String::from_utf8(nasm.output()?.stderr)?;
 			if !nasm_output.is_empty() {
-				log::error!("{nasm_output}");
-				return Ok(());
+				bail!(Error::External(format!("{nasm_output}")));
 			}
 
 			let runtime = format!("{}/runtime.o", paths.lib_x86);
@@ -174,8 +172,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 
 			let mold_output = String::from_utf8(mold.output()?.stderr)?;
 			if !mold_output.is_empty() {
-				log::error!("{mold_output}");
-				return Ok(());
+				bail!(Error::External(format!("{mold_output}")));
 			}
 		}
 	}
@@ -183,11 +180,14 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	Ok(())
 }
 
-fn main() -> Result<()> {
-	SimpleLogger::new()
+fn main() {
+	let logger_err = SimpleLogger::new()
 		.with_level(LevelFilter::Warn) // Default
 		.env() // But overwrite from environment
-		.init()?;
+		.init();
+	if let Err(e) = logger_err {
+		eprintln!("Logger error: {e:#?}");
+	}
 	log::trace!("Logging initialised");
 
 	let config = Config::parse();
@@ -222,5 +222,8 @@ fn main() -> Result<()> {
 		lib_arm,
 	};
 
-	compile(config, paths)
+	let compiler_err = compile(config, paths);
+	if let Err(e) = compiler_err {
+		log::error!("{e}");
+	}
 }
