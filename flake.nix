@@ -61,6 +61,9 @@
 					nativeBuildInputs = with pkgs; [
 						rustup
 						tokei
+						gdb
+						mold
+						gcc12
 
 						llvmPackages_14.libcxxStdenv
 						llvmPackages_14.libunwind
