@@ -1,9 +1,6 @@
 use anyhow::Result;
 use artemis::{
-	ordered::{
-		BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Term, Type,
-		AST,
-	},
+	ordered::{BinOp, Declaration, Expr, FunctionCall, Literal, Op, RawType, Term, Type, AST},
 	GeneratedParser, Rule,
 };
 use pest::Parser;
@@ -172,7 +169,10 @@ fn function_call_2() {
 		.unwrap();
 	let expected = AST::Term(Term::FunctionCall(FunctionCall {
 		function_name: "f".into(),
-		arguments: vec![Expr::Term(Term::Variable("x".into())), Expr::Term(Term::Variable("y".into()))],
+		arguments: vec![
+			Expr::Term(Term::Variable("x".into())),
+			Expr::Term(Term::Variable("y".into())),
+		],
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);

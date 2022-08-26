@@ -238,9 +238,7 @@ fn infer_types() -> Result<()> {
 		expr: Expr::Term(Term::Block(vec![
 			Expr::Declaration(Declaration {
 				name: "x".into(),
-				value: Box::new(Expr::Term(Term::Literal(Literal::Integer(
-					1,
-				)))),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Integer,
@@ -248,9 +246,7 @@ fn infer_types() -> Result<()> {
 			}),
 			Expr::Declaration(Declaration {
 				name: "y".into(),
-				value: Box::new(Expr::Term(Term::Literal(Literal::Boolean(
-					true,
-				)))),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Boolean(true)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Boolean,
@@ -268,9 +264,7 @@ fn infer_types() -> Result<()> {
 			}),
 			Expr::Declaration(Declaration {
 				name: "w".into(),
-				value: Box::new(Expr::Term(Term::Literal(Literal::Float(
-					4.0,
-				)))),
+				value: Box::new(Expr::Term(Term::Literal(Literal::Float(4.0)))),
 				type_name: Type {
 					mutable: false,
 					raw: RawType::Real,

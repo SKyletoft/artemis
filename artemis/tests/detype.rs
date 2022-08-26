@@ -33,9 +33,13 @@ fn int_add() -> Result<()> {
 #[test]
 fn float_add() -> Result<()> {
 	let ordered = OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
-		lhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
+		lhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(
+			1f64,
+		)))),
 		op: OrderedOp::Plus,
-		rhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
+		rhs: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(
+			1f64,
+		)))),
 	}));
 	let expected = DetypedExpr::Term(DetypedTerm::BinOp(DetypedBinOp {
 		lhs: Box::new(DetypedExpr::Term(DetypedTerm::Literal(1f64.to_bits()))),
@@ -57,7 +61,9 @@ fn int_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Integer,
 			},
-			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(
+				1,
+			)))),
 		}),
 		OrderedExpr::Declaration(OrderedDeclaration {
 			name: "y".into(),
@@ -65,7 +71,9 @@ fn int_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Integer,
 			},
-			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(1)))),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Integer(
+				1,
+			)))),
 		}),
 		OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
 			lhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("x".into()))),
@@ -93,7 +101,9 @@ fn float_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Real,
 			},
-			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(
+				1f64,
+			)))),
 		}),
 		OrderedExpr::Declaration(OrderedDeclaration {
 			name: "y".into(),
@@ -101,7 +111,9 @@ fn float_add_var() -> Result<()> {
 				mutable: false,
 				raw: RawType::Real,
 			},
-			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(1f64)))),
+			value: Box::new(OrderedExpr::Term(OrderedTerm::Literal(Literal::Float(
+				1f64,
+			)))),
 		}),
 		OrderedExpr::Term(OrderedTerm::BinOp(OrderedBinOp {
 			lhs: Box::new(OrderedExpr::Term(OrderedTerm::Variable("x".into()))),
