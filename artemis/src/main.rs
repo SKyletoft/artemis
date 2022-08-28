@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf, process::Command, str::FromStr};
+use std::{env, fs, path::PathBuf, process::{Command, ExitCode}, str::FromStr};
 
 use air::{
 	register_allocation::{self, Configuration},
@@ -180,7 +180,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	Ok(())
 }
 
-fn main() {
+fn main() -> ExitCode {
 	let logger_err = SimpleLogger::new()
 		.with_level(LevelFilter::Warn) // Default
 		.env() // But overwrite from environment
@@ -225,5 +225,8 @@ fn main() {
 	let compiler_err = compile(config, paths);
 	if let Err(e) = compiler_err {
 		log::error!("{e}");
+		ExitCode::FAILURE
+	} else {
+		ExitCode::SUCCESS
 	}
 }
