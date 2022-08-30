@@ -5,3 +5,5 @@
 *.asm
 *.out
 *.o
+**a.**
+.cargo/config.toml
