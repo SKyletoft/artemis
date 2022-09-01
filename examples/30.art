@@ -1,0 +1,40 @@
+a := b := 1
+// a och b finns
+
+c := {
+	d := 5
+	// a, b, d
+}
+// a, b, c
+
+if {e := foo()} Λ {m := bar()} {
+	// a, b, c, e?
+} else {
+	// a, b, c, e?
+}
+
+// e?
+
+if {f := true} {
+	// a, b, c, e?, f?
+} else {
+	// a, b, c, e?, f?
+}
+// a, b, c, e?, f?
+
+foo( g := 5 )
+// a, b, c, e?, f?, g?
+
+bar(
+	h := 5,
+	// h?
+	i := 5
+	// h? i?
+)
+// h? i?
+
+j := if foo
+	k :mut _ = 1
+else
+	l := 1
+k = 2
