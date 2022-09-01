@@ -1,7 +1,4 @@
-λfib (n: ℕ) → ℕ {
-	if n <= 1 {
-		1
-	} else {
-		fib(n - 1) × fib(n - 2)
-	}
-}
+λfib (n: ℕ) → ℕ  =
+	if (n <= 1) 1
+	else fib(n - 1) × fib(n - 2)
+
