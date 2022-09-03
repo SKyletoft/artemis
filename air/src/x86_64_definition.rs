@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, mem};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
@@ -21,30 +21,31 @@ pub enum GeneralPurposeRegister {
 	R14,
 	R15,
 	RIP,
+	LiteralOffset(u64),
 }
 
 impl fmt::Display for GeneralPurposeRegister {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let reg = match self {
-			GeneralPurposeRegister::RAX => "rax",
-			GeneralPurposeRegister::RBX => "rbx",
-			GeneralPurposeRegister::RCX => "rcx",
-			GeneralPurposeRegister::RDX => "rdx",
-			GeneralPurposeRegister::RSI => "rsi",
-			GeneralPurposeRegister::RDI => "rdi",
-			GeneralPurposeRegister::RSP => "rsp",
-			GeneralPurposeRegister::RBP => "rbp",
-			GeneralPurposeRegister::R8 => " r8",
-			GeneralPurposeRegister::R9 => " r9",
-			GeneralPurposeRegister::R10 => "r10",
-			GeneralPurposeRegister::R11 => "r11",
-			GeneralPurposeRegister::R12 => "r12",
-			GeneralPurposeRegister::R13 => "r13",
-			GeneralPurposeRegister::R14 => "r14",
-			GeneralPurposeRegister::R15 => "r15",
-			GeneralPurposeRegister::RIP => "rip",
-		};
-		write!(f, "{reg}")
+		match self {
+			GeneralPurposeRegister::RAX => write!(f, "rax"),
+			GeneralPurposeRegister::RBX => write!(f, "rbx"),
+			GeneralPurposeRegister::RCX => write!(f, "rcx"),
+			GeneralPurposeRegister::RDX => write!(f, "rdx"),
+			GeneralPurposeRegister::RSI => write!(f, "rsi"),
+			GeneralPurposeRegister::RDI => write!(f, "rdi"),
+			GeneralPurposeRegister::RSP => write!(f, "rsp"),
+			GeneralPurposeRegister::RBP => write!(f, "rbp"),
+			GeneralPurposeRegister::R8 => write!(f, " r8"),
+			GeneralPurposeRegister::R9 => write!(f, " r9"),
+			GeneralPurposeRegister::R10 => write!(f, "r10"),
+			GeneralPurposeRegister::R11 => write!(f, "r11"),
+			GeneralPurposeRegister::R12 => write!(f, "r12"),
+			GeneralPurposeRegister::R13 => write!(f, "r13"),
+			GeneralPurposeRegister::R14 => write!(f, "r14"),
+			GeneralPurposeRegister::R15 => write!(f, "r15"),
+			GeneralPurposeRegister::RIP => write!(f, "rip"),
+			GeneralPurposeRegister::LiteralOffset(l) => write!(f, "{}", l * mem::size_of::<u64>() as u64)
+		}
 	}
 }
 
@@ -78,6 +79,8 @@ pub enum Instruction {
 	Pop(GeneralPurposeRegister),
 	Mov(GeneralPurposeRegister, GeneralPurposeRegister),
 	MovLit(GeneralPurposeRegister, u64),
+	MovToRam(GeneralPurposeRegister, GeneralPurposeRegister),
+	MovFromRam(GeneralPurposeRegister, GeneralPurposeRegister),
 	Div(GeneralPurposeRegister),
 	Idiv(GeneralPurposeRegister),
 	And(GeneralPurposeRegister, GeneralPurposeRegister),
@@ -137,6 +140,14 @@ impl AssemblyBuilder {
 
 	pub fn mov_lit(&mut self, l: GeneralPurposeRegister, r: u64) {
 		self.0.push(MovLit(l, r))
+	}
+
+	pub fn mov_to_ram(&mut self, l:GeneralPurposeRegister, r:GeneralPurposeRegister) {
+		self.0.push(MovToRam(l,r))
+	}
+
+	pub fn mov_from_ram(&mut self, l:GeneralPurposeRegister, r:GeneralPurposeRegister) {
+		self.0.push(MovFromRam(l,r))
 	}
 
 	pub fn div(&mut self, l: GeneralPurposeRegister) {
@@ -226,6 +237,8 @@ impl fmt::Display for AssemblyBuilder {
 				Pop(l) => writeln!(f, "\tpop\t{l}")?,
 				Mov(l, r) => writeln!(f, "\tmov\t{l}, {r}")?,
 				MovLit(l, r) => writeln!(f, "\tmov\t{l}, {r:3}")?,
+				MovToRam(l,r) => writeln!(f, "\tmov\t[{l}], {r}")?,
+				MovFromRam(l,r) => writeln!(f, "\tmov\t{l}, [{r}]")?,
 				Div(l) => writeln!(f, "\tdiv\t{l}")?,
 				Idiv(l) => writeln!(f, "\tidiv\t{l}")?,
 				And(l, r) => writeln!(f, "\tand\t{l}, {r}")?,

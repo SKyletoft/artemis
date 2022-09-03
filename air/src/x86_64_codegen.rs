@@ -108,65 +108,32 @@ fn assemble_block(
 				op,
 				lhs: Register::GeneralPurpose(l),
 				rhs: Register::GeneralPurpose(r),
-			}) => match op {
-				Op::Add => assembler.lea(GP[t], GP[l], GP[r]),
-				Op::Sub => {
-					assembler.mov(GP[t], GP[l]);
-					assembler.sub(GP[t], GP[r])
-				}
-				Op::Mul => {
-					assembler.mov(GP[t], GP[l]);
-					assembler.imul(GP[t], GP[r])
-				}
-				Op::Div => {
-					assembler.mov(GP[t], GP[l]);
-					// assembler.idiv(GP[t], GP[r])?
-					todo!()
-				}
-				Op::UDiv => {
-					assembler.mov(GP[t], GP[l]);
-					// assembler.div(GP[t], GP[r])?
-					todo!()
-				}
-				Op::And => {
-					assembler.mov(GP[t], GP[l]);
-					assembler.and(GP[t], GP[r]);
-				}
-				Op::Or => {
-					assembler.mov(GP[t], GP[l]);
-					assembler.or(GP[t], GP[r]);
-				}
-				Op::Xor => {
-					assembler.mov(GP[t], GP[l]);
-					assembler.xor(GP[t], GP[r])
-				}
-				Op::StoreMem => {
-					assembler.mov(GP[t], GP[l]);
-					// assembler.imul(GP[t], GP[r])?
-					todo!()
-				}
-				Op::LoadMem => {
-					assembler.mov(GP[t], GP[l]);
-					// assembler.imul(GP[t], GP[r])?
-					todo!()
-				}
-				Op::Move => {
-					// Is this really ok?
-					// assembler.mov(GP[t], GP[l] , GP[r])
-					todo!()
-				}
-
-				Op::Swap
-				| Op::Abs
-				| Op::Not
-				| Op::FAdd
-				| Op::FSub
-				| Op::FAbs
-				| Op::FMul
-				| Op::FDiv => {
-					bail!(Error::InvalidIR(line!()))
-				}
-			},
+			}) => convert_binop(assembler, op, GP[t], GP[l], GP[r])?,
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
+				op,
+				lhs: Register::StackPointer,
+				rhs: Register::GeneralPurpose(r),
+			}) => convert_binop(
+				assembler,
+				op,
+				GP[t],
+				GeneralPurposeRegister::RSP,
+				GP[r],
+			)?,
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
+				op,
+				lhs: Register::StackPointer,
+				rhs: Register::Literal(l)
+			}) => convert_binop(
+				assembler,
+				op,
+				GP[t],
+				GeneralPurposeRegister::RSP,
+				GeneralPurposeRegister::LiteralOffset(l)
+				
+			)?,
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
 				op,
@@ -218,7 +185,10 @@ fn assemble_block(
 				// Restore registers
 				todo!()
 			}
-			_ => bail!(Error::InvalidIR(line!())),
+			_ => {
+				log::trace!("Invalid Line: {line:#?}");
+				bail!(Error::InvalidIR(line!()))
+			}
 		}
 	}
 	match out {
@@ -236,6 +206,73 @@ fn assemble_block(
 		}
 		BlockEnd::Two(Register::Literal(c), ..) => todo!(),
 		_ => todo!(),
+	}
+	Ok(())
+}
+
+fn convert_binop(
+	assembler: &mut AssemblyBuilder,
+	op: Op,
+	target: GeneralPurposeRegister,
+	left: GeneralPurposeRegister,
+	right: GeneralPurposeRegister,
+) -> Result<()> {
+	match op {
+		Op::Add => assembler.lea(target, left, right),
+		Op::Sub => {
+			assembler.mov(target, left);
+			assembler.sub(target, right)
+		}
+		Op::Mul => {
+			assembler.mov(target, left);
+			assembler.imul(target, right)
+		}
+		Op::Div => {
+			assembler.mov(target, left);
+			// assembler.idiv(target, right)?
+			todo!()
+		}
+		Op::UDiv => {
+			assembler.mov(target, left);
+			// assembler.div(target, right)?
+			todo!()
+		}
+		Op::And => {
+			assembler.mov(target, left);
+			assembler.and(target, right);
+		}
+		Op::Or => {
+			assembler.mov(target, left);
+			assembler.or(target, right);
+		}
+		Op::Xor => {
+			assembler.mov(target, left);
+			assembler.xor(target, right)
+		}
+		Op::StoreMem => {
+			assembler.lea(target, right, left);
+			assembler.mov_to_ram(target, target);
+		}
+		Op::LoadMem => {
+			assembler.lea(target, right, left);
+			assembler.mov_from_ram(target, target);
+		}
+		Op::Move => {
+			// Is this really ok?
+			// assembler.mov(GP[t], GP[l] , GP[r])
+			todo!()
+		}
+
+		Op::Swap
+		| Op::Abs
+		| Op::Not
+		| Op::FAdd
+		| Op::FSub
+		| Op::FAbs
+		| Op::FMul
+		| Op::FDiv => {
+			bail!(Error::InvalidIR(line!()))
+		}
 	}
 	Ok(())
 }
