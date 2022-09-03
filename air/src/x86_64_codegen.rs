@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{bail, Result};
 use FloatingPointRegister::*;
 use GeneralPurposeRegister::*;
@@ -28,6 +30,7 @@ const GP: [GeneralPurposeRegister; 14] = {
 		RDI, RSI, RDX, RCX, R8, R9, RAX, R10, R11, RBX, R12, R13, R14, R15,
 	]
 };
+const PROTECTED_GP: [GeneralPurposeRegister; 7] = [RBX, RSP, RBP, R12, R13, R14, R15];
 
 /// General purpose registers, in order of priority
 const FP: [FloatingPointRegister; 16] = {
@@ -44,9 +47,31 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 			CodeConstruct::Function { name, blocks } => {
 				assembler.global(name);
 				assembler.label(name.clone());
+
+				let (used_gp, _) = find_used_registers(blocks);
+
+				for reg in
+					PROTECTED_GP.iter().filter(|r| used_gp.contains(r)).copied()
+				{
+					assembler.push(reg)
+				}
+
 				for (idx, block) in blocks.iter().enumerate() {
 					assemble_block(block, idx.into(), &mut assembler, name)?;
 				}
+
+				// Assuming single return, remove the ending ret to paste in the register restoration first
+				assembler.remove_ret()?;
+
+				for reg in PROTECTED_GP
+					.iter()
+					.filter(|r| used_gp.contains(r))
+					.rev()
+					.copied()
+				{
+					assembler.pop(reg);
+				}
+				assembler.ret();
 			}
 			CodeConstruct::Variable { .. } => todo!(),
 			CodeConstruct::ImmediateExpression { .. } => todo!(),
@@ -54,6 +79,61 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 	}
 	let res = format!("{assembler}");
 	Ok(res)
+}
+
+fn find_used_registers(
+	blocks: &[Block],
+) -> (
+	HashSet<GeneralPurposeRegister>,
+	HashSet<FloatingPointRegister>,
+) {
+	let mut gp = HashSet::new();
+	let mut fp = HashSet::new();
+
+	let mut add_to_set = |reg: Register| match reg {
+		Register::Literal(_) => {}
+		Register::FloatingPoint(idx) => {
+			fp.insert(FP[idx]);
+		}
+		Register::GeneralPurpose(idx) => {
+			gp.insert(GP[idx]);
+		}
+		Register::StackPointer => {
+			gp.insert(GeneralPurposeRegister::RSP);
+		}
+		Register::FramePointer => {
+			gp.insert(GeneralPurposeRegister::RBP);
+		}
+		Register::ProgramCounter => {
+			gp.insert(GeneralPurposeRegister::RIP);
+		}
+	};
+
+	for block in blocks.iter() {
+		for line in block.block.iter() {
+			match line {
+				Expression::UnOp(UnOp { target, lhs, .. }) => {
+					add_to_set(*target);
+					add_to_set(*lhs);
+				}
+				Expression::BinOp(BinOp {
+					target, lhs, rhs, ..
+				}) => {
+					add_to_set(*target);
+					add_to_set(*lhs);
+					add_to_set(*rhs);
+				}
+				Expression::FunctionCall(FunctionCall { target, args, .. }) => {
+					add_to_set(*target);
+					for arg in args.iter() {
+						add_to_set(*arg);
+					}
+				}
+			}
+		}
+	}
+
+	(gp, fp)
 }
 
 fn assemble_block(

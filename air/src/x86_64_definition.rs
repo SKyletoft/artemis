@@ -1,8 +1,10 @@
 use std::{fmt, mem};
 
+use crate::error::Error;
+
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum GeneralPurposeRegister {
 	RAX,
 	RBX,
@@ -51,7 +53,7 @@ impl fmt::Display for GeneralPurposeRegister {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FloatingPointRegister {
 	XMM0,
 	XMM1,
@@ -207,6 +209,15 @@ impl AssemblyBuilder {
 
 	pub fn ret(&mut self) {
 		self.0.push(Ret)
+	}
+
+	pub fn remove_ret(&mut self) -> Result<(), Error> {
+		if self.0.last() == Some(&Ret) {
+			self.0.pop();
+			Ok(())
+		} else {
+			Err(Error::InvalidIR(line!()))
+		}
 	}
 }
 
