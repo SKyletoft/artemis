@@ -1,4 +1,4 @@
-runtime.o:
+runtime.o: runtime.c
 	gcc -c runtime.c -o runtime.o -O0 -g
 
 clean:
