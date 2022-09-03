@@ -152,6 +152,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 			let mut nasm = Command::new(paths.nasm);
 			nasm.arg(&assembly_path)
 				.args(["-o", &object_path])
+				.arg("-g")
 				.args(["-f", "elf64"]);
 			log::debug!("Assembling: {:#?}", &nasm);
 
