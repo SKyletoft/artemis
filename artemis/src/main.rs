@@ -1,4 +1,9 @@
-use std::{env, fs, path::PathBuf, process::{Command, ExitCode}, str::FromStr};
+use std::{
+	env, fs,
+	path::PathBuf,
+	process::{Command, ExitCode},
+	str::FromStr,
+};
 
 use air::{
 	register_allocation::{self, Configuration},
