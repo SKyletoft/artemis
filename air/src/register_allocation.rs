@@ -205,7 +205,7 @@ pub struct UnOp {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
 	pub target: Register,
-	pub scope: SmallString,
+	pub function_name: SmallString,
 	pub args: SmallVec<[Register; 4]>,
 }
 
@@ -303,7 +303,7 @@ impl fmt::Debug for Expression {
 			}
 			Expression::FunctionCall(FunctionCall {
 				target,
-				scope,
+				function_name: scope,
 				args,
 			}) => write!(f, "{target} ← {scope}{args:?}"),
 		}

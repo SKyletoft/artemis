@@ -175,7 +175,7 @@ fn assemble_block(
 			},
 			Expression::FunctionCall(FunctionCall {
 				target,
-				scope,
+				function_name,
 				args,
 			}) => {
 				// Save registers
