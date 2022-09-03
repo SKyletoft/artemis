@@ -1081,10 +1081,35 @@ fn handle_single_block(
 		}
 		SimpleBlockEnd::One(o) => BlockEnd::One(o),
 		SimpleBlockEnd::Two(target, l, r) => {
-			let condition = state.find(target).unwrap_or_else(|| {
-				// TODO: Load value from stack
-				todo!();
-			});
+			let condition = state
+				.find(target)
+				.or_else(|| {
+					let idx = state
+						.general_purpose
+						.iter()
+						.position(Option::is_none)
+						.unwrap_or_else(|| {
+							select_register(
+								false,
+								(block_idx, usize::MAX),
+								state,
+								scope,
+								&[],
+							)
+							.0
+							.general_purpose()
+							.expect("Hardcoded false")
+						});
+					load_value_to_branch(
+						&mut new_block.block,
+						state,
+						target,
+						idx,
+					)
+					.ok()?;
+					Some(Register::GeneralPurpose(idx))
+				})
+				.ok_or(Error::MissingRegister(line!()))?;
 			BlockEnd::Two(condition, l, r)
 		}
 	};
