@@ -44,7 +44,9 @@ impl fmt::Display for GeneralPurposeRegister {
 			GeneralPurposeRegister::R14 => write!(f, "r14"),
 			GeneralPurposeRegister::R15 => write!(f, "r15"),
 			GeneralPurposeRegister::RIP => write!(f, "rip"),
-			GeneralPurposeRegister::LiteralOffset(l) => write!(f, "{}", l * mem::size_of::<u64>() as u64)
+			GeneralPurposeRegister::LiteralOffset(l) => {
+				write!(f, "{}", l * mem::size_of::<u64>() as u64)
+			}
 		}
 	}
 }
@@ -142,12 +144,12 @@ impl AssemblyBuilder {
 		self.0.push(MovLit(l, r))
 	}
 
-	pub fn mov_to_ram(&mut self, l:GeneralPurposeRegister, r:GeneralPurposeRegister) {
-		self.0.push(MovToRam(l,r))
+	pub fn mov_to_ram(&mut self, l: GeneralPurposeRegister, r: GeneralPurposeRegister) {
+		self.0.push(MovToRam(l, r))
 	}
 
-	pub fn mov_from_ram(&mut self, l:GeneralPurposeRegister, r:GeneralPurposeRegister) {
-		self.0.push(MovFromRam(l,r))
+	pub fn mov_from_ram(&mut self, l: GeneralPurposeRegister, r: GeneralPurposeRegister) {
+		self.0.push(MovFromRam(l, r))
 	}
 
 	pub fn div(&mut self, l: GeneralPurposeRegister) {
@@ -237,8 +239,8 @@ impl fmt::Display for AssemblyBuilder {
 				Pop(l) => writeln!(f, "\tpop\t{l}")?,
 				Mov(l, r) => writeln!(f, "\tmov\t{l}, {r}")?,
 				MovLit(l, r) => writeln!(f, "\tmov\t{l}, {r:3}")?,
-				MovToRam(l,r) => writeln!(f, "\tmov\t[{l}], {r}")?,
-				MovFromRam(l,r) => writeln!(f, "\tmov\t{l}, [{r}]")?,
+				MovToRam(l, r) => writeln!(f, "\tmov\t[{l}], {r}")?,
+				MovFromRam(l, r) => writeln!(f, "\tmov\t{l}, [{r}]")?,
 				Div(l) => writeln!(f, "\tdiv\t{l}")?,
 				Idiv(l) => writeln!(f, "\tidiv\t{l}")?,
 				And(l, r) => writeln!(f, "\tand\t{l}, {r}")?,

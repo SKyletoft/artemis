@@ -125,14 +125,13 @@ fn assemble_block(
 				target: Register::GeneralPurpose(t),
 				op,
 				lhs: Register::StackPointer,
-				rhs: Register::Literal(l)
+				rhs: Register::Literal(l),
 			}) => convert_binop(
 				assembler,
 				op,
 				GP[t],
 				GeneralPurposeRegister::RSP,
-				GeneralPurposeRegister::LiteralOffset(l)
-				
+				GeneralPurposeRegister::LiteralOffset(l),
 			)?,
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
