@@ -717,6 +717,36 @@ fn allocate_for_blocks_with_end(
 				state.floating_point.iter_mut().for_each(|x| *x = None);
 				state.stack.iter_mut().for_each(|x| *x = None);
 
+				// Fill out stack to the longest stack for mergability
+				let max_stack = left_state.stack.len().max(right_state.stack.len());
+				for _ in state.stack.len()..max_stack {
+					state.stack.push(None);
+				}
+
+				log::trace!(
+					"After merge φ:\n{:#?}\n{:#?}\n{:#?}",
+					&left_state.general_purpose,
+					&right_state.general_purpose,
+					&state.general_purpose
+				);
+
+				// And keep whatever values are the same still in both paths
+				merge_untouched(
+					&left_state.general_purpose,
+					&right_state.general_purpose,
+					&mut state.general_purpose,
+				);
+				merge_untouched(
+					&left_state.floating_point,
+					&right_state.floating_point,
+					&mut state.floating_point,
+				);
+				merge_untouched(
+					&left_state.stack,
+					&right_state.stack,
+					&mut state.stack,
+				);
+
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
 				for PhiNode {
@@ -746,36 +776,6 @@ fn allocate_for_blocks_with_end(
 						Some(Source::Register(*target));
 				}
 
-				// Fill out stack to the longest stack for mergability
-				let max_stack = left_state.stack.len().max(right_state.stack.len());
-				for _ in state.stack.len()..max_stack {
-					state.stack.push(None);
-				}
-
-				log::trace!(
-					"After merge φ:\n{:#?}\n{:#?}\n{:#?}",
-					&left_state.general_purpose,
-					&right_state.general_purpose,
-					&state.general_purpose
-				);
-
-				// And keep whatever values are the same still in both paths
-				merge_remaining(
-					&left_state.general_purpose,
-					&right_state.general_purpose,
-					&mut state.general_purpose,
-				);
-				merge_remaining(
-					&left_state.floating_point,
-					&right_state.floating_point,
-					&mut state.floating_point,
-				);
-				merge_remaining(
-					&left_state.stack,
-					&right_state.stack,
-					&mut state.stack,
-				);
-
 				log::trace!(
 					"After merge all:\n{:#?}\n{:#?}\n{:#?}",
 					&left_state,
@@ -792,7 +792,7 @@ fn allocate_for_blocks_with_end(
 	Ok(old_id)
 }
 
-fn merge_remaining(
+fn merge_untouched(
 	left: &[Option<Source>],
 	right: &[Option<Source>],
 	state: &mut [Option<Source>],
@@ -827,7 +827,8 @@ fn merge_remaining(
 				.unwrap_or(true)
 	};
 
-	dbg!(left, right, state);
+	// If this assert is triggered I need to write a function that merges moved values.
+	// This should go after φ merging.
 	assert!(
 		left.iter()
 			.enumerate()
@@ -848,21 +849,21 @@ fn load_value_to_branch(
 	// Save the value we're overwriting
 	if state.general_purpose[idx].is_some() {
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
-			state.stack[stack_position] = state.general_purpose[idx];
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
+			state.stack[stack_position] = state.general_purpose[idx];
 		} else {
-			state.stack.push(state.general_purpose[idx]);
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(state.stack.len() as u64),
 			}));
+			state.stack.push(state.general_purpose[idx]);
 		}
 	}
 	match value {
@@ -949,8 +950,9 @@ fn merge_registers(
 		// Neither left nor right are available and free, go for first empty slot
 		_ => {
 			// any free
-			let first_unused = state.general_purpose.iter().position(Option::is_none);
-			if let Some(idx) = first_unused {
+			let suggested_register =
+				state.general_purpose.iter().position(Option::is_none);
+			if let Some(idx) = suggested_register {
 				load_value_to_branch(left_end_block, left_state, left_from, idx)?;
 				load_value_to_branch(
 					right_end_block,
