@@ -717,12 +717,6 @@ fn allocate_for_blocks_with_end(
 				state.floating_point.iter_mut().for_each(|x| *x = None);
 				state.stack.iter_mut().for_each(|x| *x = None);
 
-				// Fill out stack to the longest stack for mergability
-				let max_stack = left_state.stack.len().max(right_state.stack.len());
-				for _ in state.stack.len()..max_stack {
-					state.stack.push(None);
-				}
-
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
 				for PhiNode {
@@ -752,8 +746,14 @@ fn allocate_for_blocks_with_end(
 						Some(Source::Register(*target));
 				}
 
+				// Fill out stack to the longest stack for mergability
+				let max_stack = left_state.stack.len().max(right_state.stack.len());
+				for _ in state.stack.len()..max_stack {
+					state.stack.push(None);
+				}
+
 				log::trace!(
-					"After merge:\n{:#?}\n{:#?}\n{:#?}",
+					"After merge φ:\n{:#?}\n{:#?}\n{:#?}",
 					&left_state.general_purpose,
 					&right_state.general_purpose,
 					&state.general_purpose
@@ -774,6 +774,13 @@ fn allocate_for_blocks_with_end(
 					&left_state.stack,
 					&right_state.stack,
 					&mut state.stack,
+				);
+
+				log::trace!(
+					"After merge all:\n{:#?}\n{:#?}\n{:#?}",
+					&left_state,
+					&right_state,
+					&state,
 				);
 
 				merge_point
@@ -805,16 +812,29 @@ fn merge_remaining(
 	// stack in different positions.
 	// This will crash early in those cases
 
-	let is_none_or_in_same_place = |(idx, val): (usize, &Option<Source>)| -> bool {
+	let is_none_or_in_same_place_as_right = |(idx, val): (usize, &Option<Source>)| -> bool {
 		val.is_none()
 			|| right.iter()
 				.position(|r| r == val)
 				.map(|r| r == idx)
 				.unwrap_or(true)
 	};
+	let is_none_or_in_same_place_as_left = |(idx, val): (usize, &Option<Source>)| -> bool {
+		val.is_none()
+			|| left.iter()
+				.position(|l| l == val)
+				.map(|l| l == idx)
+				.unwrap_or(true)
+	};
 
+	dbg!(left, right, state);
 	assert!(
-		left.iter().enumerate().all(is_none_or_in_same_place),
+		left.iter()
+			.enumerate()
+			.all(is_none_or_in_same_place_as_right)
+			&& right.iter()
+				.enumerate()
+				.all(is_none_or_in_same_place_as_left),
 		"\n{left:?}\n{right:?}"
 	);
 }
@@ -825,7 +845,26 @@ fn load_value_to_branch(
 	value: Source,
 	idx: usize,
 ) -> Result<()> {
-	assert_eq!(state.general_purpose[idx], None);
+	// Save the value we're overwriting
+	if state.general_purpose[idx].is_some() {
+		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
+			state.stack[stack_position] = state.general_purpose[idx];
+			block.push(Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(idx),
+				op: Op::StoreMem,
+				lhs: Register::StackPointer,
+				rhs: Register::Literal(stack_position as u64),
+			}));
+		} else {
+			state.stack.push(state.general_purpose[idx]);
+			block.push(Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(idx),
+				op: Op::StoreMem,
+				lhs: Register::StackPointer,
+				rhs: Register::Literal(state.stack.len() as u64),
+			}));
+		}
+	}
 	match value {
 		Source::Value(v) => {
 			block.push(Expression::UnOp(UnOp {
