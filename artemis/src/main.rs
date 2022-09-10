@@ -163,7 +163,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 
 			let nasm_output = String::from_utf8(nasm.output()?.stderr)?;
 			if !nasm_output.is_empty() {
-				bail!(Error::External(format!("{nasm_output}")));
+				bail!(Error::External(nasm_output));
 			}
 
 			let runtime = format!("{}/runtime.o", paths.lib_x86);
@@ -178,7 +178,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 
 			let mold_output = String::from_utf8(mold.output()?.stderr)?;
 			if !mold_output.is_empty() {
-				bail!(Error::External(format!("{mold_output}")));
+				bail!(Error::External(mold_output));
 			}
 		}
 	}
