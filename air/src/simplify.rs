@@ -160,7 +160,11 @@ impl Source {
 		(block_idx, line_idx): (usize, usize),
 	) -> Option<usize> {
 		let block = &scope[block_idx];
-		let in_this_block = block.intro.len() + block.block.len() - line_idx;
+		let in_this_block = block
+			.intro
+			.len()
+			.saturating_add(block.block.len())
+			.saturating_sub(line_idx);
 
 		// If it's the condition of this block we don't need to search through every line
 		match &block.out {
@@ -185,7 +189,12 @@ impl Source {
 		}
 
 		// Count steps until the next use
-		for (steps, line) in block.block.iter().skip(line_idx + 1).enumerate() {
+		for (steps, line) in block
+			.block
+			.iter()
+			.skip(line_idx.saturating_add(1))
+			.enumerate()
+		{
 			let contains_self = match line {
 				SimpleExpression::BinOp(SimpleBinOp { lhs, rhs, .. }) => {
 					lhs == self || rhs == self
