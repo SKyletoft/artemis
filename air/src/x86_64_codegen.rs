@@ -334,21 +334,14 @@ fn convert_binop(
 			assembler.mov(target, left);
 			assembler.xor(target, right)
 		}
-		Op::StoreMem => {
-			assembler.lea(target, right, left);
-			assembler.mov_to_ram(target, target);
-		}
 		Op::LoadMem => {
 			assembler.lea(target, right, left);
 			assembler.mov_from_ram(target, target);
 		}
-		Op::Move => {
-			// Is this really ok?
-			// assembler.mov(GP[t], GP[l] , GP[r])
-			todo!()
-		}
 
 		Op::Swap
+		| Op::Move
+		| Op::StoreMem
 		| Op::Abs
 		| Op::Not
 		| Op::FAdd
