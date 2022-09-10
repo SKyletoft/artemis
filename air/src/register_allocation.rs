@@ -76,6 +76,7 @@ pub enum CodeConstruct {
 	Function {
 		name: SmallString,
 		blocks: Vec<Block>,
+		frame_size: u64,
 	},
 	Variable {
 		name: SmallString,
@@ -243,7 +244,6 @@ struct State {
 	general_purpose: RegisterSet,
 	floating_point: RegisterSet,
 	stack: Vec<Option<Source>>,
-	max_stack_size: usize,
 }
 
 impl State {
@@ -277,7 +277,6 @@ impl From<&Configuration> for State {
 			general_purpose: RegisterSet::new(config.general_purpose_registers),
 			floating_point: RegisterSet::new(config.floating_point_registers),
 			stack: Vec::new(),
-			max_stack_size: 0,
 		}
 	}
 }
@@ -336,9 +335,12 @@ pub fn register_allocate(
 		.map(|construct| {
 			let res = match construct {
 				SSAConstruct::Function { name, blocks, args } => {
+					let (blocks, frame_size) =
+						allocate_for_blocks(blocks, config, *args)?;
 					CodeConstruct::Function {
 						name: name.clone(),
-						blocks: allocate_for_blocks(blocks, config, *args)?,
+						blocks,
+						frame_size: frame_size as u64,
 					}
 				}
 				SSAConstruct::Variable { .. } => todo!(),
@@ -373,6 +375,7 @@ fn find_empty_slot(
 		inner_reg.lines_till_last_use(scope, pos).is_none()
 	})
 }
+
 fn select_register(
 	is_floating_point: bool,
 	pos: (usize, usize),
@@ -581,7 +584,7 @@ fn allocate_for_blocks(
 	scope: &[SimpleBlock],
 	config: &Configuration,
 	args: usize,
-) -> Result<Vec<Block>> {
+) -> Result<(Vec<Block>, usize)> {
 	let mut state = State::from(config);
 	let mut blocks = vec![None; scope.len()];
 
@@ -619,7 +622,7 @@ fn allocate_for_blocks(
 		.into_iter()
 		.collect::<Option<Vec<_>>>()
 		.ok_or(Error::UnconvertedBlock(line!()))?;
-	Ok(converted)
+	Ok((converted, state.stack.len()))
 }
 
 /// Converts blocks until it hits the end id (exclusive) or a block that returns from the scope.

@@ -44,7 +44,11 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 	let mut assembler = AssemblyBuilder::new();
 	for construct in constructs.iter() {
 		match construct {
-			CodeConstruct::Function { name, blocks } => {
+			CodeConstruct::Function {
+				name,
+				blocks,
+				frame_size,
+			} => {
 				assembler.global(name);
 				assembler.label(name.clone());
 
@@ -55,6 +59,7 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				{
 					assembler.push(reg)
 				}
+				assembler.sub(RSP, LiteralOffset(8 * frame_size));
 
 				for (idx, block) in blocks.iter().enumerate() {
 					assemble_block(block, idx.into(), &mut assembler, name)?;
@@ -63,6 +68,7 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				// Assuming single return, remove the ending ret to paste in the register restoration first
 				assembler.remove_ret()?;
 
+				assembler.add(RSP, LiteralOffset(8 * frame_size));
 				for reg in PROTECTED_GP
 					.iter()
 					.filter(|r| used_gp.contains(r))
