@@ -733,22 +733,7 @@ fn allocate_for_blocks_with_end(
 					&state.general_purpose
 				);
 
-				// And keep whatever values are the same still in both paths
-				merge_untouched(
-					&left_state.general_purpose,
-					&right_state.general_purpose,
-					&mut state.general_purpose,
-				);
-				merge_untouched(
-					&left_state.floating_point,
-					&right_state.floating_point,
-					&mut state.floating_point,
-				);
-				merge_untouched(
-					&left_state.stack,
-					&right_state.stack,
-					&mut state.stack,
-				);
+				merge_old_registers(&mut left_state, &mut right_state, state, right_end_block);
 
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
@@ -795,26 +780,54 @@ fn allocate_for_blocks_with_end(
 	Ok(old_id)
 }
 
-fn merge_untouched(
-	left: &[Option<Source>],
-	right: &[Option<Source>],
-	state: &mut [Option<Source>],
+fn merge_old_registers(
+	left_state: &mut State,
+	right_state: &mut State,
+	state: &mut State,
+	right_end_block: &mut SmallVec<[Expression; 4]>,
 ) {
-	for (&left_reg, merge_reg) in left
-		.iter()
-		.zip(right.iter())
-		.zip(state.iter_mut())
-		.filter(|((a, b), _)| a == b)
-		.map(|((a, _), b)| (a, b))
-	{
-		*merge_reg = left_reg;
-	}
+	// And keep whatever values are the same still in both paths
+	merge_untouched(
+		&left_state.general_purpose,
+		&right_state.general_purpose,
+		&mut state.general_purpose,
+	);
+	merge_untouched(
+		&left_state.floating_point,
+		&right_state.floating_point,
+		&mut state.floating_point,
+	);
+	merge_untouched(&left_state.stack, &right_state.stack, &mut state.stack);
 
-	// TODO: There might be values that end up on the stack in
-	// both the left and right branches but end up on the
-	// stack in different positions.
-	// This will crash early in those cases
+	// And then move stuff that's been moved
+	merge_moved(
+		&left_state.general_purpose,
+		&mut right_state.general_purpose,
+		&mut state.general_purpose,
+		right_end_block,
+	);
+	merge_moved(
+		&left_state.floating_point,
+		&mut right_state.floating_point,
+		&mut state.floating_point,
+		right_end_block,
+	);
+	// TODO: Merge moved on the stack
 
+	check_merges(
+		&left_state.general_purpose,
+		&right_state.general_purpose,
+		&state.general_purpose,
+	);
+	check_merges(
+		&left_state.floating_point,
+		&right_state.floating_point,
+		&state.floating_point,
+	);
+	check_merges(&left_state.stack, &right_state.stack, &state.stack);
+}
+
+fn check_merges(left: &[Option<Source>], right: &[Option<Source>], state: &[Option<Source>]) {
 	let is_none_or_in_same_place_as_right = |(idx, val): (usize, &Option<Source>)| -> bool {
 		val.is_none()
 			|| right.iter()
@@ -829,18 +842,68 @@ fn merge_untouched(
 				.map(|l| l == idx)
 				.unwrap_or(true)
 	};
-
-	// If this assert is triggered I need to write a function that merges moved values.
-	// This should go after φ merging.
+	assert_eq!(left.len(), right.len());
 	assert!(
 		left.iter()
 			.enumerate()
-			.all(is_none_or_in_same_place_as_right)
-			&& right.iter()
-				.enumerate()
-				.all(is_none_or_in_same_place_as_left),
-		"\n{left:?}\n{right:?}"
+			.all(is_none_or_in_same_place_as_right),
+		"\n{left:#?}\n{right:#?}"
 	);
+	assert!(
+		right.iter()
+			.enumerate()
+			.all(is_none_or_in_same_place_as_left),
+		"\n{left:#?}\n{right:#?}"
+	);
+
+	assert!(state
+		.iter()
+		.zip(left.iter())
+		.zip(right.iter())
+		.filter(|((s, _), _)| s.is_some())
+		.all(|((s, l), r)| s == l && s == r));
+}
+
+fn merge_untouched(
+	left: &[Option<Source>],
+	right: &[Option<Source>],
+	state: &mut [Option<Source>],
+) {
+	for (&left_reg, merge_reg) in left
+		.iter()
+		.zip(right.iter())
+		.zip(state.iter_mut())
+		.filter(|((a, b), _)| a == b)
+		.map(|((a, _), b)| (a, b))
+	{
+		*merge_reg = left_reg;
+	}
+}
+
+fn merge_moved(
+	left: &[Option<Source>],
+	right: &mut [Option<Source>],
+	state: &mut [Option<Source>],
+	block: &mut SmallVec<[Expression; 4]>,
+) {
+	for (idx, val) in left.iter().enumerate().filter(|(_, val)| val.is_some()) {
+		let right_position = right.iter().position(|x| x == val);
+		// Skip those that are already in the same place or don't exist on the right side
+		if right_position.map(|x| x == idx).unwrap_or(true) {
+			continue;
+		}
+		let right_idx = right_position.unwrap();
+
+		// If swaps are horribly more expensive than simple loads, this can be optionally a load
+		block.push(Expression::UnOp(UnOp {
+			target: Register::GeneralPurpose(idx),
+			op: Op::Swap,
+			lhs: Register::GeneralPurpose(right_idx),
+		}));
+		right.swap(idx, right_idx);
+		assert!(state[idx].is_none());
+		state[idx] = *val;
+	}
 }
 
 fn load_value_to_branch(
