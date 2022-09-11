@@ -581,6 +581,35 @@ fn get_or_load_and_get_value(
 	new_register
 }
 
+/// Find a suitable register to store results in. Will save whatever was already there on the stack if it's needed again
+fn select_and_save_old(
+	pos: (usize, usize),
+	state: &mut State,
+	scope: &[SimpleBlock],
+	block: &mut Block,
+) -> Result<Register> {
+	let (recommended_register, need_to_save_old_value) =
+		select_register(false, pos, state, scope, &[]);
+
+	let gp_idx = recommended_register
+		.general_purpose()
+		.ok_or(Error::WrongRegisterType(line!()))? as usize;
+
+	if need_to_save_old_value {
+		save_on_stack(
+			&mut state.general_purpose,
+			pos,
+			gp_idx,
+			block,
+			scope,
+			recommended_register,
+			&mut state.stack,
+		);
+	}
+
+	Ok(recommended_register)
+}
+
 fn allocate_for_blocks(
 	scope: &[SimpleBlock],
 	config: &Configuration,
@@ -1087,45 +1116,23 @@ fn handle_single_block(
 					scope,
 					&[*lhs, *rhs],
 				);
-				let (recommended_register, need_to_save_old_value) =
-					select_register(
-						false,
-						(block_idx, line_idx),
-						state,
-						scope,
-						&[],
-					);
+
+				let target_register = select_and_save_old(
+					(block_idx, line_idx),
+					state,
+					scope,
+					&mut new_block,
+				)?;
 
 				let expr = Expression::BinOp(BinOp {
-					target: recommended_register,
+					target: target_register,
 					op: op.into(),
 					lhs: lhs_register,
 					rhs: rhs_register,
 				});
 
-				let gp_idx = recommended_register
-					.general_purpose()
-					.ok_or(Error::WrongRegisterType(line!()))? as usize;
-
-				if need_to_save_old_value {
-					save_on_stack(
-						&mut state.general_purpose,
-						(block_idx, line_idx),
-						gp_idx,
-						&mut new_block,
-						scope,
-						recommended_register,
-						&mut state.stack,
-					);
-				}
-
-				log::trace!(
-					"[{}]: Replacing {:?} (at: {gp_idx}) with {:?} (saving: {need_to_save_old_value})",
-					line!(),
-					state.general_purpose[gp_idx],
-					Source::Register(*target),
-				);
-				state.general_purpose[gp_idx] = Some(Source::Register(*target));
+				state.general_purpose
+					[target_register.general_purpose().unwrap()] = Some(Source::Register(*target));
 
 				new_block.block.push(expr);
 			}
