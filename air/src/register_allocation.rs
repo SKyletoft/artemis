@@ -734,7 +734,12 @@ fn allocate_for_blocks_with_end(
 					&state.general_purpose
 				);
 
-				merge_old_registers(&mut left_state, &mut right_state, state, right_end_block);
+				merge_old_registers(
+					&mut left_state,
+					&mut right_state,
+					state,
+					right_end_block,
+				);
 
 				// Merge the phi nodes by moving the right path value to
 				// whatever register it's in on the left side
