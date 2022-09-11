@@ -47,7 +47,7 @@ impl fmt::Display for GeneralPurposeRegister {
 			GeneralPurposeRegister::R15 => write!(f, "r15"),
 			GeneralPurposeRegister::RIP => write!(f, "rip"),
 			GeneralPurposeRegister::LiteralOffset(l) => {
-				write!(f, "{}", l * mem::size_of::<u64>() as u64)
+				write!(f, "{}", l)
 			}
 		}
 	}

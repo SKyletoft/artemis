@@ -492,10 +492,11 @@ fn save_on_stack(
 	// TODO: Replace with if let when if let chains are stabilised
 	if let Some(Source::Register(reg)) = register_set[idx] {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
+		// TODO: Replace with push
 		block.block.push(Expression::BinOp(BinOp {
 			target: new_register,
 			op: Op::StoreMem,
-			lhs: Register::StackPointer,
+			lhs: Register::FramePointer,
 			rhs: Register::Literal(stack.len() as u64),
 		}));
 
@@ -563,7 +564,7 @@ fn get_or_load_and_get_value(
 			Expression::BinOp(BinOp {
 				target: new_register,
 				op: Op::LoadMem,
-				lhs: Register::StackPointer,
+				lhs: Register::FramePointer,
 				rhs: Register::Literal(stack_position as u64),
 			})
 		}
@@ -954,7 +955,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
-				lhs: Register::StackPointer,
+				lhs: Register::FramePointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
 			state.stack[stack_position] = state.general_purpose[idx];
@@ -962,7 +963,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
-				lhs: Register::StackPointer,
+				lhs: Register::FramePointer,
 				rhs: Register::Literal(state.stack.len() as u64),
 			}));
 			state.stack.push(state.general_purpose[idx]);
@@ -985,7 +986,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::LoadMem,
-				lhs: Register::StackPointer,
+				lhs: Register::FramePointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
 		}

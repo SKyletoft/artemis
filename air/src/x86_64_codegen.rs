@@ -53,13 +53,16 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				assembler.label(name.clone());
 
 				let (used_gp, _) = find_used_registers(blocks);
-
+ 
+				assembler.push(RBP); 
+				assembler.push(RSP);
+				assembler.mov(RBP, RSP);
 				for reg in
 					PROTECTED_GP.iter().filter(|r| used_gp.contains(r)).copied()
 				{
 					assembler.push(reg)
 				}
-				assembler.sub(RSP, LiteralOffset(8 * frame_size));
+				assembler.sub(RBP, LiteralOffset((frame_size + arguments_on_stack) * 8));
 
 				for (idx, block) in blocks.iter().enumerate() {
 					assemble_block(block, idx.into(), &mut assembler, name)?;
@@ -68,7 +71,6 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				// Assuming single return, remove the ending ret to paste in the register restoration first
 				assembler.remove_ret()?;
 
-				assembler.add(RSP, LiteralOffset(8 * frame_size));
 				for reg in PROTECTED_GP
 					.iter()
 					.filter(|r| used_gp.contains(r))
@@ -77,6 +79,8 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				{
 					assembler.pop(reg);
 				}
+				assembler.pop(RSP);
+				assembler.pop(RBP);
 				assembler.ret();
 			}
 			CodeConstruct::Variable { .. } => todo!(),
@@ -199,6 +203,18 @@ fn assemble_block(
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
 				op,
+				lhs: Register::FramePointer,
+				rhs: Register::GeneralPurpose(r),
+			}) => convert_binop(
+				assembler,
+				op,
+				GP[t],
+				GeneralPurposeRegister::RBP,
+				GP[r],
+			)?,
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
+				op,
 				lhs: Register::StackPointer,
 				rhs: Register::GeneralPurpose(r),
 			}) => convert_binop(
@@ -211,6 +227,18 @@ fn assemble_block(
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
 				op,
+				lhs: Register::FramePointer,
+				rhs: Register::Literal(l),
+			}) => convert_binop(
+				assembler,
+				op,
+				GP[t],
+				GeneralPurposeRegister::RBP,
+				GeneralPurposeRegister::LiteralOffset(l * 8),
+			)?,
+			&Expression::BinOp(BinOp {
+				target: Register::GeneralPurpose(t),
+				op,
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(l),
 			}) => convert_binop(
@@ -218,7 +246,7 @@ fn assemble_block(
 				op,
 				GP[t],
 				GeneralPurposeRegister::RSP,
-				GeneralPurposeRegister::LiteralOffset(l),
+				GeneralPurposeRegister::LiteralOffset(l * 8),
 			)?,
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
