@@ -32,7 +32,7 @@ impl Configuration {
 		temporary_registers: 0,
 	};
 	pub const X86_64: Configuration = Configuration {
-		general_purpose_registers: 14,
+		general_purpose_registers: 13,
 		floating_point_registers: 8,
 		argument_registers: 6,
 		temporary_registers: 9,
@@ -491,6 +491,7 @@ fn save_on_stack(
 ) {
 	// TODO: Replace with if let when if let chains are stabilised
 	if let Some(Source::Register(reg)) = register_set[idx] {
+		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		block.block.push(Expression::BinOp(BinOp {
 			target: new_register,
 			op: Op::StoreMem,
@@ -914,6 +915,7 @@ fn load_value_to_branch(
 ) -> Result<()> {
 	// Save the value we're overwriting
 	if state.general_purpose[idx].is_some() {
+		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),

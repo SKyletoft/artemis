@@ -25,9 +25,9 @@ use crate::{
 // Return value in rax (+ higher bits in rdx for 128 bit values)
 
 /// General purpose registers, in order of priority
-const GP: [GeneralPurposeRegister; 14] = {
+const GP: [GeneralPurposeRegister; 13] = {
 	[
-		RDI, RSI, RDX, RCX, R8, R9, RAX, R10, R11, RBX, R12, R13, R14, R15,
+		RDI, RSI, RDX, RCX, R8, R9, RAX, R10, R11, RBX, R12, R13, R14,
 	]
 };
 const PROTECTED_GP: [GeneralPurposeRegister; 7] = [RBX, RSP, RBP, R12, R13, R14, R15];
@@ -96,6 +96,7 @@ fn find_used_registers(
 	let mut gp = HashSet::new();
 	let mut fp = HashSet::new();
 
+	gp.insert(R15);
 	let mut add_to_set = |reg: Register| match reg {
 		Register::Literal(_) => {}
 		Register::FloatingPoint(idx) => {
@@ -338,10 +339,14 @@ fn convert_binop(
 			assembler.lea(target, right, left);
 			assembler.mov_from_ram(target, target);
 		}
+		
+		Op::StoreMem => {
+			assembler.lea(R15, right, left);
+			assembler.mov_to_ram(R15, target);
+		}
 
 		Op::Swap
 		| Op::Move
-		| Op::StoreMem
 		| Op::Abs
 		| Op::Not
 		| Op::FAdd
