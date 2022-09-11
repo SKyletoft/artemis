@@ -745,9 +745,22 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 			}
 			Rule::unit => Term::Literal(Literal::Unit).into(),
 			Rule::function_call => {
-				let maybe = MaybeParsed::try_from(pair);
-				dbg!(maybe);
-				todo!("At least I (probably) found it?")
+				let mut inner = pair.into_inner().map(AST::try_from);
+				let function_name = inner
+					.next()
+					.ok_or(Error::ParseError(line!()))??
+					.term()
+					.ok_or(Error::ParseError(line!()))?
+					.variable()
+					.ok_or(Error::ParseError(line!()))?;
+				let arguments = inner
+					.map(|r| r.map(Expr::try_from))
+					.collect::<Result<Result<Vec<_>, Error>>>()??;
+				Term::FunctionCall(FunctionCall {
+					function_name,
+					arguments,
+				})
+				.into()
 			}
 			_ => AST::RawToken(pair.as_str().into()),
 		};
