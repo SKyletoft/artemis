@@ -5,6 +5,7 @@ use air::simplify::{
 	SimpleExpression, SimpleFunctionCall, SimpleOp, Source,
 };
 use anyhow::{bail, Result};
+use rayon::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
@@ -233,7 +234,7 @@ pub fn simplify_exprs(
 }
 
 pub fn simplify(tlcs: &[TopLevelConstruct]) -> Result<Vec<SSAConstruct>> {
-	tlcs.iter()
+	tlcs.par_iter()
 		.map(|tlc| match tlc {
 			TopLevelConstruct::Function(Function {
 				name,
