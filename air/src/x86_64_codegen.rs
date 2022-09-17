@@ -30,7 +30,7 @@ const GP: [GeneralPurposeRegister; 13] = {
 		RDI, RSI, RDX, RCX, R8, R9, RAX, R10, R11, RBX, R12, R13, R14,
 	]
 };
-const PROTECTED_GP: [GeneralPurposeRegister; 7] = [RBX, RSP, RBP, R12, R13, R14, R15];
+const PROTECTED_GP: [GeneralPurposeRegister; 5] = [RBX, R12, R13, R14, R15];
 
 /// General purpose registers, in order of priority
 const FP: [FloatingPointRegister; 16] = {
@@ -48,13 +48,14 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				name,
 				blocks,
 				frame_size,
+				arguments_on_stack,
 			} => {
 				assembler.global(name);
 				assembler.label(name.clone());
 
 				let (used_gp, _) = find_used_registers(blocks);
- 
-				assembler.push(RBP); 
+
+				assembler.push(RBP);
 				assembler.push(RSP);
 				assembler.mov(RBP, RSP);
 				for reg in
@@ -62,10 +63,19 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				{
 					assembler.push(reg)
 				}
-				assembler.sub(RBP, LiteralOffset((frame_size + arguments_on_stack) * 8));
+				assembler.sub(
+					RBP,
+					LiteralOffset((frame_size + arguments_on_stack) * 8),
+				);
 
 				for (idx, block) in blocks.iter().enumerate() {
-					assemble_block(block, idx.into(), &mut assembler, name)?;
+					assemble_block(
+						block,
+						idx.into(),
+						&mut assembler,
+						name,
+						&used_gp,
+					)?;
 				}
 
 				// Assuming single return, remove the ending ret to paste in the register restoration first
@@ -134,10 +144,9 @@ fn find_used_registers(
 					add_to_set(*lhs);
 					add_to_set(*rhs);
 				}
-				Expression::FunctionCall(FunctionCall { target, args, .. }) => {
-					add_to_set(*target);
-					for arg in args.iter() {
-						add_to_set(*arg);
+				Expression::FunctionCall(FunctionCall { args, .. }) => {
+					for reg in 0..(*args) {
+						add_to_set(Register::GeneralPurpose(reg));
 					}
 				}
 			}
@@ -152,6 +161,7 @@ fn assemble_block(
 	id: BlockId,
 	assembler: &mut AssemblyBuilder,
 	name: &str,
+	used_registers: &HashSet<GeneralPurposeRegister>,
 ) -> Result<()> {
 	assembler.label(id.label(name)?);
 	for line in block {
@@ -288,16 +298,23 @@ fn assemble_block(
 						.ok_or(Error::InvalidIR(line!()))?],
 				),
 			},
-			Expression::FunctionCall(FunctionCall {
-				target,
-				function_name,
-				args,
-			}) => {
+			Expression::FunctionCall(FunctionCall { function_name, .. }) => {
 				// Save registers
 				// Load arguments
 				// Copy RAX to GP[target]
 				// Restore registers
-				todo!()
+
+				for &reg in PROTECTED_GP.iter() {
+					assembler.push(reg);
+				}
+				assembler.push(RSP);
+				assembler.and(RSP, GeneralPurposeRegister::LiteralOffset(!15));
+				assembler.call(function_name.clone());
+
+				assembler.pop(RSP);
+				for &reg in PROTECTED_GP.iter().rev() {
+					assembler.pop(reg);
+				}
 			}
 			_ => {
 				log::trace!("Invalid Line: {line:#?}");
@@ -367,7 +384,7 @@ fn convert_binop(
 			assembler.lea(target, right, left);
 			assembler.mov_from_ram(target, target);
 		}
-		
+
 		Op::StoreMem => {
 			assembler.lea(R15, right, left);
 			assembler.mov_to_ram(R15, target);

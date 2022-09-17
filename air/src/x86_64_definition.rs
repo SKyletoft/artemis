@@ -1,4 +1,4 @@
-use std::{fmt, mem};
+use std::fmt::{self, Write};
 
 use crate::error::Error;
 
@@ -102,6 +102,7 @@ pub enum Instruction {
 		GeneralPurposeRegister,
 	),
 	Ret,
+	Call(SmallString),
 }
 use Instruction::*;
 
@@ -211,6 +212,10 @@ impl AssemblyBuilder {
 		self.0.push(Ret)
 	}
 
+	pub fn call(&mut self, f: SmallString) {
+		self.0.push(Call(f));
+	}
+
 	pub fn remove_ret(&mut self) -> Result<(), Error> {
 		if self.0.last() == Some(&Ret) {
 			self.0.pop();
@@ -218,6 +223,10 @@ impl AssemblyBuilder {
 		} else {
 			Err(Error::InvalidIR(line!()))
 		}
+	}
+
+	pub fn append(&mut self, other: &mut Self) {
+		self.0.append(&mut other.0)
 	}
 }
 
@@ -264,6 +273,7 @@ impl fmt::Display for AssemblyBuilder {
 				Xchg(l, r) => writeln!(f, "\txchg\t{l}, {r}")?,
 				Lea(a, b, c) => writeln!(f, "\tlea\t{a}, {b}[{c}]")?,
 				Ret => writeln!(f, "\tret")?,
+				Call(func) => writeln!(f, "\tcall\t{func}")?,
 			}
 		}
 		Ok(())

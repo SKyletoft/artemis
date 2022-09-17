@@ -136,7 +136,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 		Target::LinuxAarch64 => {
 			let allocated = register_allocation::register_allocate(
 				&ssa,
-				&Configuration::AARCH64,
+				&register_allocation::AARCH64,
 			)?;
 			log::debug!("Allocated Registers:\n{allocated:#?}");
 
@@ -145,7 +145,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 		Target::LinuxX64 => {
 			let allocated = register_allocation::register_allocate(
 				&ssa,
-				&Configuration::X86_64,
+				&register_allocation::X86_64,
 			)?;
 			log::debug!("Allocated Registers:\n{allocated:#?}");
 

@@ -2,6 +2,8 @@ use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hash};
 
 use anyhow::Result;
 use derive_more::{Deref, DerefMut};
+use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use smallvec::SmallVec;
 use variantly::Variantly;
 
@@ -16,51 +18,60 @@ use crate::{
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
+// Invariant with codegen: Argument registers are the first registers
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Configuration {
-	general_purpose_registers: usize,
-	floating_point_registers: usize,
-	argument_registers: usize,
-	temporary_registers: usize,
+	general_purpose_registers: u64,
+	floating_point_registers: u64,
+	argument_registers: u64,
+	unprotected_registers: Vec<Register>,
+	return_register: u64,
 }
 
 impl Configuration {
-	pub const AARCH64: Configuration = Configuration {
-		general_purpose_registers: 31,
-		floating_point_registers: 32,
-		argument_registers: 31,
-		temporary_registers: 0,
-	};
-	pub const X86_64: Configuration = Configuration {
-		general_purpose_registers: 13,
-		floating_point_registers: 8,
-		argument_registers: 6,
-		temporary_registers: 9,
-	};
-
 	pub fn new(
-		general_purpose_registers: usize,
-		floating_point_registers: usize,
-		argument_registers: usize,
-		temporary_registers: usize,
+		general_purpose_registers: u64,
+		floating_point_registers: u64,
+		argument_registers: u64,
+		protected_registers: Vec<Register>,
+		return_register: u64,
 	) -> Self {
 		assert!(general_purpose_registers > 0);
+		assert!(general_purpose_registers >= argument_registers);
+		assert!(general_purpose_registers > return_register);
 		// assert!(floating_point_registers > 0);
 		Self {
 			general_purpose_registers,
 			floating_point_registers,
 			argument_registers,
-			temporary_registers,
+			unprotected_registers: protected_registers,
+			return_register,
 		}
 	}
 }
 
+pub static AARCH64: Lazy<Configuration> = Lazy::new(|| Configuration {
+	general_purpose_registers: 31,
+	floating_point_registers: 32,
+	argument_registers: 31,
+	unprotected_registers: vec![],
+	return_register: u64::MAX, // TODO
+});
+
+pub static X86_64: Lazy<Configuration> = Lazy::new(|| Configuration {
+	general_purpose_registers: 13,
+	floating_point_registers: 8,
+	argument_registers: 6,
+	unprotected_registers: (0..=7).map(Register::GeneralPurpose).collect(),
+	return_register: 6, // RAX
+});
+
 impl Default for Configuration {
 	fn default() -> Self {
 		#[cfg(target_arch = "x86_64")]
-		return Configuration::X86_64;
+		return X86_64.clone();
 		#[cfg(target_arch = "aarch64")]
-		return Configuration::AARCH64;
+		return AARCH64.clone();
 		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
 		return Configuration {
 			general_purpose_registers: 8,
@@ -76,6 +87,7 @@ pub enum CodeConstruct {
 	Function {
 		name: SmallString,
 		blocks: Vec<Block>,
+		arguments_on_stack: u64,
 		frame_size: u64,
 	},
 	Variable {
@@ -205,9 +217,8 @@ pub struct UnOp {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-	pub target: Register,
 	pub function_name: SmallString,
-	pub args: SmallVec<[Register; 4]>,
+	pub args: usize,
 }
 
 #[derive(Clone, PartialEq)]
@@ -224,8 +235,8 @@ pub enum Expression {
 pub struct RegisterSet(Vec<Option<Source>>);
 
 impl RegisterSet {
-	pub fn new(width: usize) -> Self {
-		Self(vec![None; width])
+	pub fn new(width: u64) -> Self {
+		Self(vec![None; width as usize])
 	}
 
 	pub fn index_of(&self, source: &Source) -> Option<usize> {
@@ -301,10 +312,9 @@ impl fmt::Debug for Expression {
 				write!(f, "{target} ← {op} {lhs}")
 			}
 			Expression::FunctionCall(FunctionCall {
-				target,
-				function_name: scope,
+				function_name,
 				args,
-			}) => write!(f, "{target} ← {scope}{args:?}"),
+			}) => write!(f, "RET_REG ← {function_name}[{args}]"),
 		}
 	}
 }
@@ -332,6 +342,7 @@ pub fn register_allocate(
 	config: &Configuration,
 ) -> Result<Vec<CodeConstruct>> {
 	ssa.iter()
+		// .par_bridge()
 		.map(|construct| {
 			let res = match construct {
 				SSAConstruct::Function { name, blocks, args } => {
@@ -341,6 +352,8 @@ pub fn register_allocate(
 						name: name.clone(),
 						blocks,
 						frame_size: frame_size as u64,
+						arguments_on_stack: args
+							.saturating_sub(config.argument_registers),
 					}
 				}
 				SSAConstruct::Variable { .. } => todo!(),
@@ -480,6 +493,7 @@ fn get_two_references_from_slice<T>(
 	unsafe { (&mut *ptr.add(left), &mut *ptr.add(right)) }
 }
 
+// new_register is the same as idx, just wrapped in GeneralPurpose or FloatingPoint depending on the RegisterSet
 fn save_on_stack(
 	register_set: &mut RegisterSet,
 	pos: (usize, usize),
@@ -489,7 +503,6 @@ fn save_on_stack(
 	new_register: Register,
 	stack: &mut Vec<Option<Source>>,
 ) {
-	// TODO: Replace with if let when if let chains are stabilised
 	if let Some(Source::Register(reg)) = register_set[idx] {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		// TODO: Replace with push
@@ -511,7 +524,7 @@ fn save_on_stack(
 
 /// Find a suitable register for `source`, potentially unloading and throwing existing values on the stack
 fn get_or_load_and_get_value(
-	source: &Source,
+	source: Source,
 	state: &mut State,
 	pos: (usize, usize),
 	is_floating: bool,
@@ -520,7 +533,7 @@ fn get_or_load_and_get_value(
 	protected_registers: &[Source],
 ) -> Register {
 	assert!(!is_floating);
-	if let Some(idx) = state.general_purpose.index_of(source) {
+	if let Some(idx) = state.general_purpose.index_of(&source) {
 		return Register::GeneralPurpose(idx);
 	}
 
@@ -545,41 +558,84 @@ fn get_or_load_and_get_value(
 		);
 	}
 
-	let expr = match source {
+	eprintln!("-----------------------------------------------");
+	dbg!(&register_set, &state.stack, source);
+
+	load_value(source, new_register, &mut state.stack, &mut block.block);
+
+	log::trace!(
+		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
+		line!(),
+		register_set[register_idx as usize],
+		source
+	);
+
+	register_set[register_idx as usize] = Some(source);
+	new_register
+}
+
+// Load a value into a specific register. Either swapping with another register if it's already loaded or loading it from the stack
+fn switch_or_load_value(
+	target_position: usize,
+	value: Source,
+	bank: &mut RegisterSet,
+	block: &mut SmallVec<[Expression; 4]>,
+	stack: &mut [Option<Source>],
+) {
+	// Check if there's nothing to do
+	if bank[target_position] == Some(value) {
+		return;
+	}
+
+	let current_position = bank.index_of(&value);
+	if let Some(idx) = current_position {
+		let swap = Expression::UnOp(UnOp {
+			target: Register::GeneralPurpose(target_position),
+			op: Op::Swap,
+			lhs: Register::GeneralPurpose(idx),
+		});
+		block.push(swap);
+	} else {
+		load_value(
+			value,
+			Register::GeneralPurpose(target_position),
+			stack,
+			block,
+		);
+	}
+	bank[target_position] = Some(value);
+}
+
+/// Load a value to a register from the stack (or if it's a constant). Saving the old value should
+/// already be handled, and updating state should be done immediately after this
+fn load_value(
+	value: Source,
+	register: Register,
+	stack: &mut [Option<Source>],
+	block: &mut SmallVec<[Expression; 4]>,
+) {
+	let expr = match value {
 		Source::Value(v) => Expression::UnOp(UnOp {
-			target: new_register,
+			target: register,
 			op: Op::LoadMem,
-			lhs: Register::Literal(*v),
+			lhs: Register::Literal(v),
 		}),
 		Source::Register(r) => {
-			// Push to stack
-
-			// If we're here, we've already checked current registers, meaning search the stack immediately
-			let stack_position = state
-				.stack
+			dbg!(r);
+			let stack_position = stack
 				.iter()
-				.position(|x| x == &Some(Source::Register(*r)))
+				.position(|x| x == &Some(Source::Register(r)))
 				.expect("Old value wasn't in registers OR on the stack?");
-			state.stack[stack_position] = None;
+			// stack[stack_position] = None;
 			Expression::BinOp(BinOp {
-				target: new_register,
+				target: register,
 				op: Op::LoadMem,
 				lhs: Register::FramePointer,
 				rhs: Register::Literal(stack_position as u64),
 			})
 		}
 	};
-	block.block.push(expr);
-
-	log::trace!(
-		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
-		line!(),
-		register_set[register_idx as usize],
-		*source
-	);
-
-	register_set[register_idx as usize] = Some(*source);
-	new_register
+	block.push(expr);
 }
 
 /// Find a suitable register to store results in. Will save whatever was already there on the stack if it's needed again
@@ -614,7 +670,7 @@ fn select_and_save_old(
 fn allocate_for_blocks(
 	scope: &[SimpleBlock],
 	config: &Configuration,
-	args: usize,
+	args: u64,
 ) -> Result<(Vec<Block>, usize)> {
 	let mut state = State::from(config);
 	let mut blocks = vec![None; scope.len()];
@@ -629,7 +685,7 @@ fn allocate_for_blocks(
 		*register = arg;
 	}
 	// And copy those that don't fit into registers onto the stack
-	for arg in (config.argument_registers as usize)..args {
+	for arg in config.argument_registers..args {
 		state.stack.push(Some(Source::Register(arg.into())));
 	}
 
@@ -949,6 +1005,7 @@ fn load_value_to_branch(
 	idx: usize,
 ) -> Result<()> {
 	// Save the value we're overwriting
+	// TODO: switch this to `save_on_stack` to have a chance of reusing old stack values
 	if state.general_purpose[idx].is_some() {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
@@ -969,6 +1026,8 @@ fn load_value_to_branch(
 			state.stack.push(state.general_purpose[idx]);
 		}
 	}
+	//load_value(value, Register::GeneralPurpose(idx), &mut state.stack, block);
+	// TODO: Remove below
 	match value {
 		Source::Value(v) => {
 			block.push(Expression::UnOp(UnOp {
@@ -1092,6 +1151,7 @@ fn handle_single_block(
 	assert!(intro.iter().all(|reg| state.contains(reg.target)));
 
 	for (line_idx, line) in block.iter().enumerate() {
+		let pos = (block_idx, line_idx);
 		match line {
 			SimpleExpression::BinOp(SimpleBinOp {
 				target,
@@ -1100,30 +1160,26 @@ fn handle_single_block(
 				rhs,
 			}) if !op.is_floating_point() => {
 				let lhs_register = get_or_load_and_get_value(
-					lhs,
+					*lhs,
 					state,
-					(block_idx, line_idx),
+					pos,
 					false,
 					&mut new_block,
 					scope,
 					&[*lhs, *rhs],
 				);
 				let rhs_register = get_or_load_and_get_value(
-					rhs,
+					*rhs,
 					state,
-					(block_idx, line_idx),
+					pos,
 					false,
 					&mut new_block,
 					scope,
 					&[*lhs, *rhs],
 				);
 
-				let target_register = select_and_save_old(
-					(block_idx, line_idx),
-					state,
-					scope,
-					&mut new_block,
-				)?;
+				let target_register =
+					select_and_save_old(pos, state, scope, &mut new_block)?;
 
 				let expr = Expression::BinOp(BinOp {
 					target: target_register,
@@ -1132,8 +1188,8 @@ fn handle_single_block(
 					rhs: rhs_register,
 				});
 
-				state.general_purpose
-					[target_register.general_purpose().unwrap()] = Some(Source::Register(*target));
+				state.general_purpose[target_register.general_purpose().unwrap()] =
+					Some(Source::Register(*target));
 
 				new_block.block.push(expr);
 			}
@@ -1142,7 +1198,133 @@ fn handle_single_block(
 				target,
 				function,
 				args,
-			}) => todo!(),
+			}) => {
+				log::trace!("Function call: {target} ← {function}{args:?}");
+				let (register_args, stack_args) = {
+					// If the min is hit stack_args is guaranteed to be empty and this is required by indexing.
+					// Honestly, it should just trim it down to max allowed size
+					let split = (config.argument_registers as usize)
+						.min(args.len());
+					(&args[..split], &args[split..])
+				};
+				log::trace!(
+					"stack: {stack_args:#?}\nregisters: {register_args:#?}"
+				);
+				// Do the arguments that end up on the stack first as to not interfere with whatever calculations
+				// are required for the stack arguments
+				for (idx, &arg) in stack_args.iter().enumerate() {
+					let arg_register = get_or_load_and_get_value(
+						arg,
+						state,
+						pos,
+						false,
+						&mut new_block,
+						scope,
+						&[],
+					);
+					let expr = Expression::BinOp(BinOp {
+						target: arg_register,
+						op: Op::StoreMem,
+						lhs: Register::FramePointer,
+						// Negative offset so they end up in the called function's stack frame
+						rhs: Register::Literal(-(idx as isize) as u64),
+					});
+					new_block.block.push(expr);
+				}
+
+				// And then register arguments
+				// Saving those we're about to
+				let unprotected = config.unprotected_registers.iter().copied();
+				let arguments = (0..config.argument_registers as usize)
+					.map(Register::GeneralPurpose);
+				for reg in unprotected.chain(arguments) {
+					// This'd be so much nicer with if-let chains
+					match reg {
+						Register::GeneralPurpose(idx) => {
+							// Save it if it's used AND will be used again
+							if let Some(src) = state.general_purpose[idx] {
+								if src.lines_till_last_use(scope, pos).is_some() {
+									log::trace!("Saving {src:?}");
+									save_on_stack(
+										&mut state.general_purpose,
+										pos,
+										idx,
+										&mut new_block,
+										scope,
+										Register::GeneralPurpose(idx),
+										&mut state.stack,
+									);
+								}
+							}
+						},
+						_ => todo!("Handle saving of unprotected non-gp registers"),
+					}
+				}
+				// And then loading in the new values
+				for (idx, &arg) in register_args.iter().enumerate() {
+					match state.general_purpose[idx] {
+						None => {
+							log::trace!("Loading to None: {arg:?}");
+							switch_or_load_value(
+								idx,
+								arg,
+								&mut state.general_purpose,
+								&mut new_block.block,
+								&mut state.stack,
+							);
+						}
+						Some(src) => {
+							// Load if not already there
+							if src != arg {
+								log::trace!("Loading to {src:?}: {arg:?}");
+								switch_or_load_value(
+									idx,
+									arg,
+									&mut state.general_purpose,
+									&mut new_block.block,
+									&mut state.stack,
+								);
+							}
+						}
+					}
+				}
+				// And clear because the ABI says we have no guarantees of what's happened to it.
+				// Any restoration will be done when it's needed again
+				// This is separate from the first loop to prevent reloading values already in the correct place
+				for reg in config.unprotected_registers.iter() {
+					match reg {
+						&Register::GeneralPurpose(idx) => {
+							state.general_purpose[idx] = None;
+						},
+						_ => todo!("Handle saving of unprotected non-gp registers"),
+					}
+				}
+
+				// And lastly check if the return register needs preserving
+				let ret_reg = config.return_register as usize;
+				let value_in_return_slot = state.general_purpose[ret_reg];
+				if let Some(val) = value_in_return_slot {
+					if val.lines_till_last_use(scope, pos).is_some() {
+						log::trace!("Saving value that was in return slot: {val:?}");
+						save_on_stack(
+							&mut state.general_purpose,
+							pos,
+							ret_reg,
+							&mut new_block,
+							scope,
+							Register::GeneralPurpose(ret_reg),
+							&mut state.stack,
+						);
+					}
+				}
+
+				let expr = Expression::FunctionCall(FunctionCall {
+					function_name: function.clone(),
+					args: (config.argument_registers as usize).min(args.len()),
+				});
+				new_block.block.push(expr);
+				state.general_purpose[ret_reg] = Some(Source::Register(*target));
+			}
 			_ => todo!(),
 		}
 		log::trace!(
@@ -1152,49 +1334,62 @@ fn handle_single_block(
 			&state.stack
 		);
 	}
+
 	let new_out = match *out {
 		SimpleBlockEnd::Return(target) => {
-			let condition = state.find(target).unwrap_or_else(|| {
-				// TODO: Load value from stack
-				todo!();
-			});
+			let condition = get_or_load_condition(
+				target,
+				block_idx,
+				state,
+				scope,
+				&mut new_block,
+			)?;
 			BlockEnd::Return(condition)
 		}
 		SimpleBlockEnd::One(o) => BlockEnd::One(o),
 		SimpleBlockEnd::Two(target, l, r) => {
-			let condition = state
-				.find(target)
-				.or_else(|| {
-					let idx = state
-						.general_purpose
-						.iter()
-						.position(Option::is_none)
-						.unwrap_or_else(|| {
-							select_register(
-								false,
-								(block_idx, usize::MAX),
-								state,
-								scope,
-								&[],
-							)
-							.0
-							.general_purpose()
-							.expect("Hardcoded false")
-						});
-					load_value_to_branch(
-						&mut new_block.block,
-						state,
-						target,
-						idx,
-					)
-					.ok()?;
-					Some(Register::GeneralPurpose(idx))
-				})
-				.ok_or(Error::MissingRegister(line!()))?;
+			let condition = get_or_load_condition(
+				target,
+				block_idx,
+				state,
+				scope,
+				&mut new_block,
+			)?;
 			BlockEnd::Two(condition, l, r)
 		}
 	};
 	new_block.out = new_out;
 
 	Ok(new_block)
+}
+
+fn get_or_load_condition(
+	target: Source,
+	block_idx: usize,
+	state: &mut State,
+	scope: &[SimpleBlock],
+	new_block: &mut Block,
+) -> Result<Register, Error> {
+	state.find(target)
+		.or_else(|| {
+			let idx = state
+				.general_purpose
+				.iter()
+				.position(Option::is_none)
+				.unwrap_or_else(|| {
+					select_register(
+						false,
+						(block_idx, usize::MAX),
+						state,
+						scope,
+						&[],
+					)
+					.0
+					.general_purpose()
+					.expect("Hardcoded false")
+				});
+			load_value_to_branch(&mut new_block.block, state, target, idx).ok()?;
+			Some(Register::GeneralPurpose(idx))
+		})
+		.ok_or(Error::MissingRegister(line!()))
 }

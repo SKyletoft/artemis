@@ -30,6 +30,12 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 #[repr(transparent)]
 pub struct Register(usize);
 
+impl From<u64> for Register {
+	fn from(x: u64) -> Self {
+		Self(x as usize)
+	}
+}
+
 impl fmt::Display for Register {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "${}", self.0)
@@ -132,6 +138,7 @@ pub enum Source {
 }
 
 impl Source {
+	#[deprecated]
 	pub fn has_been_used_for_the_last_time(
 		&self,
 		(r_block, r_line): (usize, usize),
@@ -153,6 +160,7 @@ impl Source {
 	}
 
 	/// Counts the amount of lines until the last use of a Source within this function
+	// TODO: Needs memoisation
 	// TODO: Doesn't work at all for loops
 	pub fn lines_till_last_use(
 		&self,
@@ -390,7 +398,7 @@ impl SimpleExpression {
 pub enum SSAConstruct {
 	Function {
 		name: SmallString,
-		args: usize,
+		args: u64,
 		blocks: Vec<Block>,
 	},
 	Variable {
