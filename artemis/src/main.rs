@@ -7,7 +7,7 @@ use std::{
 
 use air::{
 	register_allocation::{self, Configuration},
-	x86_64_codegen,
+	x86_64,
 };
 use anyhow::{bail, Result};
 use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
@@ -149,7 +149,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 			)?;
 			log::debug!("Allocated Registers:\n{allocated:#?}");
 
-			let assembler = x86_64_codegen::assemble(&allocated)?;
+			let assembler = x86_64::codegen::assemble(&allocated)?;
 			log::debug!("ASM:\n{assembler}");
 
 			fs::write(&assembly_path, assembler)?;

@@ -12,7 +12,7 @@ use crate::{
 		BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 	},
 	simplify::BlockId,
-	x86_64_definition::{
+	x86_64::definition::{
 		AssemblyBuilder, FloatingPointRegister, GeneralPurposeRegister, Instruction,
 	},
 };
