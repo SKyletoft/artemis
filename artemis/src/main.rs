@@ -6,6 +6,7 @@ use std::{
 };
 
 use air::{
+	js,
 	register_allocation::{self, Configuration},
 	x86_64,
 };
@@ -20,6 +21,7 @@ use simple_logger::SimpleLogger;
 enum Target {
 	LinuxX64,
 	LinuxAarch64,
+	JavaScript,
 }
 
 impl Default for Target {
@@ -29,7 +31,7 @@ impl Default for Target {
 		#[cfg(target_arch = "aarch64")]
 		return Target::LinuxAarch64;
 		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-		panic!("On a non x64 or Aarch64 platform you must explicitly specify a target");
+		return Target::JavaScript;
 	}
 }
 
@@ -42,6 +44,8 @@ impl FromStr for Target {
 
 			"aarch64" | "arm" | "arm64" | "Aarch64" | "Arm64" | "AARCH64" | "ARM"
 			| "ARM64" => Ok(Target::LinuxAarch64),
+
+			"js" => Ok(Target::JavaScript),
 
 			_ => Err(Error::InvalidTarget(line!())),
 		}
@@ -180,6 +184,10 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 			if !mold_output.is_empty() {
 				bail!(Error::External(mold_output));
 			}
+		}
+		Target::JavaScript => {
+			let js = js::codegen::assemble(&ssa);
+			fs::write(&config.output, js)?;
 		}
 	}
 
