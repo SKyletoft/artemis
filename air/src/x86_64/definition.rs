@@ -252,6 +252,10 @@ impl Default for AssemblyBuilder {
 
 impl fmt::Display for AssemblyBuilder {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		writeln!(f, "extern\tprint_n")?;
+		writeln!(f, "extern\tprint_z")?;
+		writeln!(f, "extern\tprint_r")?;
+		writeln!(f, "extern\tprint_b")?;
 		for function_name in self.0.iter().filter_map(|x| {
 			if let Instruction::Global(y) = x {
 				Some(y)

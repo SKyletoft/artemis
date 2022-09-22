@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
 use anyhow::{bail, Result};
+use once_cell::sync::Lazy;
+use smallvec::smallvec;
 use variantly::Variantly;
 
 use crate::{
@@ -366,10 +366,68 @@ impl From<&OrderedTopLevelConstruct> for (SmallString, (TypeRecord, bool)) {
 	}
 }
 
+pub(crate) static BUILTINS: Lazy<Vec<(SmallString, (TypeRecord, bool))>> = Lazy::new(|| {
+	vec![
+		(
+			"print_n".into(),
+			(
+				TypeRecord::Function(FunctionType {
+					return_type: RawType::Integer,
+					arguments: smallvec![crate::ordered::Type {
+						mutable: false,
+						raw: RawType::Natural
+					}],
+				}),
+				true,
+			),
+		),
+		(
+			"print_z".into(),
+			(
+				TypeRecord::Function(FunctionType {
+					return_type: RawType::Integer,
+					arguments: smallvec![crate::ordered::Type {
+						mutable: false,
+						raw: RawType::Integer
+					}],
+				}),
+				true,
+			),
+		),
+		(
+			"print_b".into(),
+			(
+				TypeRecord::Function(FunctionType {
+					return_type: RawType::Integer,
+					arguments: smallvec![crate::ordered::Type {
+						mutable: false,
+						raw: RawType::Boolean
+					}],
+				}),
+				true,
+			),
+		),
+		(
+			"print_r".into(),
+			(
+				TypeRecord::Function(FunctionType {
+					return_type: RawType::Integer,
+					arguments: smallvec![crate::ordered::Type {
+						mutable: false,
+						raw: RawType::Real
+					}],
+				}),
+				true,
+			),
+		),
+	]
+});
+
 pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruct>> {
 	let mut ctx = exprs
 		.iter()
 		.map(<&OrderedTopLevelConstruct>::into)
+		.chain(BUILTINS.iter().cloned())
 		.collect::<Context>();
 
 	exprs.iter()

@@ -35,6 +35,14 @@ pub fn copy_for_inner_scope(ctx: &Context) -> Context {
 
 pub fn check_program(top_level: &mut [TopLevelConstruct]) -> Result<()> {
 	let mut ctx = HashMap::new();
+
+	crate::detype::BUILTINS
+		.iter()
+		.cloned()
+		.for_each(|(name, f)| {
+			ctx.insert(name, f);
+		});
+
 	for branch in top_level.iter() {
 		if let TopLevelConstruct::Function(Function {
 			name,

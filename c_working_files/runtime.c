@@ -20,6 +20,24 @@ int64_t c_f(uint64_t a) {
 	return x + y + z;
 }
 
+int64_t print_n(uint64_t a) {
+	return printf("%ld\n", a);
+}
+
+int64_t print_z(int64_t a) {
+	return printf("%ld\n", a);
+}
+
+int64_t print_r(double a) {
+	return printf("%lf\n", a);
+}
+
+int64_t print_b(int64_t a) {
+	char const * const str = a ? "true" : "false";
+	puts(str);
+	return a;
+}
+
 int main() {
 	int64_t a = f(0);
 	int64_t b = f(1);
