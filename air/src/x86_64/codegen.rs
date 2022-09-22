@@ -56,17 +56,16 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				let (used_gp, _) = find_used_registers(blocks);
 
 				assembler.push(RBP);
-				assembler.push(RSP);
 				assembler.mov(RBP, RSP);
 				for reg in
 					PROTECTED_GP.iter().filter(|r| used_gp.contains(r)).copied()
 				{
-					assembler.push(reg)
+					assembler.push(reg);
 				}
-				assembler.sub(
-					RBP,
-					LiteralOffset((frame_size + arguments_on_stack) * 8),
-				);
+				// Add one if not odd to keep stack alignment to 16
+				// We start at !16 because ABI says 16 before `call` and `call` pushes return pointer
+				let offset = *frame_size * 8;
+				assembler.sub(RSP, LiteralOffset(offset));
 
 				for (idx, block) in blocks.iter().enumerate() {
 					assemble_block(
@@ -81,6 +80,8 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				// Assuming single return, remove the ending ret to paste in the register restoration first
 				assembler.remove_ret()?;
 
+				assembler.add(RSP, LiteralOffset(offset));
+
 				for reg in PROTECTED_GP
 					.iter()
 					.filter(|r| used_gp.contains(r))
@@ -89,8 +90,10 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				{
 					assembler.pop(reg);
 				}
-				assembler.pop(RSP);
+				// Replace with a single leave instruction
+				assembler.mov(RSP, RBP);
 				assembler.pop(RBP);
+
 				assembler.ret();
 			}
 			CodeConstruct::Variable { .. } => todo!(),
@@ -172,7 +175,7 @@ fn assemble_block(
 				lhs: Register::GeneralPurpose(l),
 				rhs: Register::GeneralPurpose(r),
 			}) => {
-				todo!()
+				todo!("I hate x86 division so much");
 			}
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
@@ -244,7 +247,7 @@ fn assemble_block(
 				op,
 				GP[t],
 				GeneralPurposeRegister::RBP,
-				GeneralPurposeRegister::LiteralOffset(l * 8),
+				GeneralPurposeRegister::LiteralOffset(l.wrapping_mul(8)),
 			)?,
 			&Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(t),
@@ -256,7 +259,7 @@ fn assemble_block(
 				op,
 				GP[t],
 				GeneralPurposeRegister::RSP,
-				GeneralPurposeRegister::LiteralOffset(l * 8),
+				GeneralPurposeRegister::LiteralOffset(l.wrapping_mul(8)),
 			)?,
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
@@ -298,23 +301,24 @@ fn assemble_block(
 						.ok_or(Error::InvalidIR(line!()))?],
 				),
 			},
-			Expression::FunctionCall(FunctionCall { function_name, .. }) => {
-				// Save registers
-				// Load arguments
-				// Copy RAX to GP[target]
-				// Restore registers
+			Expression::FunctionCall(FunctionCall {
+				function_name,
+				args,
+			}) => {
+				// let alignment = (args % 2 == 0) as u64;
+				let alignment = 0;
+				let offset = (alignment + *args as u64) * 8;
 
-				for &reg in PROTECTED_GP.iter() {
-					assembler.push(reg);
-				}
-				assembler.push(RSP);
-				assembler.and(RSP, GeneralPurposeRegister::LiteralOffset(!15));
+				assembler.sub(RSP, GeneralPurposeRegister::LiteralOffset(offset));
+
+				// RAX contains the number of **floating point** arguments passed
+				// to a variadic function.
+				// I am not supporting variadic functions at the moment, so let's just
+				// hard code this to 0
+				assembler.mov_lit(RAX, 0);
+
 				assembler.call(function_name.clone());
-
-				assembler.pop(RSP);
-				for &reg in PROTECTED_GP.iter().rev() {
-					assembler.pop(reg);
-				}
+				assembler.add(RSP, GeneralPurposeRegister::LiteralOffset(offset));
 			}
 			_ => {
 				log::trace!("Invalid Line: {line:#?}");
@@ -386,8 +390,7 @@ fn convert_binop(
 		}
 
 		Op::StoreMem => {
-			assembler.lea(R15, right, left);
-			assembler.mov_to_ram(R15, target);
+			assembler.mov_from_index(target, left, right);
 		}
 
 		Op::Swap

@@ -85,6 +85,11 @@ pub enum Instruction {
 	MovLit(GeneralPurposeRegister, u64),
 	MovToRam(GeneralPurposeRegister, GeneralPurposeRegister),
 	MovFromRam(GeneralPurposeRegister, GeneralPurposeRegister),
+	MovFromIndex(
+		GeneralPurposeRegister,
+		GeneralPurposeRegister,
+		GeneralPurposeRegister,
+	),
 	Div(GeneralPurposeRegister),
 	Idiv(GeneralPurposeRegister),
 	And(GeneralPurposeRegister, GeneralPurposeRegister),
@@ -153,6 +158,15 @@ impl AssemblyBuilder {
 
 	pub fn mov_from_ram(&mut self, l: GeneralPurposeRegister, r: GeneralPurposeRegister) {
 		self.0.push(MovFromRam(l, r))
+	}
+
+	pub fn mov_from_index(
+		&mut self,
+		t: GeneralPurposeRegister,
+		arr: GeneralPurposeRegister,
+		idx: GeneralPurposeRegister,
+	) {
+		self.0.push(MovFromIndex(t, arr, idx))
 	}
 
 	pub fn div(&mut self, l: GeneralPurposeRegister) {
@@ -261,6 +275,7 @@ impl fmt::Display for AssemblyBuilder {
 				MovLit(l, r) => writeln!(f, "\tmov\t{l}, {r:3}")?,
 				MovToRam(l, r) => writeln!(f, "\tmov\t[{l}], {r}")?,
 				MovFromRam(l, r) => writeln!(f, "\tmov\t{l}, [{r}]")?,
+				MovFromIndex(t, a, i) => writeln!(f, "\tmov\t{t}, [{a} + {i}]")?,
 				Div(l) => writeln!(f, "\tdiv\t{l}")?,
 				Idiv(l) => writeln!(f, "\tidiv\t{l}")?,
 				And(l, r) => writeln!(f, "\tand\t{l}, {r}")?,

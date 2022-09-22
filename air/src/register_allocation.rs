@@ -509,7 +509,7 @@ fn save_on_stack(
 		block.block.push(Expression::BinOp(BinOp {
 			target: new_register,
 			op: Op::StoreMem,
-			lhs: Register::FramePointer,
+			lhs: Register::StackPointer,
 			rhs: Register::Literal(stack.len() as u64),
 		}));
 
@@ -630,7 +630,7 @@ fn load_value(
 			Expression::BinOp(BinOp {
 				target: register,
 				op: Op::LoadMem,
-				lhs: Register::FramePointer,
+				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			})
 		}
@@ -1012,7 +1012,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
-				lhs: Register::FramePointer,
+				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
 			state.stack[stack_position] = state.general_purpose[idx];
@@ -1020,7 +1020,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::StoreMem,
-				lhs: Register::FramePointer,
+				lhs: Register::StackPointer,
 				rhs: Register::Literal(state.stack.len() as u64),
 			}));
 			state.stack.push(state.general_purpose[idx]);
@@ -1045,7 +1045,7 @@ fn load_value_to_branch(
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::LoadMem,
-				lhs: Register::FramePointer,
+				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
 		}
@@ -1225,7 +1225,7 @@ fn handle_single_block(
 					let expr = Expression::BinOp(BinOp {
 						target: arg_register,
 						op: Op::StoreMem,
-						lhs: Register::FramePointer,
+						lhs: Register::StackPointer,
 						// Negative offset so they end up in the called function's stack frame
 						rhs: Register::Literal(-(idx as isize) as u64),
 					});
