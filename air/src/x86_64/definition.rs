@@ -47,7 +47,7 @@ impl fmt::Display for GeneralPurposeRegister {
 			GeneralPurposeRegister::R15 => write!(f, "r15"),
 			GeneralPurposeRegister::RIP => write!(f, "rip"),
 			GeneralPurposeRegister::LiteralOffset(l) => {
-				write!(f, "{}", l)
+				write!(f, "{:3}", *l as i64)
 			}
 		}
 	}

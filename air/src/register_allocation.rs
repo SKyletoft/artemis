@@ -113,7 +113,7 @@ pub enum Register {
 impl fmt::Display for Register {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Register::Literal(v) => write!(f, "{v}"),
+			Register::Literal(v) => write!(f, "{}", *v as i64),
 			Register::FloatingPoint(v) => write!(f, "$F{v}"),
 			Register::GeneralPurpose(v) => write!(f, "${v}"),
 			Register::StackPointer => write!(f, "$SP"),
