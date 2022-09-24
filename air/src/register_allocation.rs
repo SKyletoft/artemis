@@ -1204,7 +1204,7 @@ fn handle_single_block(
 						op: Op::StoreMem,
 						lhs: Register::StackPointer,
 						// Negative offset so they end up in the called function's stack frame
-						rhs: Register::Literal(-(idx as isize) as u64),
+						rhs: Register::Literal(-((idx + 1) as isize) as u64),
 					});
 					new_block.block.push(expr);
 				}
