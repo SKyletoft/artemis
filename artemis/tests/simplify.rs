@@ -23,15 +23,15 @@ fn nested_addition() {
 
 	let expected: SmallVec<[SimpleExpression; 4]> = smallvec![
 		SimpleExpression::BinOp(SimpleBinOp {
-			target: 0.into(),
+			target: 0usize.into(),
 			op: SimpleOp::Add,
 			lhs: Source::Value(1),
 			rhs: Source::Value(2),
 		}),
 		SimpleExpression::BinOp(SimpleBinOp {
-			target: 1.into(),
+			target: 1usize.into(),
 			op: SimpleOp::Add,
-			lhs: Source::Register(0.into()),
+			lhs: Source::Register(0usize.into()),
 			rhs: Source::Value(3),
 		}),
 	];
