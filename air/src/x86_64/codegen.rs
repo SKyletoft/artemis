@@ -54,7 +54,9 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				// Add one if not odd to keep stack alignment to 16
 				// We start at !16 because ABI says 16 before `call` and `call` pushes return pointer
 				let offset = *frame_size * 8;
-				assembler.sub(RSP, LiteralOffset(offset));
+				if offset != 0 {
+					assembler.sub(RSP, LiteralOffset(offset));
+				}
 
 				for (idx, block) in blocks.iter().enumerate() {
 					assemble_block(
@@ -69,7 +71,9 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				// Assuming single return, remove the ending ret to paste in the register restoration first
 				assembler.remove_ret()?;
 
-				assembler.add(RSP, LiteralOffset(offset));
+				if offset != 0 {
+					assembler.add(RSP, LiteralOffset(offset));
+				}
 
 				for reg in PROTECTED_GP
 					.iter()
@@ -96,7 +100,6 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 fn find_used_registers(blocks: &[Block]) -> HashSet<GeneralPurposeRegister> {
 	let mut gp = HashSet::new();
 
-	gp.insert(R15);
 	let mut add_to_set = |reg: Register| match reg {
 		Register::Literal(_) => {}
 		Register::GeneralPurpose(idx) => {
@@ -286,7 +289,12 @@ fn assemble_block(
 				let alignment = 0;
 				let offset = (alignment + *args as u64) * 8;
 
-				assembler.sub(RSP, GeneralPurposeRegister::LiteralOffset(offset));
+				if offset != 0 {
+					assembler.sub(
+						RSP,
+						GeneralPurposeRegister::LiteralOffset(offset),
+					);
+				}
 
 				// RAX contains the number of **floating point** arguments passed
 				// to a variadic function.
@@ -295,7 +303,12 @@ fn assemble_block(
 				assembler.mov_lit(RAX, 0);
 
 				assembler.call(function_name.clone());
-				assembler.add(RSP, GeneralPurposeRegister::LiteralOffset(offset));
+				if offset != 0 {
+					assembler.add(
+						RSP,
+						GeneralPurposeRegister::LiteralOffset(offset),
+					);
+				}
 			}
 			_ => {
 				log::trace!("Invalid Line: {line:#?}");
