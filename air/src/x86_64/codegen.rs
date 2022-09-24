@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::{bail, Result};
-use FloatingPointRegister::*;
 use GeneralPurposeRegister::*;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -13,8 +12,8 @@ use crate::{
 	},
 	simplify::BlockId,
 	x86_64::definition::{
-		AssemblyBuilder, FloatingPointRegister, GeneralPurposeRegister, Instruction,
-	},
+		AssemblyBuilder, GeneralPurposeRegister,
+	}
 };
 
 // SYSTEMV ABI for x64
@@ -32,14 +31,6 @@ const GP: [GeneralPurposeRegister; 13] = {
 };
 const PROTECTED_GP: [GeneralPurposeRegister; 5] = [RBX, R12, R13, R14, R15];
 
-/// General purpose registers, in order of priority
-const FP: [FloatingPointRegister; 16] = {
-	[
-		XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12,
-		XMM13, XMM14, XMM15,
-	]
-};
-
 pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 	let mut assembler = AssemblyBuilder::new();
 	for construct in constructs.iter() {
@@ -53,7 +44,7 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				assembler.global(name);
 				assembler.label(name.clone());
 
-				let (used_gp, _) = find_used_registers(blocks);
+				let used_gp = find_used_registers(blocks);
 
 				assembler.push(RBP);
 				assembler.mov(RBP, RSP);
@@ -106,19 +97,14 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 
 fn find_used_registers(
 	blocks: &[Block],
-) -> (
-	HashSet<GeneralPurposeRegister>,
-	HashSet<FloatingPointRegister>,
-) {
+) -> 
+	HashSet<GeneralPurposeRegister>
+ {
 	let mut gp = HashSet::new();
-	let mut fp = HashSet::new();
 
 	gp.insert(R15);
 	let mut add_to_set = |reg: Register| match reg {
 		Register::Literal(_) => {}
-		Register::FloatingPoint(idx) => {
-			fp.insert(FP[idx]);
-		}
 		Register::GeneralPurpose(idx) => {
 			gp.insert(GP[idx]);
 		}
@@ -156,7 +142,7 @@ fn find_used_registers(
 		}
 	}
 
-	(gp, fp)
+	gp
 }
 
 fn assemble_block(
@@ -284,9 +270,6 @@ fn assemble_block(
 				Op::StoreMem => todo!(),
 				Op::LoadMem => match lhs {
 					Register::Literal(v) => assembler.mov_lit(GP[t], v),
-					Register::FloatingPoint(_) => {
-						bail!(Error::InvalidIR(line!()))
-					}
 					Register::GeneralPurpose(v) => assembler.mov(GP[t], GP[v]),
 					Register::StackPointer => assembler.mov(GP[t], RSP),
 					Register::FramePointer => assembler.mov(GP[t], RBP),

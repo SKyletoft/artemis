@@ -22,7 +22,6 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Configuration {
 	general_purpose_registers: u64,
-	floating_point_registers: u64,
 	argument_registers: u64,
 	unprotected_registers: Vec<Register>,
 	return_register: u64,
@@ -31,7 +30,6 @@ pub struct Configuration {
 impl Configuration {
 	pub fn new(
 		general_purpose_registers: u64,
-		floating_point_registers: u64,
 		argument_registers: u64,
 		protected_registers: Vec<Register>,
 		return_register: u64,
@@ -39,10 +37,8 @@ impl Configuration {
 		assert!(general_purpose_registers > 0);
 		assert!(general_purpose_registers >= argument_registers);
 		assert!(general_purpose_registers > return_register);
-		// assert!(floating_point_registers > 0);
 		Self {
 			general_purpose_registers,
-			floating_point_registers,
 			argument_registers,
 			unprotected_registers: protected_registers,
 			return_register,
@@ -52,7 +48,6 @@ impl Configuration {
 
 pub static AARCH64: Lazy<Configuration> = Lazy::new(|| Configuration {
 	general_purpose_registers: 31,
-	floating_point_registers: 32,
 	argument_registers: 31,
 	unprotected_registers: vec![],
 	return_register: u64::MAX, // TODO
@@ -60,7 +55,6 @@ pub static AARCH64: Lazy<Configuration> = Lazy::new(|| Configuration {
 
 pub static X86_64: Lazy<Configuration> = Lazy::new(|| Configuration {
 	general_purpose_registers: 13,
-	floating_point_registers: 8,
 	argument_registers: 6,
 	unprotected_registers: (0..=7).map(Register::GeneralPurpose).collect(),
 	return_register: 6, // RAX
@@ -75,7 +69,6 @@ impl Default for Configuration {
 		#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
 		return Configuration {
 			general_purpose_registers: 8,
-			floating_point_registers: 8,
 			argument_registers: 0,
 			temporary_registers: 0,
 		};
@@ -103,7 +96,6 @@ pub enum CodeConstruct {
 #[derive(Clone, PartialEq, Eq, Copy, Debug, Hash, Variantly)]
 pub enum Register {
 	Literal(u64),
-	FloatingPoint(usize),
 	GeneralPurpose(usize),
 	StackPointer,
 	FramePointer,
@@ -114,7 +106,6 @@ impl fmt::Display for Register {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
 			Register::Literal(v) => write!(f, "{}", *v as i64),
-			Register::FloatingPoint(v) => write!(f, "$F{v}"),
 			Register::GeneralPurpose(v) => write!(f, "${v}"),
 			Register::StackPointer => write!(f, "$SP"),
 			Register::FramePointer => write!(f, "$FP"),
@@ -252,8 +243,7 @@ impl RegisterSet {
 
 #[derive(Debug, Clone, PartialEq)]
 struct State {
-	general_purpose: RegisterSet,
-	floating_point: RegisterSet,
+	registers: RegisterSet,
 	stack: Vec<Option<Source>>,
 }
 
@@ -261,32 +251,24 @@ impl State {
 	/// Checks if a Register is currently in the register banks or on the stack
 	pub fn contains(&self, source: SimpleRegister) -> bool {
 		let wrapped = Some(Source::Register(source));
-		self.general_purpose.contains(&wrapped)
-			|| self.floating_point.contains(&wrapped)
+		self.registers.contains(&wrapped)
 			|| self.stack.contains(&wrapped)
 	}
 
 	/// Finds the location of a source in either of the register banks but **NOT** on the stack
 	pub fn find(&self, source: Source) -> Option<Register> {
 		let wrapped = Some(source);
-		self.general_purpose
+		self.registers
 			.iter()
 			.position(|r| r == &wrapped)
 			.map(Register::GeneralPurpose)
-			.or_else(|| {
-				self.floating_point
-					.iter()
-					.position(|r| r == &wrapped)
-					.map(Register::FloatingPoint)
-			})
 	}
 }
 
 impl From<&Configuration> for State {
 	fn from(config: &Configuration) -> Self {
 		Self {
-			general_purpose: RegisterSet::new(config.general_purpose_registers),
-			floating_point: RegisterSet::new(config.floating_point_registers),
+			registers: RegisterSet::new(config.general_purpose_registers),
 			stack: Vec::new(),
 		}
 	}
@@ -403,24 +385,21 @@ fn find_empty_slot(
 }
 
 fn select_register(
-	is_floating_point: bool,
 	pos: (usize, usize),
 	state: &mut State,
 	scope: &[SimpleBlock],
 	protected_registers: &[Source],
 ) -> (Register, bool) {
-	assert!(!is_floating_point, "Todo: floating point");
-
 	// Try to find an unused register
 	if let Some(first_unused) =
-		find_empty_slot(pos, &state.general_purpose, scope, protected_registers)
+		find_empty_slot(pos, &state.registers, scope, protected_registers)
 	{
 		return (Register::GeneralPurpose(first_unused), false);
 	}
 
 	// Select which register to push to the stack instead
 	let (slot, store_old_value) = state
-		.general_purpose
+		.registers
 		.iter()
 		.enumerate()
 		.filter(|(_, r)| !r.map(|s| protected_registers.contains(&s)).unwrap_or(false))
@@ -545,23 +524,20 @@ fn get_or_load_and_get_value(
 	source: Source,
 	state: &mut State,
 	pos: (usize, usize),
-	is_floating: bool,
 	block: &mut Block,
 	scope: &[SimpleBlock],
 	protected_registers: &[Source],
 ) -> Register {
-	assert!(!is_floating);
-	if let Some(idx) = state.general_purpose.index_of(&source) {
+	if let Some(idx) = state.registers.index_of(&source) {
 		return Register::GeneralPurpose(idx);
 	}
 
 	let (new_register, needs_to_be_saved) =
-		select_register(is_floating, pos, state, scope, protected_registers);
+		select_register(pos, state, scope, protected_registers);
 
 	let (register_idx, register_set) = match new_register {
-		Register::GeneralPurpose(r) => (r, &mut state.general_purpose),
-		Register::FloatingPoint(r) => (r, &mut state.floating_point),
-		_ => unreachable!("`select_register` should only return gp and fp registers?"),
+		Register::GeneralPurpose(r) => (r, &mut state.registers),
+		_ => unreachable!("`select_register` should only return gp registers?"),
 	};
 
 	if needs_to_be_saved {
@@ -664,7 +640,7 @@ fn select_and_save_old(
 	block: &mut Block,
 ) -> Result<Register> {
 	let (recommended_register, need_to_save_old_value) =
-		select_register(false, pos, state, scope, &[]);
+		select_register(pos, state, scope, &[]);
 
 	let gp_idx = recommended_register
 		.general_purpose()
@@ -672,7 +648,7 @@ fn select_and_save_old(
 
 	if need_to_save_old_value {
 		save_on_stack(
-			&mut state.general_purpose,
+			&mut state.registers,
 			pos,
 			gp_idx,
 			block,
@@ -695,7 +671,7 @@ fn allocate_for_blocks(
 
 	// Copy in the arguments into registers
 	for (register, arg) in state
-		.general_purpose
+		.registers
 		.iter_mut()
 		.zip((0..args).map(|x| Some(Source::Register(x.into()))))
 		.take(config.argument_registers as usize)
@@ -710,7 +686,7 @@ fn allocate_for_blocks(
 	log::trace!(
 		"[{}]: Start\nRegs: {:#?}\nStack: {:#?}\n",
 		line!(),
-		&state.general_purpose,
+		&state.registers,
 		&state.stack
 	);
 
@@ -821,8 +797,7 @@ fn allocate_for_blocks_with_end(
 					};
 
 				// Clear old tracermation
-				state.general_purpose.iter_mut().for_each(|x| *x = None);
-				state.floating_point.iter_mut().for_each(|x| *x = None);
+				state.registers.iter_mut().for_each(|x| *x = None);
 				state.stack.iter_mut().for_each(|x| *x = None);
 
 				// Fill out stack to the longest stack for mergability
@@ -833,9 +808,9 @@ fn allocate_for_blocks_with_end(
 
 				log::trace!(
 					"After merge φ:\n{:#?}\n{:#?}\n{:#?}",
-					&left_state.general_purpose,
-					&right_state.general_purpose,
-					&state.general_purpose
+					&left_state.registers,
+					&right_state.registers,
+					&state.registers
 				);
 
 				merge_old_registers(
@@ -870,7 +845,7 @@ fn allocate_for_blocks_with_end(
 						right.from,
 						resulting_register
 					);
-					state.general_purpose[resulting_register] =
+					state.registers[resulting_register] =
 						Some(Source::Register(*target));
 				}
 
@@ -898,41 +873,25 @@ fn merge_old_registers(
 ) {
 	// And keep whatever values are the same still in both paths
 	merge_untouched(
-		&left_state.general_purpose,
-		&right_state.general_purpose,
-		&mut state.general_purpose,
-	);
-	merge_untouched(
-		&left_state.floating_point,
-		&right_state.floating_point,
-		&mut state.floating_point,
+		&left_state.registers,
+		&right_state.registers,
+		&mut state.registers,
 	);
 	merge_untouched(&left_state.stack, &right_state.stack, &mut state.stack);
 
 	// And then move stuff that's been moved
 	merge_moved(
-		&left_state.general_purpose,
-		&mut right_state.general_purpose,
-		&mut state.general_purpose,
-		right_end_block,
-	);
-	merge_moved(
-		&left_state.floating_point,
-		&mut right_state.floating_point,
-		&mut state.floating_point,
+		&left_state.registers,
+		&mut right_state.registers,
+		&mut state.registers,
 		right_end_block,
 	);
 	// TODO: Merge moved on the stack
 
 	check_merges(
-		&left_state.general_purpose,
-		&right_state.general_purpose,
-		&state.general_purpose,
-	);
-	check_merges(
-		&left_state.floating_point,
-		&right_state.floating_point,
-		&state.floating_point,
+		&left_state.registers,
+		&right_state.registers,
+		&state.registers,
 	);
 	check_merges(&left_state.stack, &right_state.stack, &state.stack);
 }
@@ -1024,7 +983,7 @@ fn load_value_to_branch(
 ) -> Result<()> {
 	// Save the value we're overwriting
 	// TODO: switch this to `save_on_stack` to have a chance of reusing old stack values
-	if state.general_purpose[idx].is_some() && !state.stack.iter().any(|v| v == &Some(value)) {
+	if state.registers[idx].is_some() && !state.stack.iter().any(|v| v == &Some(value)) {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
 			block.push(Expression::BinOp(BinOp {
@@ -1033,7 +992,7 @@ fn load_value_to_branch(
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
-			state.stack[stack_position] = state.general_purpose[idx];
+			state.stack[stack_position] = state.registers[idx];
 		} else {
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
@@ -1041,7 +1000,7 @@ fn load_value_to_branch(
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(state.stack.len() as u64),
 			}));
-			state.stack.push(state.general_purpose[idx]);
+			state.stack.push(state.registers[idx]);
 		}
 	}
 	//load_value(value, Register::GeneralPurpose(idx), &mut state.stack, block);
@@ -1068,7 +1027,7 @@ fn load_value_to_branch(
 			}));
 		}
 	}
-	state.general_purpose[idx] = Some(value);
+	state.registers[idx] = Some(value);
 	Ok(())
 }
 
@@ -1081,13 +1040,13 @@ fn merge_registers(
 	right_end_block: &mut SmallVec<[Expression; 4]>,
 	left_end_block: &mut SmallVec<[Expression; 4]>,
 ) -> Result<usize> {
-	let left_gp = left_state.general_purpose.index_of(&left_from);
-	let right_gp = right_state.general_purpose.index_of(&right_from);
+	let left_gp = left_state.registers.index_of(&left_from);
+	let right_gp = right_state.registers.index_of(&right_from);
 	let left_empty = left_gp
-		.map(|idx| state.general_purpose.get(idx).is_some())
+		.map(|idx| state.registers.get(idx).is_some())
 		.unwrap_or(false);
 	let right_empty = right_gp
-		.map(|idx| state.general_purpose.get(idx).is_some())
+		.map(|idx| state.registers.get(idx).is_some())
 		.unwrap_or(false);
 
 	let resulting_register = match (left_gp, left_empty, right_gp, right_empty) {
@@ -1095,7 +1054,7 @@ fn merge_registers(
 		(Some(l), true, Some(r), _) => {
 			// move to left, -> left
 			if l != r {
-				right_state.general_purpose.swap(l, r);
+				right_state.registers.swap(l, r);
 				right_end_block.push(Expression::UnOp(UnOp {
 					target: Register::GeneralPurpose(l),
 					op: Op::Swap,
@@ -1113,7 +1072,7 @@ fn merge_registers(
 		(Some(l), false, Some(r), true) => {
 			// move to right, -> right
 			if l != r {
-				left_state.general_purpose.swap(l, r);
+				left_state.registers.swap(l, r);
 				left_end_block.push(Expression::UnOp(UnOp {
 					target: Register::GeneralPurpose(r),
 					op: Op::Swap,
@@ -1131,7 +1090,7 @@ fn merge_registers(
 		_ => {
 			// any free
 			let suggested_register =
-				state.general_purpose.iter().position(Option::is_none);
+				state.registers.iter().position(Option::is_none);
 			if let Some(idx) = suggested_register {
 				load_value_to_branch(left_end_block, left_state, left_from, idx)?;
 				load_value_to_branch(
@@ -1181,7 +1140,6 @@ fn handle_single_block(
 					*lhs,
 					state,
 					pos,
-					false,
 					&mut new_block,
 					scope,
 					&[*lhs, *rhs],
@@ -1190,7 +1148,6 @@ fn handle_single_block(
 					*rhs,
 					state,
 					pos,
-					false,
 					&mut new_block,
 					scope,
 					&[*lhs, *rhs],
@@ -1206,7 +1163,7 @@ fn handle_single_block(
 					rhs: rhs_register,
 				});
 
-				state.general_purpose[target_register.general_purpose().unwrap()] =
+				state.registers[target_register.general_purpose().unwrap()] =
 					Some(Source::Register(*target));
 
 				new_block.block.push(expr);
@@ -1235,7 +1192,6 @@ fn handle_single_block(
 						arg,
 						state,
 						pos,
-						false,
 						&mut new_block,
 						scope,
 						&[],
@@ -1260,11 +1216,11 @@ fn handle_single_block(
 					match reg {
 						Register::GeneralPurpose(idx) => {
 							// Save it if it's used AND will be used again
-							if let Some(src) = state.general_purpose[idx] {
+							if let Some(src) = state.registers[idx] {
 								if src.lines_till_last_use(scope, pos).is_some() {
 									log::trace!("Saving {src:?}");
 									save_on_stack(
-										&mut state.general_purpose,
+										&mut state.registers,
 										pos,
 										idx,
 										&mut new_block,
@@ -1280,13 +1236,13 @@ fn handle_single_block(
 				}
 				// And then loading in the new values
 				for (idx, &arg) in register_args.iter().enumerate() {
-					match state.general_purpose[idx] {
+					match state.registers[idx] {
 						None => {
 							log::trace!("Loading to None: {arg:?}");
 							switch_or_load_value(
 								idx,
 								arg,
-								&mut state.general_purpose,
+								&mut state.registers,
 								&mut new_block.block,
 								&mut state.stack,
 							);
@@ -1298,7 +1254,7 @@ fn handle_single_block(
 								switch_or_load_value(
 									idx,
 									arg,
-									&mut state.general_purpose,
+									&mut state.registers,
 									&mut new_block.block,
 									&mut state.stack,
 								);
@@ -1312,7 +1268,7 @@ fn handle_single_block(
 				for reg in config.unprotected_registers.iter() {
 					match reg {
 						&Register::GeneralPurpose(idx) => {
-							state.general_purpose[idx] = None;
+							state.registers[idx] = None;
 						},
 						_ => todo!("Handle saving of unprotected non-gp registers"),
 					}
@@ -1320,12 +1276,12 @@ fn handle_single_block(
 
 				// And lastly check if the return register needs preserving
 				let ret_reg = config.return_register as usize;
-				let value_in_return_slot = state.general_purpose[ret_reg];
+				let value_in_return_slot = state.registers[ret_reg];
 				if let Some(val) = value_in_return_slot {
 					if val.lines_till_last_use(scope, pos).is_some() {
 						log::trace!("Saving value that was in return slot: {val:?}");
 						save_on_stack(
-							&mut state.general_purpose,
+							&mut state.registers,
 							pos,
 							ret_reg,
 							&mut new_block,
@@ -1341,14 +1297,14 @@ fn handle_single_block(
 					args: (config.argument_registers as usize).min(args.len()),
 				});
 				new_block.block.push(expr);
-				state.general_purpose[ret_reg] = Some(Source::Register(*target));
+				state.registers[ret_reg] = Some(Source::Register(*target));
 			}
 			_ => todo!(),
 		}
 		log::trace!(
 			"[{}]: {line:?}\nRegs: {:#?}\nStack: {:#?}\n",
 			line!(),
-			&state.general_purpose,
+			&state.registers,
 			&state.stack
 		);
 	}
@@ -1391,12 +1347,11 @@ fn get_or_load_condition(
 	state.find(target)
 		.or_else(|| {
 			let idx = state
-				.general_purpose
+				.registers
 				.iter()
 				.position(Option::is_none)
 				.unwrap_or_else(|| {
 					select_register(
-						false,
 						(block_idx, usize::MAX),
 						state,
 						scope,
