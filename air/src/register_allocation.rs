@@ -576,8 +576,8 @@ fn get_or_load_and_get_value(
 		);
 	}
 
-	eprintln!("-----------------------------------------------");
-	dbg!(&register_set, &state.stack, source);
+	// eprintln!("-----------------------------------------------");
+	// dbg!(&register_set, &state.stack, source);
 
 	load_value(source, new_register, &mut state.stack, &mut block.block);
 
@@ -639,7 +639,7 @@ fn load_value(
 			lhs: Register::Literal(v),
 		}),
 		Source::Register(r) => {
-			dbg!(r);
+			// dbg!(r);
 			let stack_position = stack
 				.iter()
 				.position(|x| x == &Some(Source::Register(r)))
