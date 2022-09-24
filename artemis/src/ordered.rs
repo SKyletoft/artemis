@@ -531,16 +531,12 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					bail!(Error::Internal(line!()));
 				}
 
-				match inner.as_slice() {
+				let (name, value) = match inner.as_slice() {
 					[AST::Term(Term::Variable(name)), val] => {
-						let value = Box::new(val.try_into()?);
-						AST::Assignment(Assignment {
-							name: name.clone(),
-							value,
-						})
+						(name.clone(), Box::new(val.try_into()?))
 					}
 					[AST::Term(Term::Variable(name)), AST::RawToken(t), val] => {
-						let rhs = todo!(); //Box::new(val.try_into()?);
+						let rhs = Box::new(val.try_into()?);
 						let op = GeneratedParser::parse(
 							Rule::binary_operator,
 							t.as_str(),
@@ -552,16 +548,23 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 						.expect("Length checked above")?
 						.operator()
 						.ok_or(Error::ParseError(line!()))?;
-						AST::Term(Term::BinOp(BinOp {
-							lhs: Box::new(Expr::Term(Term::Variable(
-								name.clone(),
-							))),
-							op,
-							rhs,
-						}))
+
+						(
+							name.clone(),
+							Box::new(Expr::Term(Term::BinOp(BinOp {
+								lhs: Box::new(Expr::Term(
+									Term::Variable(
+										name.clone(),
+									),
+								)),
+								op,
+								rhs,
+							}))),
+						)
 					}
 					_ => bail!(Error::ParseError(line!())),
-				}
+				};
+				AST::Assignment(Assignment { name, value })
 			}
 			// expr here is what used to be parentheses and can be treated as a pure expression
 			Rule::expr | Rule::term => {
