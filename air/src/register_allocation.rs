@@ -297,10 +297,23 @@ impl fmt::Debug for Expression {
 		match self {
 			Expression::BinOp(BinOp {
 				target,
+				op: Op::StoreMem,
+				lhs,
+				rhs,
+			}) => write!(f, "{target} → {lhs} + {rhs}"),
+			Expression::BinOp(BinOp {
+				target,
 				op,
 				lhs,
 				rhs,
 			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
+			Expression::UnOp(UnOp {
+				target,
+				op: Op::StoreMem,
+				lhs,
+			}) => {
+				write!(f, "{target} → {lhs}")
+			}
 			Expression::UnOp(UnOp {
 				target,
 				op: Op::Swap,
