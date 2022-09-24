@@ -665,7 +665,7 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					while let Some(arg) =
 						remove_by_pattern!(&mut inner, AST::Argument(a), a)
 					{
-						args.push(arg);
+						args.insert(0, arg);
 					}
 					args
 				};
