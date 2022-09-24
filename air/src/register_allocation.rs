@@ -517,6 +517,12 @@ fn save_on_stack(
 	stack: &mut Vec<Option<Source>>,
 ) {
 	if let Some(Source::Register(reg)) = register_set[idx] {
+		let stack_value = Some(Source::Register(reg));
+		// Don't store the value it it's already on the stack
+		if stack.iter().any(|v| v == &stack_value) {
+			return;
+		}
+
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		// TODO: Replace with push
 		block.block.push(Expression::BinOp(BinOp {
@@ -526,7 +532,6 @@ fn save_on_stack(
 			rhs: Register::Literal(stack.len() as u64),
 		}));
 
-		let stack_value = Some(Source::Register(reg));
 		if let Some(empty_idx) = find_empty_slot(pos, stack, scope, &[]) {
 			stack[empty_idx] = stack_value;
 		} else {
@@ -1019,7 +1024,7 @@ fn load_value_to_branch(
 ) -> Result<()> {
 	// Save the value we're overwriting
 	// TODO: switch this to `save_on_stack` to have a chance of reusing old stack values
-	if state.general_purpose[idx].is_some() {
+	if state.general_purpose[idx].is_some() && !state.stack.iter().any(|v| v == &Some(value)) {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
 			block.push(Expression::BinOp(BinOp {
