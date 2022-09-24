@@ -373,7 +373,7 @@ fn convert_binop(
 		}
 
 		Op::StoreMem => {
-			assembler.mov_from_index(target, left, right);
+			assembler.mov_to_index(target, left, right);
 		}
 
 		Op::Swap
