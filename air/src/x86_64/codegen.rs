@@ -11,9 +11,7 @@ use crate::{
 		BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 	},
 	simplify::BlockId,
-	x86_64::definition::{
-		AssemblyBuilder, GeneralPurposeRegister,
-	}
+	x86_64::definition::{AssemblyBuilder, GeneralPurposeRegister},
 };
 
 // SYSTEMV ABI for x64
@@ -95,11 +93,7 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 	Ok(res)
 }
 
-fn find_used_registers(
-	blocks: &[Block],
-) -> 
-	HashSet<GeneralPurposeRegister>
- {
+fn find_used_registers(blocks: &[Block]) -> HashSet<GeneralPurposeRegister> {
 	let mut gp = HashSet::new();
 
 	gp.insert(R15);

@@ -251,8 +251,7 @@ impl State {
 	/// Checks if a Register is currently in the register banks or on the stack
 	pub fn contains(&self, source: SimpleRegister) -> bool {
 		let wrapped = Some(Source::Register(source));
-		self.registers.contains(&wrapped)
-			|| self.stack.contains(&wrapped)
+		self.registers.contains(&wrapped) || self.stack.contains(&wrapped)
 	}
 
 	/// Finds the location of a source in either of the register banks but **NOT** on the stack
@@ -504,16 +503,22 @@ fn save_on_stack(
 
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
 		// TODO: Replace with push
-		block.block.push(Expression::BinOp(BinOp {
-			target: new_register,
-			op: Op::StoreMem,
-			lhs: Register::StackPointer,
-			rhs: Register::Literal(stack.len() as u64),
-		}));
 
 		if let Some(empty_idx) = find_empty_slot(pos, stack, scope, &[]) {
+			block.block.push(Expression::BinOp(BinOp {
+				target: new_register,
+				op: Op::StoreMem,
+				lhs: Register::StackPointer,
+				rhs: Register::Literal(empty_idx as u64),
+			}));
 			stack[empty_idx] = stack_value;
 		} else {
+			block.block.push(Expression::BinOp(BinOp {
+				target: new_register,
+				op: Op::StoreMem,
+				lhs: Register::StackPointer,
+				rhs: Register::Literal(stack.len() as u64),
+			}));
 			stack.push(stack_value);
 		}
 	}
@@ -615,7 +620,6 @@ fn load_value(
 			lhs: Register::Literal(v),
 		}),
 		Source::Register(r) => {
-			// dbg!(r);
 			let stack_position = stack
 				.iter()
 				.position(|x| x == &Some(Source::Register(r)))
@@ -1089,8 +1093,7 @@ fn merge_registers(
 		// Neither left nor right are available and free, go for first empty slot
 		_ => {
 			// any free
-			let suggested_register =
-				state.registers.iter().position(Option::is_none);
+			let suggested_register = state.registers.iter().position(Option::is_none);
 			if let Some(idx) = suggested_register {
 				load_value_to_branch(left_end_block, left_state, left_from, idx)?;
 				load_value_to_branch(
@@ -1294,7 +1297,7 @@ fn handle_single_block(
 
 				let expr = Expression::FunctionCall(FunctionCall {
 					function_name: function.clone(),
-					args: (config.argument_registers as usize).min(args.len()),
+					args: stack_args.len(),
 				});
 				new_block.block.push(expr);
 				state.registers[ret_reg] = Some(Source::Register(*target));
@@ -1351,15 +1354,10 @@ fn get_or_load_condition(
 				.iter()
 				.position(Option::is_none)
 				.unwrap_or_else(|| {
-					select_register(
-						(block_idx, usize::MAX),
-						state,
-						scope,
-						&[],
-					)
-					.0
-					.general_purpose()
-					.expect("Hardcoded false")
+					select_register((block_idx, usize::MAX), state, scope, &[])
+						.0
+						.general_purpose()
+						.expect("Hardcoded false")
 				});
 			load_value_to_branch(&mut new_block.block, state, target, idx).ok()?;
 			Some(Register::GeneralPurpose(idx))
