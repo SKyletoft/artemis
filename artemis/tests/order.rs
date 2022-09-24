@@ -87,18 +87,20 @@ fn mul_back() {
 
 #[test]
 fn parenthesis_1() {
-	let s = "(1 + 2) * 3";
+	let s = "{1 + 2} * 3";
 	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
 		.collect::<Result<Vec<_>>>()
 		.unwrap();
 	let expected = AST::Term(Term::BinOp(BinOp {
-		lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
-			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
-			op: Op::Plus,
-			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
-		}))),
+		lhs: Box::new(Expr::Term(Term::Block(vec![Expr::Term(Term::BinOp(
+			BinOp {
+				lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
+				op: Op::Plus,
+				rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+			},
+		))]))),
 		op: Op::Times,
 		rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
 	}));
@@ -108,7 +110,7 @@ fn parenthesis_1() {
 
 #[test]
 fn parenthesis_2() {
-	let s = "1 * (2 + 3)";
+	let s = "1 * {2 + 3}";
 	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
@@ -117,11 +119,13 @@ fn parenthesis_2() {
 	let expected = AST::Term(Term::BinOp(BinOp {
 		lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(1)))),
 		op: Op::Times,
-		rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
-			lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
-			op: Op::Plus,
-			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
-		}))),
+		rhs: Box::new(Expr::Term(Term::Block(vec![Expr::Term(Term::BinOp(
+			BinOp {
+				lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+				op: Op::Plus,
+				rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+			},
+		))]))),
 	}));
 	assert_eq!(res.len(), 1);
 	assert_eq!(res[0], expected);
