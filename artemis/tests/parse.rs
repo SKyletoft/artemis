@@ -3,6 +3,7 @@ use std::fs;
 use artemis::{GeneratedParser, Rule};
 use pest::Parser;
 
+#[ignore] // the examples folder currently contains files that aren't intended to be correct code
 #[test]
 fn examples() {
 	let mut files = fs::read_dir("../examples")
@@ -11,7 +12,7 @@ fn examples() {
 		.filter(|entry| entry.is_file())
 		.collect::<Vec<_>>();
 	files.sort_unstable();
-	for file in files {
+	for file in files.iter() {
 		let contents = fs::read_to_string(&file).unwrap();
 		let res = GeneratedParser::parse(Rule::function_definition, &contents);
 
