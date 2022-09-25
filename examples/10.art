@@ -1,4 +1,4 @@
-λmain () {
+λmain () = {
 	x : ℤ = if true {
 		1
 	} else {

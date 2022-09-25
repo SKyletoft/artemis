@@ -1,4 +1,4 @@
-λf () {
+λf () = {
 	a := if true {()} else {()}
 	b := if true {()} else if true {()} else {()}
 	c := if true {()} else if true {()} else if true {()} else {()}
