@@ -319,22 +319,23 @@ impl<'a> TryFrom<Pair<'a, Rule>> for MaybeParsed {
 					.collect::<Result<Block>>()?;
 				Ok(MaybeParsed::Parsed(AST::Block(block)))
 			}
-			// Parentheses
-			Rule::term => inner
-				.next()
-				.and_then(|pair| {
-					let ast = AST::try_from(pair.clone());
-					log::trace!(
-						"[{}]: {:#?} → {:#?}",
-						line!(),
-						&pair.as_str(),
-						&ast
-					);
-					let res: Term = ast.ok()?.try_into().ok()?;
-					Some(res)
-				})
-				.ok_or(Error::ParseError(line!()))?
-				.into(),
+			// Parentheses and tuples
+			Rule::term => {
+				inner.next()
+					.and_then(|pair| {
+						let ast = AST::try_from(pair.clone());
+						log::trace!(
+							"[{}]: {:#?} → {:#?}",
+							line!(),
+							&pair.as_str(),
+							&ast
+						);
+						let res: Term = ast.ok()?.try_into().ok()?;
+						Some(res)
+					})
+					.ok_or(Error::ParseError(line!()))?
+					.into()
+			}
 			Rule::if_expr => Term::IfExpr(
 				inner.next()
 					.and_then(|pair| AST::try_from(pair).ok()?.if_expr())
@@ -764,6 +765,15 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					arguments,
 				})
 				.into()
+			}
+			Rule::tuple => {
+				let items = pair.into_inner()
+					.map(|pair| {
+						let res = Expr::try_from(AST::try_from(pair)?)?;
+						Ok(res)
+					})
+					.collect::<Result<Vec<_>>>()?;
+				Term::Tuple(items).into()
 			}
 			_ => AST::RawToken(pair.as_str().into()),
 		};

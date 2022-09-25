@@ -232,7 +232,7 @@ fn tuple_1() {
 
 #[test]
 fn tuple_2() {
-	let s = "(1 + 2, (2 + 3) * 2)";
+	let s = "(1 + 2, {2 + 3} * 2)";
 	let res = GeneratedParser::parse(Rule::expr, s)
 		.unwrap()
 		.map(AST::try_from)
@@ -245,11 +245,13 @@ fn tuple_2() {
 			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 		})),
 		Expr::Term(Term::BinOp(BinOp {
-			lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
-				lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
-				op: Op::Plus,
-				rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
-			}))),
+			lhs: Box::new(Expr::Term(Term::Block(vec![Expr::Term(Term::BinOp(
+				BinOp {
+					lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+					op: Op::Plus,
+					rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+				},
+			))]))),
 			op: Op::Times,
 			rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
 		})),
