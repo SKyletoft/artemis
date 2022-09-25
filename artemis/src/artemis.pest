@@ -62,8 +62,8 @@ if_expr = {
 expr = {
 	declaration
 	| assignment
-	| unary_operator ~ ws ~ term
 	| term ~ (ws ~ binary_operator ~ ws ~ term)*
+	| unary_operator ~ ws ~ term
 }
 
 term = {
