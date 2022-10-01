@@ -2,8 +2,10 @@
 /result
 **None**
 .vscode/**
+.idea/**
 *.asm
 *.out
 *.o
 **a.**
 .cargo/config.toml
+.vimspector.json
