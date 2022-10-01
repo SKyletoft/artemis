@@ -1,0 +1,18 @@
+type Pair = (ℤ, ℤ)
+
+λsolve_one (input: [String]) → ℤ = (
+	(a, b) := input
+		|> map[match_line]
+		|> fold[add_pair]
+	a × b
+)
+
+λadd_pair ((a, b): Pair, (c, d): Pair) → Pair = (a + c, b + d)
+
+λmatch_line (input: String) → Pair = case input
+	// Sugar for subarrays?
+	['f', 'o', 'r', 'w', 'a', 'r', 'd', ' ', rest @ ..]      → ( parse_z(rest), 0)
+	['b', 'a', 'c', 'k', 'w', 'a', 'r', 'd', ' ', rest @ ..] → (-parse_z(rest), 0)
+	['u', 'p', ' ', rest @ ..]                               → (0, -parse_z(rest))
+	['d', 'o', 'w', 'n', ' ', rest @ ..]                     → (0,  parse_z(rest))
+
