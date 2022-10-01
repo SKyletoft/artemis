@@ -10,7 +10,11 @@ use crate::simplify::{
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
 pub fn assemble(ssa: &[SSAConstruct]) -> String {
-	"\"use strict\";\n\n".to_owned()
+	"\"use strict\";\n\n\
+	function print_n(n) {console.log(n);}\n\
+	function print_z(z) {console.log(z);}\n\
+	function print_r(r) {console.log(r);}\n\
+	function print_b(b) {console.log(b);}\n\n".to_owned()
 		+ &ssa.iter()
 			.map(assemble_function)
 			.collect::<Vec<_>>()
@@ -139,7 +143,19 @@ fn assemble_expression(expr: &SimpleExpression) -> String {
 			target,
 			function,
 			args,
-		}) => todo!(),
+		}) => {
+			let tar = usize::from(*target);
+			let mut function_call = format!("regs.r{tar} = {function}(");
+
+			for arg in args.iter().copied().map(format_source) {
+				function_call.push_str(&arg);
+				function_call.push_str(", ");
+			}
+
+			function_call += ");\n";
+
+			function_call
+		}
 	}
 }
 
