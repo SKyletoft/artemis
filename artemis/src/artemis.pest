@@ -37,7 +37,7 @@ xor   = { "⊕" | "⊻" | "⨁" | "(+)" | "`xor`" }
 
 integer =  { (plus | minus)? ~ digit+ ~ (metrix_prefix | binary_prefix)? }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ (metrix_prefix | binary_prefix)? }
-boolean =  { "𝕋" | "𝔽" | "true" | "false" }
+boolean =  { "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ expr ~ (ws ~ "," ~ ws ~ expr)+ ~ ws ~ ")" }
 string  = ${ "\"" ~ inner_s ~ "\"" }
@@ -52,7 +52,11 @@ single_char =  {
 
 declaration   = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
 assignment    = { var_name ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
-function_call = { var_name ~ ws ~ "(" ~ ws ~ ((expr ~ ws ~ "," ~ ws)* ~ ws ~ expr)? ~ ws ~ ")" }
+function_call = {
+	var_name ~ (" " | "\t" | "\r")* ~ "(" ~ ws ~
+	(expr ~ ws ~ ("," ~ ws ~ expr ~ ws)* ~ ","? ~ ws)? ~
+	")"
+}
 
 if_expr = {
 	("?" | "if" | "`if`" ) ~ ws ~ expr ~ ws ~
@@ -89,7 +93,10 @@ argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 
 function_definition = {
 	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~
-	((argument ~ ws ~ "," ~ ws)* ~ argument)* ~ ws ~
+	(
+		argument ~ ws ~
+		("," ~ ws ~ argument ~ ws)* ~ ","? ~ ws
+	)? ~
 	")" ~ ws ~ (("->" | "→") ~ ws ~ raw_type)? ~ ws ~ "=" ~ ws ~ expr
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }

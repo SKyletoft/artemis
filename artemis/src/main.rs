@@ -11,7 +11,7 @@ use air::{
 	x86_64,
 };
 use anyhow::{bail, Result};
-use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule};
+use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule, preprocess};
 use clap::Parser as ClapParser;
 use log::LevelFilter;
 use pest::Parser as PestParser;
@@ -115,10 +115,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 		.collect::<Result<Vec<String>, _>>()?;
 	log::debug!("Raw source code:\n{:#?}", &sources);
 
-	let source = sources
-		.into_iter()
-		.reduce(|l, r| l + &r)
-		.ok_or(Error::NoInputFiles(line!()))?;
+	let source = preprocess::remove_comments(&sources);
 	log::debug!("Preprocessed source code:\n{source}");
 
 	let ast = GeneratedParser::parse(Rule::top, &source)?;

@@ -211,7 +211,7 @@ fn function_call_trailing_comma() {
 	let s = "f(x,)";
 	let res = GeneratedParser::parse(Rule::function_call, s);
 	dbg!(&res);
-	assert!(res.is_err());
+	assert!(res.is_ok());
 }
 
 #[test]
@@ -247,9 +247,13 @@ fn tuple_2() {
 		Expr::Term(Term::BinOp(BinOp {
 			lhs: Box::new(Expr::Term(Term::Block(vec![Expr::Term(Term::BinOp(
 				BinOp {
-					lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(2)))),
+					lhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(
+						2,
+					)))),
 					op: Op::Plus,
-					rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(3)))),
+					rhs: Box::new(Expr::Term(Term::Literal(Literal::Integer(
+						3,
+					)))),
 				},
 			))]))),
 			op: Op::Times,

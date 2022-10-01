@@ -5,6 +5,7 @@ extern crate pest_derive;
 pub mod detype;
 pub mod error;
 pub mod ordered;
+pub mod preprocess;
 pub mod simplify;
 pub mod type_check;
 
