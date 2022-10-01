@@ -5,9 +5,9 @@
 	else if (a > b) gcd(a - b, b)
 	else gcd(a, b - a)
 
-λgcd_2 (a: ℕ, b: ℕ) → ℕ = case (a, b)
-	| (0, _) → b
-	| (_, 0) → a
-	| (a, a) → a
-	| _      → if a > b gcd(a-b, b) else gcd(a, b-a)
-
+λgcd_3 (a: ℕ, b: ℕ) → ℕ = case (a, b)
+	(0, _)    → b
+	(_, 0)    → a
+	(a, a)    → a
+	_ | a > b → gcd(a - b, b)
+	_         → gcd(a, b - a)

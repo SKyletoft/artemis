@@ -1,0 +1,34 @@
+type Node = { left: Node | (), right: Node | (), value: ℤ }
+type MaybeNode = Node | ()
+
+λdepth (node: Node) → ℕ = depth'(node)
+
+λdepth' (node: MaybeNode) → ℕ = case node
+	{ left, right, .. } → (
+		left_depth  := depth'(left)
+		right_depth := depth'(right)
+		this_depth  := if (left_depth > right_depth) left_depth
+		               else                          right_depth
+		this_depth + 1
+	)
+	() → 0
+
+λis_balanced (node: MaybeNode) → 𝔹 = case node
+	{ left, right, .. } → is_balanced(left) == is_balanced(right)
+	()                  → true
+
+λinsert' (new: ℤ, tree: MaybeNode) → Node = case tree
+	() → {value: new, left: (), right: ()}
+	_  → insert(new, tree)
+
+λinsert (new: ℤ, tree @ {left, right, value}: Node) → Node =
+	if value == new 
+		tree
+	else if value > new (
+		new_right := insert'(new, right)
+		{right: new_right} ⋃ tree
+	) else (
+		new_left := insert'(new, left)
+		{left: new_left} ⋃ tree
+	)
+
