@@ -37,7 +37,7 @@ xor   = { "⊕" | "⊻" | "⨁" | "(+)" | "`xor`" }
 
 integer =  { (plus | minus)? ~ digit+ ~ (metrix_prefix | binary_prefix)? }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ (metrix_prefix | binary_prefix)? }
-boolean =  { "𝕋" | "𝔽" | "true" | "false" }
+boolean =  { "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ expr ~ (ws ~ "," ~ ws ~ expr)+ ~ ws ~ ")" }
 string  = ${ "\"" ~ inner_s ~ "\"" }
