@@ -126,6 +126,7 @@ term = {
 	| struct_literal
 	| block
 	| if_expr
+	| match_expr
 	| function_call
 	| declaration
 	| assignment
