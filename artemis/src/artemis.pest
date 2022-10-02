@@ -131,7 +131,29 @@ term = {
 	| assignment
 	| var_name
 }
-binary_operator = { exp | times | div | plus | minus | delta | and | or | xor | dot }
+
+binary_operator = {
+	exp
+	| times
+	| div
+	| plus
+	| minus
+	| delta
+	| and
+	| or
+	| xor
+	| dot
+	| lshift
+	| rshift
+	| eq
+	| neq
+	| greater
+	| less
+	| greater_eq
+	| less_eq
+	| lpipe
+	| rpipe
+}
 unary_operator  = { not | minus }
 
 fn_keyword = { "\\" | "λ" | "fn" }
