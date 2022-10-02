@@ -12,14 +12,15 @@ large_metric_prefix = { "D" | "da"| "h" | "k" | "M" | "G" | "T" | "P" | "E" | "Z
 small_metric_prefix = { "d" | "c" | "m" | "μ" | "u" | "n" | "p" | "f" | "a" | "z" | "y" }
 metrix_prefix       = { small_metric_prefix | large_metric_prefix }
 binary_prefix       = { "ki" | "Mi" | "Gi" | "Ti" | "Pi" | "Ei" | "Zi" | "Yi" }
+prefix              = { metrix_prefix | binary_prefix }
 
 ws = _{ whitespace? }
 
 var_name     = { (lower_case ~ (lower_case | digit | "_")*) | greek }
-type_name    = { (mutable ~ whitespace)? ~ raw_type }
+type_name    = { (mutable ~ whitespace)? ~ enum_type }
 mutable      = { "mut" }
-raw_type     = { native_types | struct_name | unit | tuple_type }
-native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" }
+raw_type     = { native_types | struct_name | unit | tuple_type | struct_type }
+native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" | "∀" | "∃" | "𝕋" }
 struct_name  = { upper_case ~ (upper_case | lower_case | digit)* }
 tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ type_name)+ ~ ws ~ ")" }
 
@@ -35,8 +36,8 @@ and   = { "Λ" | "∧" | "⋀" | "`and`" }
 or    = { "V" | "∨" | "⋁" | "`or`" }
 xor   = { "⊕" | "⊻" | "⨁" | "(+)" | "`xor`" }
 
-integer =  { (plus | minus)? ~ digit+ ~ (metrix_prefix | binary_prefix)? }
-float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ (metrix_prefix | binary_prefix)? }
+integer =  { (plus | minus)? ~ digit+ ~ prefix? }
+float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ prefix? }
 boolean =  { "true" | "false" }
 unit    =  { "(" ~ ws ~ ")" }
 tuple   =  { "(" ~ ws ~ expr ~ (ws ~ "," ~ ws ~ expr)+ ~ ws ~ ")" }
@@ -50,7 +51,7 @@ single_char =  {
 	| "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-declaration   = { var_name ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
+declaration   = { pattern ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
 assignment    = { var_name ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
 function_call = {
 	var_name ~ (" " | "\t" | "\r")* ~ "(" ~ ws ~
@@ -63,11 +64,44 @@ if_expr = {
 	expr ~ ws ~
 	("|" | "else" | "`else`" ) ~ ws ~ expr
 }
+match_expr = {
+	"case" ~ ws ~ expr ~ ws ~ case+
+}
+case = {
+	pattern ~ ws ~ ("|" ~ ws ~ expr)? ~ ws ~ arrow ~ ws ~ expr ~ ws
+}
+
+pattern = {
+	(var_name ~ ws ~ "@" ~ ws)?
+	~ struct_pattern
+	| tuple_pattern
+	| float
+	| integer
+	| boolean
+	| string
+	| char
+	| var_name
+	| "_"
+}
+struct_pattern = {
+	"{" ~ var_name ~ ws ~ (":" ~ ws ~ pattern)?
+	~ (
+		"," ~ ws ~ var_name ~ ws ~ (":" ~ ws ~ pattern)?
+	)* ~ ("," ~ (ws ~ "..")?)? ~ ws ~ "}"
+}
+tuple_pattern = {
+	"(" ~ pattern ~ ws ~ ("," ~ ws ~ pattern)+ ~ ","? ~ ")"
+}
+
+subexpr = { term ~ (ws ~ binary_operator ~ ws ~ term)* }
+unary_expr = { unary_operator ~ ws ~ term }
 expr = {
 	declaration
 	| assignment
-	| term ~ (ws ~ binary_operator ~ ws ~ term)*
-	| unary_operator ~ ws ~ term
+	| subexpr
+	| unary_expr
+	| function_definition
+	| type_alias
 }
 
 term = {
@@ -78,6 +112,7 @@ term = {
 	| char
 	| unit
 	| tuple
+	| struct_literal
 	| block
 	| if_expr
 	| function_call
@@ -85,31 +120,40 @@ term = {
 	| assignment
 	| var_name
 }
-binary_operator = { exp | times | div | plus | minus | delta | and | or | xor }
+binary_operator = { exp | times | div | plus | minus | delta | and | or | xor | dot }
 unary_operator  = { not | minus }
 
 fn_keyword = { "\\" | "λ" | "fn" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
 
+arrow = { "→" | "->" }
 function_definition = {
 	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~
 	(
 		argument ~ ws ~
 		("," ~ ws ~ argument ~ ws)* ~ ","? ~ ws
 	)? ~
-	")" ~ ws ~ (("->" | "→") ~ ws ~ raw_type)? ~ ws ~ "=" ~ ws ~ expr
+	")" ~ ws ~ (arrow ~ ws ~ raw_type)? ~ ws ~ "=" ~ ws ~ expr
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
 
-struct_enum_field = { var_name ~ ws ~ ":" ~ ws ~ raw_type }
-struct_definition = {
-	(times | "struct") ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
-	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
+struct_field = { var_name ~ (ws ~ ":" ~ ws ~ enum_type)? }
+struct_type = {
+	"{" ~ ws ~
+	(struct_field ~ ws ~ "," ~ ws)* ~ (struct_field ~ ws)? ~
+	"}"
 }
-enum_definition = {
-	(plus  | "enum") ~ ws ~ struct_name ~ ws ~ "{" ~ ws ~
-	((struct_enum_field ~ ws ~ "," ~ ws)* ~ struct_enum_field)* ~ ws ~ "}"
+enum_type = { raw_type ~ (ws ~ "|" ~ ws ~ raw_type)* }
+
+type_alias = { struct_name ~ ws ~ ":" ~ ws ~ ("mut"? ~ ws ~ "Type")? ~ ws ~ "=" ~ ws ~ enum_type }
+
+struct_field_use = { var_name ~ ws ~ ":" ~ ws ~ expr }
+struct_literal = {
+	"{" ~ ws ~
+	struct_field_use ~ ws ~
+	("," ~ ws ~ struct_field_use ~ ws)* ~ ","? ~ ws ~
+	"}"
 }
 
-top = { SOI ~ ws ~ (function_definition ~ ws)* ~ ws ~ EOI }
+top = { SOI ~ ws ~ (expr ~ ws)* ~ ws ~ EOI }
 
