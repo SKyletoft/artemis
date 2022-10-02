@@ -157,16 +157,19 @@ binary_operator = {
 unary_operator  = { not | minus }
 
 fn_keyword = { "\\" | "λ" | "fn" }
-argument   = { var_name ~ ws ~ ":" ~ ws ~ type_name }
+argument   = { var_name ~ ws ~ ":" ~ ws ~ enum_type }
 
 arrow = { "→" | "->" }
 function_definition = {
-	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~
+	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~ argument_list ~ ")" ~ ws ~
+	return_type ~ ws ~ "=" ~ ws ~ expr
+}
+return_type = { (arrow ~ ws ~ enum_type)? }
+argument_list = {
 	(
 		argument ~ ws ~
 		("," ~ ws ~ argument ~ ws)* ~ ","? ~ ws
-	)? ~
-	")" ~ ws ~ (arrow ~ ws ~ raw_type)? ~ ws ~ "=" ~ ws ~ expr
+	)?
 }
 block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
 
