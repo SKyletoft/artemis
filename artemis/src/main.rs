@@ -11,7 +11,15 @@ use air::{
 	x86_64,
 };
 use anyhow::{bail, Result};
-use artemis::{detype, error::Error, ordered, simplify, type_check, GeneratedParser, Rule, preprocess};
+use artemis::{
+	//detype,
+	error::Error,
+	ordered,
+	preprocess,
+	// simplify, type_check,
+	GeneratedParser,
+	Rule,
+};
 use clap::Parser as ClapParser;
 use log::LevelFilter;
 use pest::Parser as PestParser;
@@ -124,6 +132,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	let mut ordered = ordered::order(ast)?;
 	log::debug!("AST:\n{ordered:#?}");
 
+	/*
 	type_check::check_program(&mut ordered)?;
 	log::debug!("Inferred types:\n{ordered:#?}");
 
@@ -187,6 +196,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 			fs::write(&config.output, js)?;
 		}
 	}
+	*/
 
 	Ok(())
 }

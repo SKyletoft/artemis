@@ -50,6 +50,9 @@
 				devShell = pkgs.mkShell {
 					shellHook = ''
 						PS1="\e[32;1mnix-flake: \e[34m\w \[\033[00m\]\n↳ "
+						export LIBCXX="${pkgs.llvmPackages_14.libcxx}/lib"
+						export GLIBC="${pkgs.glibc.dev}"
+
 						export MOLD="${pkgs.mold}/bin/mold"
 						export MUSL_x86="${pkgs_x86.musl}/lib"
 						export MUSL_ARM="${pkgs_arm.musl}/lib"
@@ -65,6 +68,8 @@
 						mold
 						gcc12
 
+						glibc.dev
+						llvmPackages_14.libclang
 						llvmPackages_14.libcxxStdenv
 						llvmPackages_14.libunwind
 						llvmPackages_14.libcxx

@@ -1,64 +1,651 @@
-use std::mem;
-
 use anyhow::{bail, Result};
-use derive_more::From;
+use once_cell::sync::Lazy;
 use pest::{
 	iterators::{Pair, Pairs},
-	Parser,
+	pratt_parser::{Assoc, Op, PrattParser},
 };
-use smallvec::SmallVec;
-use variantly::Variantly;
+use smallvec::{smallvec, SmallVec};
 
-use crate::{error::Error, GeneratedParser, Rule};
+use crate::{
+	ast::{
+		Argument, ArgumentList, Assignment, BinaryOperator, Block, Case, Declaration,
+		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
+		Pattern, RawType, ReturnType, StructField, StructFieldLiteral, StructLiteral,
+		StructPattern, StructType, Term, Tuple, TuplePattern, Type, TypeAlias,
+		UnaryOperator, StructFieldPattern,
+	},
+	error::Error,
+	Rule,
+};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
-#[derive(Debug, Clone, PartialEq)]
-struct Type {
-	mutable: bool,
-	enum_type: EnumType,
-}
+static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
+	PrattParser::new()
+		.op(Op::infix(Rule::lpipe, Assoc::Left) | Op::infix(Rule::rpipe, Assoc::Right))
+		.op(Op::infix(Rule::or, Assoc::Left))
+		.op(Op::infix(Rule::and, Assoc::Left))
+		.op(Op::infix(Rule::xor, Assoc::Left))
+		.op(Op::infix(Rule::eq, Assoc::Left) | Op::infix(Rule::neq, Assoc::Left))
+		.op(Op::infix(Rule::greater, Assoc::Left)
+			| Op::infix(Rule::greater_eq, Assoc::Left)
+			| Op::infix(Rule::less, Assoc::Left)
+			| Op::infix(Rule::less_eq, Assoc::Left))
+		.op(Op::infix(Rule::rshift, Assoc::Left) | Op::infix(Rule::lshift, Assoc::Left))
+		.op(Op::infix(Rule::plus, Assoc::Left)
+			| Op::infix(Rule::minus, Assoc::Left)
+			| Op::infix(Rule::delta, Assoc::Left))
+		.op(Op::infix(Rule::times, Assoc::Left)
+			| Op::infix(Rule::div, Assoc::Left)
+			| Op::infix(Rule::rem, Assoc::Left))
+		.op(Op::prefix(Rule::negate) | Op::prefix(Rule::not))
+		.op(Op::infix(Rule::exp, Assoc::Left))
+		.op(Op::infix(Rule::dot, Assoc::Left))
+});
 
 impl TryFrom<Pair<'_, Rule>> for Type {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<Rule>) -> Result<Self, Self::Error> {
-		if pair.as_rule() != Rule::type_name {
-			bail!(Error::ParseError(line!()));
-		}
-		dbg!(pair.into_inner());
+		assert_eq!(pair.as_rule(), Rule::type_name);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 1]>>();
+		let res = match inner.as_slice() {
+			[type_name] => Type {
+				mutable: false,
+				enum_type: EnumType::try_from(type_name.clone())?,
+			},
+			[_, type_name] => Type {
+				mutable: true,
+				enum_type: EnumType::try_from(type_name.clone())?,
+			},
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for RawType {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::raw_type);
+		let inner = inner(pair)?;
+		let res = match inner.as_rule() {
+			Rule::native_types => match inner.as_str() {
+				"ℕ" => RawType::Natural,
+				"ℝ" => RawType::Real,
+				"ℤ" => RawType::Integer,
+				"𝔹" => RawType::Bool,
+				"∀" => RawType::Any,
+				"∃" => bail!(Error::ParseError(line!())),
+				"𝕋" => RawType::Type,
+				_ => bail!(Error::ParseError(line!())),
+			},
+			Rule::struct_name => RawType::StructNameOrAlias(inner.as_str().into()),
+			Rule::unit => RawType::Unit,
+			Rule::tuple_type => todo!(),
+			Rule::struct_type => RawType::StructType(StructType::try_from(inner)?),
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Tuple {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::tuple);
+		let inner = inner(pair)?;
+		let res = Tuple(inner
+			.into_inner()
+			.map(Expr::try_from)
+			.collect::<Result<_, _>>()?);
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Declaration {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::declaration);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let res = match inner.as_slice() {
+			[pattern, type_name, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let type_name = Some(Type::try_from(type_name.clone())?);
+				let expr = Expr::try_from(expr.clone())?;
+				Declaration {
+					pattern,
+					type_name,
+					expr,
+				}
+			}
+			[pattern, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let expr = Expr::try_from(expr.clone())?;
+				Declaration {
+					pattern,
+					type_name: None,
+					expr,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Assignment {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::assignment);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let res = match inner.as_slice() {
+			[pattern, op, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let lhs = pattern
+					.inner
+					.clone()
+					.var()
+					.ok_or(Error::OpAssignOnPattern(line!()))?;
+				let op = BinaryOperator::try_from(op.clone())?;
+				let rhs = Expr::try_from(expr.clone())?;
+				let expr = Expr::BinOp {
+					left: Box::new(Expr::Leaf(Box::new(Term::VarName(lhs)))),
+					right: Box::new(rhs),
+					op,
+				};
+
+				Assignment { pattern, expr }
+			}
+			[pattern, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let expr = Expr::try_from(expr.clone())?;
+				Assignment { pattern, expr }
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for FunctionCall {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::function_call);
+		let mut inner = pair.into_inner().rev().collect::<SmallVec<[_; 1]>>();
+		let name = inner
+			.pop()
+			.ok_or(Error::ParseError(line!()))?
+			.as_str()
+			.into();
+		let args = inner
+			.into_iter()
+			.rev()
+			.map(Expr::try_from)
+			.collect::<Result<_>>()?;
+		Ok(FunctionCall { name, args })
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for IfExpr {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::if_expr);
 		todo!()
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum RawType {}
+impl TryFrom<Pair<'_, Rule>> for MatchExpr {
+	type Error = anyhow::Error;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {}
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::match_expr);
+		let mut inner = pair.into_inner();
+		let expr = Expr::try_from(inner.next().ok_or(Error::ParseError(line!()))?)?;
+		let cases = inner.map(Case::try_from).collect::<Result<_>>()?;
+		Ok(MatchExpr { expr, cases })
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Case {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::case);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let res = match inner.as_slice() {
+			[pattern, _, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let expr = Expr::try_from(expr.clone())?;
+				Case {
+					pattern,
+					condition: None,
+					expr,
+				}
+			}
+			[pattern, condition, _, expr] => {
+				let pattern = Pattern::try_from(pattern.clone())?;
+				let condition = Some(Expr::try_from(condition.clone())?);
+				let expr = Expr::try_from(expr.clone())?;
+				Case {
+					pattern,
+					condition,
+					expr,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Pattern {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::pattern);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[label, pattern] => {
+				let label = Some(label.as_str().into());
+				let inner_pattern = InnerPattern::try_from(pattern.clone())?;
+				Pattern {
+					label,
+					inner: inner_pattern,
+				}
+			}
+			[pattern] => {
+				let inner_pattern = InnerPattern::try_from(pattern.clone())?;
+				Pattern {
+					label: None,
+					inner: inner_pattern,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for InnerPattern {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::inner_pattern);
+		let inner = inner(pair)?;
+		let res = match inner.as_rule() {
+			Rule::struct_pattern => {
+				InnerPattern::StructPattern(StructPattern::try_from(inner)?)
+			}
+			Rule::tuple_pattern => todo!(),
+			Rule::float => InnerPattern::Float(inner.as_str().parse()?),
+			Rule::integer => InnerPattern::Integer(inner.as_str().parse()?),
+			Rule::boolean => todo!(),
+			Rule::string => todo!(),
+			Rule::char => todo!(),
+			Rule::var_name => InnerPattern::Var(inner.as_str().into()),
+			_ => {
+				if inner.as_str() == "_" {
+					InnerPattern::Any
+				} else {
+					bail!(Error::ParseError(line!()))
+				}
+			}
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructFieldPattern {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_field_pattern);
+		todo!()
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructPattern {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_pattern);
+		todo!()
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for TuplePattern {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::tuple_pattern);
+		todo!()
+	}
+}
+
+impl From<Term> for Expr {
+	fn from(t: Term) -> Self {
+		Expr::Leaf(Box::new(t))
+	}
+}
 
 impl TryFrom<Pair<'_, Rule>> for Expr {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
-		let inner = inner(pair)?;
-		match inner.as_rule() {
-			Rule::declaration => todo!(),
-			Rule::assignment => todo!(),
-			Rule::subexpr => todo!(),
-			Rule::unary_expr => todo!(),
-			Rule::function_definition => todo!(),
-			Rule::type_alias => todo!(),
-			_ => {
-				log::error!("{}\n{:?}", inner.as_str(), inner.as_rule());
-				bail!(Error::ParseError(line!()))
-			}
-		}
+		assert_eq!(pair.as_rule(), Rule::expr);
+		PRATT.map_primary(|pair| Term::try_from(pair).map(|t| Expr::Leaf(Box::new(t))))
+			.map_prefix(|pair, subexpr| {
+				let op = UnaryOperator::try_from(pair)?;
+				let right = subexpr?.into();
+				Ok(Expr::UnOp { op, right })
+			})
+			.map_infix(|lhs, pair, rhs| {
+				// TODO: Handle pipes
+				assert!(!matches!(pair.as_rule(), Rule::lpipe | Rule::rpipe));
+
+				let op = BinaryOperator::try_from(pair)?;
+				let left = Box::new(lhs?);
+				let right = Box::new(rhs?);
+				Ok(Expr::BinOp { left, right, op })
+			})
+			.parse(pair.into_inner())
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum EnumType {}
+impl TryFrom<Pair<'_, Rule>> for Term {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		// dbg!(backtrace::Backtrace::new());
+		assert_eq!(pair.as_rule(), Rule::term);
+		let inner = inner(pair)?;
+		let res = match inner.as_rule() {
+			Rule::float => Term::Float(inner.as_str().parse()?),
+			Rule::integer => Term::Integer(inner.as_str().parse()?),
+			Rule::boolean => Term::Boolean(inner.as_str().parse()?),
+			Rule::string => Term::String(inner.as_str().into()),
+			Rule::char => todo!(),
+			Rule::unit => Term::Unit,
+			Rule::tuple => Term::Tuple(Tuple::try_from(inner)?),
+			Rule::struct_literal => todo!(),
+			Rule::block => Term::Block(Block::try_from(inner)?),
+			Rule::if_expr => Term::IfExpr(IfExpr::try_from(inner)?),
+			Rule::match_expr => Term::MatchExpr(MatchExpr::try_from(inner)?),
+			Rule::function_call => Term::FunctionCall(FunctionCall::try_from(inner)?),
+			Rule::declaration => Term::Declaration(Declaration::try_from(inner)?),
+			Rule::assignment => Term::Assignment(Assignment::try_from(inner)?),
+			Rule::function_definition => {
+				Term::FunctionDefinition(FunctionDefinition::try_from(inner)?)
+			}
+			Rule::type_alias => Term::TypeAlias(TypeAlias::try_from(inner)?),
+			Rule::var_name => Term::VarName(inner.as_str().into()),
+			_ => {
+				log::error!(
+					"[{}] {}\n{:?}",
+					line!(),
+					inner.as_str(),
+					inner.as_rule()
+				);
+				bail!(Error::ParseError(line!()))
+			}
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for BinaryOperator {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		let res = match pair.as_rule() {
+			Rule::exp => BinaryOperator::Exp,
+			Rule::times => BinaryOperator::Mul,
+			Rule::div => BinaryOperator::Div,
+			Rule::plus => BinaryOperator::Add,
+			Rule::minus => BinaryOperator::Sub,
+			Rule::delta => BinaryOperator::Delta,
+			Rule::and => BinaryOperator::And,
+			Rule::or => BinaryOperator::Or,
+			Rule::xor => BinaryOperator::Xor,
+			Rule::dot => BinaryOperator::Dot,
+			_ => bail!(Error::ParseError(line!())),
+		};
+
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for UnaryOperator {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::unary_operator);
+		let inner = inner(pair)?;
+		let res = match inner.as_rule() {
+			Rule::not => UnaryOperator::Not,
+			Rule::minus => UnaryOperator::Sub,
+			_ => bail!(Error::ParseError(line!())),
+		};
+
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Argument {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::argument);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[name, type_name] => {
+				let name = name.as_str().into();
+				let type_name = EnumType::try_from(type_name.clone())?;
+
+				Argument { name, type_name }
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::function_definition);
+		log::trace!("[{}] {}", line!(), pair.as_str());
+		let inner = pair.into_inner().collect::<SmallVec<[_; 4]>>();
+		log::trace!("[{}] {:#?}", line!(), &inner);
+		let res = match inner.as_slice() {
+			[_, name, args, type_name, expr] => {
+				let name = name.as_str().into();
+				let args = ArgumentList::try_from(args.clone())?;
+				let return_type = ReturnType::try_from(type_name.clone())?
+					.0
+					.unwrap_or_else(|| EnumType(smallvec![RawType::Unit]));
+				let expr = Expr::try_from(expr.clone())?;
+
+				FunctionDefinition {
+					name,
+					args,
+					return_type,
+					expr,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for ReturnType {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::return_type);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[_, enum_type] => {
+				let enum_type = EnumType::try_from(enum_type.clone())?;
+				Some(enum_type)
+			}
+			[] => None,
+			_ => {
+				log::error!("[{}] {:?}", line!(), &inner);
+				bail!(Error::ParseError(line!()))
+			}
+		};
+		Ok(ReturnType(res))
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for ArgumentList {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::argument_list);
+		pair.into_inner()
+			.map(Argument::try_from)
+			.collect::<Result<_>>()
+			.map(ArgumentList)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for Block {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::block);
+		pair.into_inner()
+			.map(Expr::try_from)
+			.collect::<Result<_>>()
+			.map(Block)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructField {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_field);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[name, type_name] => {
+				let name = name.as_str().into();
+				let type_name = EnumType::try_from(type_name.clone())?;
+
+				StructField { name, type_name }
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructType {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_type);
+		pair.into_inner()
+			.map(StructField::try_from)
+			.collect::<Result<_>>()
+			.map(StructType)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for EnumType {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::enum_type);
+		pair.into_inner()
+			.map(RawType::try_from)
+			.collect::<Result<_>>()
+			.map(EnumType)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for TypeAlias {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::type_alias);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let res = match inner.as_slice() {
+			[name, type_literal] => {
+				let name = name.as_str().into();
+				let mutable = false;
+				let type_name = EnumType::try_from(type_literal.clone())?;
+
+				TypeAlias {
+					name,
+					mutable,
+					type_name,
+				}
+			}
+			[name, mutable, type_literal] => {
+				let name = name.as_str().into();
+				let mutable = mutable.as_str().starts_with("mut");
+				let type_name = EnumType::try_from(type_literal.clone())?;
+
+				TypeAlias {
+					name,
+					mutable,
+					type_name,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructFieldLiteral {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_field_use);
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[name] => {
+				let name: SmallString = name.as_str().into();
+				let expr = Expr::Leaf(Box::new(Term::VarName(name.clone())));
+
+				StructFieldLiteral { name, expr }
+			}
+			[name, expr] => {
+				let name = name.as_str().into();
+				let expr = Expr::try_from(expr.clone())?;
+
+				StructFieldLiteral { name, expr }
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for StructLiteral {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::struct_literal);
+		pair.into_inner()
+			.map(StructFieldLiteral::try_from)
+			.collect::<Result<_>>()
+			.map(StructLiteral)
+	}
+}
 
 /// Get the first and only inner rule
 /// Errors if there is more or less than one inner rule
@@ -74,9 +661,11 @@ fn inner(pair: Pair<'_, Rule>) -> Result<Pair<'_, Rule>> {
 pub fn order(mut pairs: Pairs<Rule>) -> Result<Vec<Expr>> {
 	let count = pairs.clone().count();
 	assert_eq!(count, 1);
+
 	pairs.next()
 		.unwrap()
 		.into_inner()
+		.take_while(|p| p.as_rule() != Rule::EOI)
 		.map(Expr::try_from)
 		.collect()
 }

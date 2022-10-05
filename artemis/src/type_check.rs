@@ -8,7 +8,7 @@ use crate::{
 	error::Error,
 	ordered::{
 		Argument, Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr,
-		Literal, Op, RawType, Term, TopLevelConstruct, Type,
+		Literal, Op, RawType, Term, TopLevelConstruct, Type, TypeAlias,
 	},
 };
 
@@ -74,6 +74,9 @@ pub fn check_program(top_level: &mut [TopLevelConstruct]) -> Result<()> {
 			}
 			TopLevelConstruct::Declaration(decl) => {
 				check_declaration(decl, &mut ctx)?;
+			}
+			TopLevelConstruct::TypeAlias(ta) => {
+				check_type_alias(ta, &mut ctx)?;
 			}
 		}
 	}
@@ -160,6 +163,10 @@ fn check_declaration(
 	Ok(maybe_defaulted)
 }
 
+fn check_type_alias(alias: &mut TypeAlias, ctx: &mut Context) -> Result<()> {
+	todo!()
+}
+
 fn check_assignment(
 	Assignment { name, value }: &mut Assignment,
 	ctx: &mut Context,
@@ -210,6 +217,8 @@ fn check_expr(expr: &mut Expr, ctx: &mut Context) -> Result<Type> {
 		Expr::Term(s) => check_term(s, ctx),
 		Expr::Declaration(d) => check_declaration(d, ctx),
 		Expr::Assignment(a) => check_assignment(a, ctx),
+		Expr::TypeAlias(_) => todo!(),
+		Expr::FunctionDeclaration(_) => todo!(),
 	}
 }
 
@@ -220,6 +229,8 @@ fn check_term(expr: &mut Term, ctx: &mut Context) -> Result<Type> {
 			Expr::Term(t) => check_term(t, ctx)?,
 			Expr::Declaration(d) => check_declaration(d, ctx)?,
 			Expr::Assignment(a) => check_assignment(a, ctx)?,
+			Expr::TypeAlias(_) => todo!(),
+			Expr::FunctionDeclaration(_) => todo!(),
 		},
 		Term::BinOp(BinOp { lhs, op, rhs }) => {
 			let lhs_type = check_expr(lhs.as_mut(), ctx)?;

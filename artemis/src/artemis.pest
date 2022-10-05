@@ -19,14 +19,16 @@ ws = _{ whitespace? }
 var_name     = { (lower_case ~ (lower_case | digit | "_")*) | greek }
 type_name    = { (mutable ~ whitespace)? ~ enum_type }
 mutable      = { "mut" }
-raw_type     = { native_types | struct_name | unit | tuple_type | struct_type }
+raw_type     = { native_types | struct_name | unit | tuple_type | struct_type | array_type }
 native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" | "∀" | "∃" | "𝕋" }
 struct_name  = { upper_case ~ (upper_case | lower_case | digit)* }
 tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ type_name)+ ~ ws ~ ")" }
+array_type   = { "[" ~ ws ~ enum_type ~ ws ~ "]" }
 
 dot        = { "." | "`dot`" }
 plus       = { "+" | "`add`" }
 minus      = { "-" | "`sub`" }
+negate     = { "-" | "`neg`" }
 delta      = { "δ" | "`delta`" }
 times      = { "*" | "×" | "·" | "`mul`" }
 div        = { "/" | "÷" | "`div`" }
@@ -63,7 +65,7 @@ single_char =  {
 }
 
 declaration   = { pattern ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
-assignment    = { var_name ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
+assignment    = { pattern ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
 function_call = {
 	var_name ~ (" " | "\t" | "\r")* ~ "(" ~ ws ~
 	(expr ~ ws ~ ("," ~ ws ~ expr ~ ws)* ~ ","? ~ ws)? ~
@@ -83,8 +85,11 @@ case = {
 }
 
 pattern = {
-	(var_name ~ ws ~ "@" ~ ws)?
-	~ struct_pattern
+	(var_name ~ ws ~ "@" ~ ws)? ~ inner_pattern
+}
+
+inner_pattern = {
+	struct_pattern
 	| tuple_pattern
 	| float
 	| integer
@@ -94,29 +99,29 @@ pattern = {
 	| var_name
 	| "_"
 }
+
+struct_field_pattern = { var_name ~ ws ~ (":" ~ ws ~ pattern)? }
 struct_pattern = {
-	"{" ~ var_name ~ ws ~ (":" ~ ws ~ pattern)?
-	~ (
-		"," ~ ws ~ var_name ~ ws ~ (":" ~ ws ~ pattern)?
+	"{" ~ struct_field_pattern ~
+	(
+		"," ~ ws ~ struct_field_pattern
 	)* ~ ("," ~ (ws ~ "..")?)? ~ ws ~ "}"
 }
 tuple_pattern = {
 	"(" ~ pattern ~ ws ~ ("," ~ ws ~ pattern)+ ~ ","? ~ ")"
 }
 
-subexpr = { term ~ (ws ~ binary_operator ~ ws ~ term)* }
-unary_expr = { unary_operator ~ ws ~ term }
 expr = {
-	declaration
-	| assignment
-	| subexpr
-	| unary_expr
-	| function_definition
-	| type_alias
+	unary_operator* ~ ws ~ term ~
+	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ term)*
 }
 
 term = {
-	float
+	declaration
+	| assignment
+	| function_definition
+	| type_alias
+	| float
 	| integer
 	| boolean
 	| string
@@ -128,15 +133,14 @@ term = {
 	| if_expr
 	| match_expr
 	| function_call
-	| declaration
-	| assignment
 	| var_name
 }
 
-binary_operator = {
+binary_operator = _{
 	exp
 	| times
 	| div
+	| rem
 	| plus
 	| minus
 	| delta
@@ -155,7 +159,7 @@ binary_operator = {
 	| lpipe
 	| rpipe
 }
-unary_operator  = { not | minus }
+unary_operator  = _{ not | negate }
 
 fn_keyword = { "\\" | "λ" | "fn" }
 argument   = { var_name ~ ws ~ ":" ~ ws ~ enum_type }
@@ -172,9 +176,9 @@ argument_list = {
 		("," ~ ws ~ argument ~ ws)* ~ ","? ~ ws
 	)?
 }
-block = { "{" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ "}" }
+block = { "(" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ ")" }
 
-struct_field = { var_name ~ (ws ~ ":" ~ ws ~ enum_type)? }
+struct_field = { var_name ~ ws ~ ":" ~ ws ~ enum_type }
 struct_type = {
 	"{" ~ ws ~
 	(struct_field ~ ws ~ "," ~ ws)* ~ (struct_field ~ ws)? ~
@@ -182,9 +186,10 @@ struct_type = {
 }
 enum_type = { raw_type ~ (ws ~ "|" ~ ws ~ raw_type)* }
 
-type_alias = { struct_name ~ ws ~ ":" ~ ws ~ ("mut"? ~ ws ~ "Type")? ~ ws ~ "=" ~ ws ~ enum_type }
+mut_type = { "mut"? ~ ws ~ "Type" }
+type_alias = { struct_name ~ ws ~ ":" ~ ws ~ mut_type? ~ ws ~ "=" ~ ws ~ enum_type }
 
-struct_field_use = { var_name ~ ws ~ ":" ~ ws ~ expr }
+struct_field_use = { var_name ~ (ws ~ ":" ~ ws ~ expr)? }
 struct_literal = {
 	"{" ~ ws ~
 	struct_field_use ~ ws ~

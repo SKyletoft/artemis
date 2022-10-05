@@ -14,11 +14,12 @@ pub fn assemble(ssa: &[SSAConstruct]) -> String {
 	function print_n(n) {console.log(n);}\n\
 	function print_z(z) {console.log(z);}\n\
 	function print_r(r) {console.log(r);}\n\
-	function print_b(b) {console.log(b);}\n\n".to_owned()
-		+ &ssa.iter()
-			.map(assemble_function)
-			.collect::<Vec<_>>()
-			.join("\n\n") + "\n\nconsole.log(f(0) + \", \" + f(1));"
+	function print_b(b) {console.log(b);}\n\n"
+		.to_owned() + &ssa
+		.iter()
+		.map(assemble_function)
+		.collect::<Vec<_>>()
+		.join("\n\n") + "\n\nconsole.log(f(0) + \", \" + f(1));"
 }
 
 fn format_source(src: Source) -> String {

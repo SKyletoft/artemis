@@ -147,6 +147,8 @@ pub fn detype_term(term: &OrderedTerm, ctx: &mut Context) -> Result<(Term, Type)
 				let (assign, typ) = detype_assignment(a, ctx)?;
 				(Term::Expr(Box::new(Expr::Assignment(assign))), typ)
 			}
+			OrderedExpr::FunctionDeclaration(_) => todo!(),
+			OrderedExpr::TypeAlias(_) => todo!(),
 		},
 		OrderedTerm::BinOp(OrderedBinOp { lhs, op, rhs }) => {
 			let (lhs, left_float) = detype_expr(lhs.as_ref(), ctx)?;
@@ -326,6 +328,8 @@ pub fn detype_expr(expr: &OrderedExpr, ctx: &mut Context) -> Result<(Expr, Type)
 			let (assignment, is_float) = detype_assignment(a, ctx)?;
 			(Expr::Assignment(assignment), is_float)
 		}
+		OrderedExpr::FunctionDeclaration(_) => todo!(),
+		OrderedExpr::TypeAlias(_) => todo!(),
 	};
 	Ok(res)
 }
@@ -362,6 +366,7 @@ impl From<&OrderedTopLevelConstruct> for (SmallString, (TypeRecord, bool)) {
 					true,
 				),
 			),
+			OrderedTopLevelConstruct::TypeAlias(_) => todo!(),
 		}
 	}
 }
@@ -472,6 +477,7 @@ pub fn detype(exprs: &[OrderedTopLevelConstruct]) -> Result<Vec<TopLevelConstruc
 						value: Box::new(value),
 					})
 				}
+				OrderedTopLevelConstruct::TypeAlias(_) => todo!(),
 			};
 			Ok(res)
 		})

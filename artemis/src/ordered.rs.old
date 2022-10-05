@@ -585,12 +585,19 @@ impl<'a> TryFrom<Pair<'a, Rule>> for AST {
 					.collect::<Result<SmallVec<[MaybeParsed; 4]>>>()?;
 				/*
 				 *	Order of operations:
+				 *	() []
 				 *	.
 				 *	^
 				 *	¬ -x
 				 *	× /
 				 *	+ - δ
-				 *	Λ V ⊕
+				 *	<< >>
+				 *	< > <= >=
+				 *	== !=
+				 *	⊕
+				 *	Λ
+				 *	V
+				 *	|> <|
 				 */
 				while let Some(_idx) = tokens
 					.iter()
