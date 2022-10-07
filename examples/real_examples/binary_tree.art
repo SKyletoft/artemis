@@ -1,7 +1,7 @@
-type Node = { left: Node | (), right: Node | (), value: ℤ }
-type MaybeNode = Node | ()
+Node⟨T⟩ := { left: Node⟨T⟩ | (), right: Node⟨T⟩ | (), value: T }
+MaybeNode⟨T⟩ := Node⟨T⟩ | ()
 
-λdepth (node: Node) → ℕ = depth'(node)
+λdepth (node: Node⟨T⟩) → ℕ = depth'⟨T⟩(node)
 
 λdepth' (node: MaybeNode) → ℕ = case node
 	{ left, right, .. } → (
