@@ -9,6 +9,9 @@ pub enum Error {
 	InvalidTarget(u32),
 	NoInputFiles(u32),
 	External(String),
+
+	TypeNonFunctionAsFunction(u32),
+	ForbiddenExprAtTopLevel(u32),
 }
 
 impl fmt::Display for Error {
