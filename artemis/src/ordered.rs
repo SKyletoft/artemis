@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use anyhow::{bail, Result};
 use once_cell::sync::Lazy;
 use pest::{
@@ -10,9 +12,9 @@ use crate::{
 	ast::{
 		Argument, ArgumentList, Assignment, BinaryOperator, Block, Case, Declaration,
 		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
-		Pattern, RawType, ReturnType, StructField, StructFieldLiteral, StructLiteral,
-		StructPattern, StructType, Term, Tuple, TuplePattern, Type, TypeAlias,
-		UnaryOperator, StructFieldPattern,
+		PartialApplication, Pattern, RawType, ReturnType, StructField, StructFieldLiteral,
+		StructFieldPattern, StructLiteral, StructPattern, StructType, Term, Tuple,
+		TuplePattern, Type, TypeAlias, UnaryOperator,
 	},
 	error::Error,
 	Rule,
@@ -40,7 +42,9 @@ static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
 			| Op::infix(Rule::rem, Assoc::Left))
 		.op(Op::prefix(Rule::negate) | Op::prefix(Rule::not))
 		.op(Op::infix(Rule::exp, Assoc::Left))
-		.op(Op::infix(Rule::dot, Assoc::Left))
+		.op(Op::infix(Rule::dot, Assoc::Left)
+			| Op::postfix(Rule::call)
+			| Op::postfix(Rule::application))
 });
 
 impl TryFrom<Pair<'_, Rule>> for Type {
@@ -172,32 +176,26 @@ impl TryFrom<Pair<'_, Rule>> for Assignment {
 	}
 }
 
-impl TryFrom<Pair<'_, Rule>> for FunctionCall {
-	type Error = anyhow::Error;
-
-	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
-		assert_eq!(pair.as_rule(), Rule::function_call);
-		let mut inner = pair.into_inner().rev().collect::<SmallVec<[_; 1]>>();
-		let name = inner
-			.pop()
-			.ok_or(Error::ParseError(line!()))?
-			.as_str()
-			.into();
-		let args = inner
-			.into_iter()
-			.rev()
-			.map(Expr::try_from)
-			.collect::<Result<_>>()?;
-		Ok(FunctionCall { name, args })
-	}
-}
-
 impl TryFrom<Pair<'_, Rule>> for IfExpr {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::if_expr);
-		todo!()
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let res = match inner.as_slice() {
+			[condition, then_branch, else_branch] => {
+				let condition = Expr::try_from(condition.clone())?;
+				let then_branch = Expr::try_from(then_branch.clone())?;
+				let else_branch = Expr::try_from(else_branch.clone())?;
+				IfExpr {
+					condition,
+					then_branch,
+					else_branch,
+				}
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
 	}
 }
 
@@ -346,14 +344,60 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 				let right = subexpr?.into();
 				Ok(Expr::UnOp { op, right })
 			})
-			.map_infix(|lhs, pair, rhs| {
-				// TODO: Handle pipes
-				assert!(!matches!(pair.as_rule(), Rule::lpipe | Rule::rpipe));
-
-				let op = BinaryOperator::try_from(pair)?;
-				let left = Box::new(lhs?);
-				let right = Box::new(rhs?);
-				Ok(Expr::BinOp { left, right, op })
+			.map_postfix(|f, args| {
+				let func = f?;
+				let res = match args.as_rule() {
+					Rule::application => {
+						let args =
+							args.into_inner()
+								.map(|p| {
+									let res = match p.as_rule() {
+										Rule::expr => Some(Expr::try_from(p)?),
+										Rule::any => None,
+										_ => bail!(Error::ParseError(line!()))
+									};
+									Ok(res)
+								})
+								.collect::<Result<_>>()?;
+						Term::PartialApplication(PartialApplication {
+							func,
+							args,
+						})
+					}
+					Rule::function => {
+						let args = args
+							.into_inner()
+							.map(Expr::try_from)
+							.collect::<Result<_>>()?;
+						Term::FunctionCall(FunctionCall { func, args })
+					}
+					_ => bail!(Error::ParseError(line!())),
+				};
+				Ok(Expr::Leaf(Box::new(res)))
+			})
+			.map_infix(|lhs, pair, rhs| match pair.as_rule() {
+				Rule::lpipe => {
+					let func = lhs?;
+					let args = vec![rhs?];
+					Ok(Expr::Leaf(Box::new(Term::FunctionCall(FunctionCall {
+						func,
+						args,
+					}))))
+				}
+				Rule::rpipe => {
+					let func = rhs?;
+					let args = vec![lhs?];
+					Ok(Expr::Leaf(Box::new(Term::FunctionCall(FunctionCall {
+						func,
+						args,
+					}))))
+				}
+				_ => {
+					let op = BinaryOperator::try_from(pair)?;
+					let left = Box::new(lhs?);
+					let right = Box::new(rhs?);
+					Ok(Expr::BinOp { left, right, op })
+				}
 			})
 			.parse(pair.into_inner())
 	}
@@ -378,7 +422,6 @@ impl TryFrom<Pair<'_, Rule>> for Term {
 			Rule::block => Term::Block(Block::try_from(inner)?),
 			Rule::if_expr => Term::IfExpr(IfExpr::try_from(inner)?),
 			Rule::match_expr => Term::MatchExpr(MatchExpr::try_from(inner)?),
-			Rule::function_call => Term::FunctionCall(FunctionCall::try_from(inner)?),
 			Rule::declaration => Term::Declaration(Declaration::try_from(inner)?),
 			Rule::assignment => Term::Assignment(Assignment::try_from(inner)?),
 			Rule::function_definition => {
@@ -462,10 +505,30 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::function_definition);
+		let span = pair.as_span();
 		log::trace!("[{}] {}", line!(), pair.as_str());
 		let inner = pair.into_inner().collect::<SmallVec<[_; 4]>>();
 		log::trace!("[{}] {:#?}", line!(), &inner);
 		let res = match inner.as_slice() {
+			[_, args, type_name, expr] => {
+				let name = {
+					let mut s = SmallString::new();
+					write!(&mut s, "lambda_{}_{}", span.start(), span.end())?;
+					s
+				};
+				let args = ArgumentList::try_from(args.clone())?;
+				let return_type = ReturnType::try_from(type_name.clone())?
+					.0
+					.unwrap_or_else(|| EnumType(smallvec![RawType::Unit]));
+				let expr = Expr::try_from(expr.clone())?;
+
+				FunctionDefinition {
+					name,
+					args,
+					return_type,
+					expr,
+				}
+			}
 			[_, name, args, type_name, expr] => {
 				let name = name.as_str().into();
 				let args = ArgumentList::try_from(args.clone())?;

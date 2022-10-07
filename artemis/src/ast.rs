@@ -43,8 +43,14 @@ pub struct Assignment {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-	pub(crate) name: SmallString,
+	pub(crate) func: Expr,
 	pub(crate) args: Vec<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PartialApplication {
+	pub(crate) func: Expr,
+	pub(crate) args: Vec<Option<Expr>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,7 +107,7 @@ pub struct StructPattern {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TuplePattern(pub(crate) Vec<Pattern>);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum Expr {
 	BinOp {
 		left: Box<Expr>,
@@ -129,6 +135,7 @@ pub enum Term {
 	IfExpr(IfExpr),
 	MatchExpr(MatchExpr),
 	FunctionCall(FunctionCall),
+	PartialApplication(PartialApplication),
 	Declaration(Declaration),
 	Assignment(Assignment),
 	FunctionDefinition(FunctionDefinition),

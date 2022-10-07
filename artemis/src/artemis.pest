@@ -46,8 +46,8 @@ less       = { "<" | "`lt`" }
 greater_eq = { ">=" | "`gte`" }
 less_eq    = { "<=" | "`lte`" }
 neq        = { "¬=" | "≠" | "`neq`" }
-lpipe      = { "|>" }
-rpipe      = { "<|" }
+lpipe      = { "<|" }
+rpipe      = { "|>" }
 
 integer =  { (plus | minus)? ~ digit+ ~ prefix? }
 float   =  { (plus | minus)? ~ digit+ ~ dot ~ digit* ~ prefix? }
@@ -66,11 +66,18 @@ single_char =  {
 
 declaration   = { pattern ~ ws ~ ":" ~ ws ~ type_name? ~ ws ~ "=" ~ ws ~ expr }
 assignment    = { pattern ~ ws ~ binary_operator? ~ "=" ~ ws ~ expr }
-function_call = {
-	var_name ~ (" " | "\t" | "\r")* ~ "(" ~ ws ~
+
+call = {
+	"(" ~ ws ~
 	(expr ~ ws ~ ("," ~ ws ~ expr ~ ws)* ~ ","? ~ ws)? ~
 	")"
 }
+application = {
+	 "[" ~ ws ~
+	((expr | any) ~ ws ~ ("," ~ ws ~ (expr | any) ~ ws)* ~ ","? ~ ws)? ~
+	"]"
+}
+function = _{ (" " | "\t" | "\r")* ~ (call | application) ~ (ws ~ enum_type)? }
 
 if_expr = {
 	("?" | "if" | "`if`" ) ~ ws ~ expr ~ ws ~
@@ -88,6 +95,7 @@ pattern = {
 	(var_name ~ ws ~ "@" ~ ws)? ~ inner_pattern
 }
 
+any = { "_" }
 inner_pattern = {
 	struct_pattern
 	| tuple_pattern
@@ -97,7 +105,7 @@ inner_pattern = {
 	| string
 	| char
 	| var_name
-	| "_"
+	| any
 }
 
 struct_field_pattern = { var_name ~ ws ~ (":" ~ ws ~ pattern)? }
@@ -112,11 +120,12 @@ tuple_pattern = {
 }
 
 expr = {
-	unary_operator* ~ ws ~ term ~
-	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ term)*
+	unary_operator* ~ ws ~ raw_term ~ function* ~
+	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ raw_term ~ function*)*
 }
 
-term = {
+term = { raw_term ~ (ws ~ ":" ~ ws ~ enum_type)? }
+raw_term = {
 	declaration
 	| assignment
 	| function_definition
@@ -132,7 +141,6 @@ term = {
 	| block
 	| if_expr
 	| match_expr
-	| function_call
 	| var_name
 }
 
@@ -166,7 +174,7 @@ argument   = { var_name ~ ws ~ ":" ~ ws ~ enum_type }
 
 arrow = { "→" | "->" }
 function_definition = {
-	fn_keyword ~ ws ~ var_name ~ ws ~ "(" ~ ws ~ argument_list ~ ")" ~ ws ~
+	fn_keyword ~ ws ~ var_name? ~ ws ~ "(" ~ ws ~ argument_list ~ ")" ~ ws ~
 	return_type ~ ws ~ "=" ~ ws ~ expr
 }
 return_type = { (arrow ~ ws ~ enum_type)? }
