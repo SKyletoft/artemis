@@ -109,11 +109,12 @@ inner_pattern = {
 }
 
 struct_field_pattern = { var_name ~ ws ~ (":" ~ ws ~ pattern)? }
+more = { (ws ~ "..")? }
 struct_pattern = {
 	"{" ~ struct_field_pattern ~
 	(
 		"," ~ ws ~ struct_field_pattern
-	)* ~ ("," ~ (ws ~ "..")?)? ~ ws ~ "}"
+	)* ~ ("," ~ more)? ~ ws ~ "}"
 }
 tuple_pattern = {
 	"(" ~ pattern ~ ws ~ ("," ~ ws ~ pattern)+ ~ ","? ~ ")"

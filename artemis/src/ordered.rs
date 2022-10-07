@@ -305,7 +305,23 @@ impl TryFrom<Pair<'_, Rule>> for StructFieldPattern {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::struct_field_pattern);
-		todo!()
+		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let res = match inner.as_slice() {
+			[name, pattern] => {
+				let name = name.as_str().into();
+				let pattern = Some(Pattern::try_from(pattern.clone())?);
+
+				StructFieldPattern { name, pattern }
+			}
+			[name] => {
+				let name = name.as_str().into();
+				let pattern = None;
+
+				StructFieldPattern { name, pattern }
+			}
+			_ => bail!(Error::ParseError(line!())),
+		};
+		Ok(res)
 	}
 }
 
@@ -314,7 +330,12 @@ impl TryFrom<Pair<'_, Rule>> for StructPattern {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::struct_pattern);
-		todo!()
+		let mut inner = pair.into_inner();
+		let fields = inner.take_while(|r| r.as_rule() == Rule::struct_field_pattern).map(StructFieldPattern::try_from).collect::<Result<_>>()?;
+		let more = inner.next().map(|r| r.as_rule() == Rule::more);
+		assert_ne!(more, Some(false));
+
+		Ok(StructPattern { fields, more: more.is_some()})
 	}
 }
 
