@@ -22,7 +22,7 @@ mutable      = { "mut" }
 raw_type     = { native_types | struct_name | unit | tuple_type | struct_type | array_type }
 native_types = { "ℕ" | "ℝ" | "ℤ" | "𝔹" | "∀" | "∃" | "𝕋" }
 struct_name  = { upper_case ~ (upper_case | lower_case | digit)* }
-tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ type_name)+ ~ ws ~ ")" }
+tuple_type   = { "(" ~ ws ~ type_name ~ (ws ~ "," ~ ws ~ enum_type)+ ~ ws ~ ")" }
 array_type   = { "[" ~ ws ~ enum_type ~ ws ~ "]" }
 
 dot        = { "." | "`dot`" }
