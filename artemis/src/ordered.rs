@@ -249,20 +249,50 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::pattern);
 		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+
 		let res = match inner.as_slice() {
-			[label, pattern] => {
+			[label, pattern, _] => {
 				let label = Some(label.as_str().into());
-				let inner_pattern = InnerPattern::try_from(pattern.clone())?;
+				let inner = InnerPattern::try_from(pattern.clone())?;
+				let irrefutable = true;
+
 				Pattern {
 					label,
-					inner: inner_pattern,
+					inner,
+					irrefutable,
+				}
+			}
+			[label, pattern] if pattern.as_rule() == Rule::pattern => {
+				let label = Some(label.as_str().into());
+				let inner = InnerPattern::try_from(pattern.clone())?;
+				let irrefutable = false;
+
+				Pattern {
+					label,
+					inner,
+					irrefutable,
+				}
+			}
+			[pattern, _] if pattern.as_rule() == Rule::pattern => {
+				let label = None;
+				let inner = InnerPattern::try_from(pattern.clone())?;
+				let irrefutable = true;
+
+				Pattern {
+					label,
+					inner,
+					irrefutable,
 				}
 			}
 			[pattern] => {
-				let inner_pattern = InnerPattern::try_from(pattern.clone())?;
+				let label = None;
+				let inner = InnerPattern::try_from(pattern.clone())?;
+				let irrefutable = false;
+
 				Pattern {
-					label: None,
-					inner: inner_pattern,
+					label,
+					inner,
+					irrefutable,
 				}
 			}
 			_ => bail!(Error::ParseError(line!())),

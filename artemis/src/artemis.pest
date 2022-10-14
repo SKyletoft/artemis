@@ -91,8 +91,10 @@ case = {
 	pattern ~ ws ~ ("|" ~ ws ~ expr)? ~ ws ~ arrow ~ ws ~ expr ~ ws
 }
 
+irrefutable = { "!" }
+
 pattern = {
-	(var_name ~ ws ~ "@" ~ ws)? ~ inner_pattern
+	(var_name ~ ws ~ "@" ~ ws)? ~ inner_pattern ~ irrefutable?
 }
 
 any = { "_" }

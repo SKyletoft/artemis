@@ -77,6 +77,7 @@ pub struct Case {
 pub struct Pattern {
 	pub(crate) label: Option<SmallString>,
 	pub(crate) inner: InnerPattern,
+	pub(crate) irrefutable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
