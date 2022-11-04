@@ -1,4 +1,4 @@
-λf () = {
+λf () = (
 	a:mut T=1
 	b:mut T =2
 	c: mut T=3
@@ -9,4 +9,4 @@
 	h :mut T = 8
 	i : mut T= 9
 	j : mut T = 10
-}
+)

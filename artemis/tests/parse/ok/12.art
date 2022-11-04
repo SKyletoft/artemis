@@ -1,1 +1,1 @@
-λf (x: Nat, y: Nat) = { () }
+λf (x: Nat, y: Nat) = ( () )

@@ -13,8 +13,8 @@ fn examples() {
 		.collect::<Vec<_>>();
 	files.sort_unstable();
 	for file in files.iter() {
-		let contents = fs::read_to_string(&file).unwrap();
-		let res = GeneratedParser::parse(Rule::function_definition, &contents);
+		let contents = fs::read_to_string(file).unwrap();
+		let res = GeneratedParser::parse(Rule::top, &contents);
 
 		if let Err(e) = &res {
 			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
@@ -30,9 +30,9 @@ fn success_files() {
 		.map(|entry| entry.unwrap().path())
 		.collect::<Vec<_>>();
 	files.sort_unstable();
-	for file in files {
-		let contents = fs::read_to_string(&file).unwrap();
-		let res = GeneratedParser::parse(Rule::function_definition, &contents);
+	for file in files.iter() {
+		let contents = fs::read_to_string(file).unwrap();
+		let res = GeneratedParser::parse(Rule::top, &contents);
 
 		if let Err(e) = &res {
 			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
@@ -48,9 +48,9 @@ fn fail_files() {
 		.map(|entry| entry.unwrap().path())
 		.collect::<Vec<_>>();
 	files.sort_unstable();
-	for file in files {
-		let contents = fs::read_to_string(&file).unwrap();
-		let res = GeneratedParser::parse(Rule::function_definition, &contents);
+	for file in files.iter() {
+		let contents = fs::read_to_string(file).unwrap();
+		let res = GeneratedParser::parse(Rule::top, &contents);
 
 		if let Ok(e) = &res {
 			eprintln!("{:?}:\n{e}\n\n{contents}", &file);
