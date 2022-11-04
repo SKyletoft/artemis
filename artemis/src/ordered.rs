@@ -360,12 +360,21 @@ impl TryFrom<Pair<'_, Rule>> for StructPattern {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::struct_pattern);
-		let mut inner = pair.into_inner();
-		let fields = inner.take_while(|r| r.as_rule() == Rule::struct_field_pattern).map(StructFieldPattern::try_from).collect::<Result<_>>()?;
-		let more = inner.next().map(|r| r.as_rule() == Rule::more);
-		assert_ne!(more, Some(false));
 
-		Ok(StructPattern { fields, more: more.is_some()})
+		let mut inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let more = if inner.last().map(Pair::as_rule) == Some(Rule::more) {
+			inner.pop();
+			true
+		} else {
+			false
+		};
+
+		let fields = inner
+			.into_iter()
+			.map(StructFieldPattern::try_from)
+			.collect::<Result<_>>()?;
+
+		Ok(StructPattern { fields, more })
 	}
 }
 
