@@ -1,4 +1,4 @@
-λf (a: 𝔹) → ℤ = {
+λf (a: 𝔹) → ℤ = (
 	b := 1 + 2
 	c := 3 + 4
 	d := 5 + 6
@@ -25,9 +25,9 @@
 	z := 47 + 48
 	r := 49 + 50
 
-	if a {
+	if a (
 		q+w+e+r+t+y+u+i+o+p+s+d+f+g+h+j+k+l+z+x+c+v+b+n+m
-	} else {
+	) else (
 		m+n+b+v+c+x+z+l+k+j+h+g+f+d+s+p+o+i+u+y+t+r+e+w+q+2
-	}
-}
+	)
+)

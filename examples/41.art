@@ -1,5 +1,5 @@
 NatOrBool := ℕ | 𝔹
 
 λf (a: 𝔹) → NatOrBool = (
-	x := if a 5 else 5.0
+	x := if a 5 else false
 )

@@ -1,25 +1,25 @@
 a := b := 1
 // a och b finns
 
-c := {
+c := (
 	d := 5
 	// a, b, d
-}
+)
 // a, b, c
 
-if {e := foo()} Λ {m := bar()} {
+if (e := foo()) Λ (m := bar()) (
 	// a, b, c, e?
-} else {
+) else (
 	// a, b, c, e?
-}
+)
 
 // e?
 
-if {f := true} {
+if (f := true) (
 	// a, b, c, e?, f?
-} else {
+) else (
 	// a, b, c, e?, f?
-}
+)
 // a, b, c, e?, f?
 
 foo( g := 5 )
