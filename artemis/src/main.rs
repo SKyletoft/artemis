@@ -16,7 +16,9 @@ use artemis::{
 	error::Error,
 	ordered,
 	preprocess,
-	// simplify, type_check,
+	// type_check,
+	simplify,
+	types,
 	GeneratedParser,
 	Rule,
 };
@@ -132,9 +134,8 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	let mut ordered = ordered::order(ast)?;
 	log::debug!("AST:\n{ordered:#?}");
 
-	/*
-	type_check::check_program(&mut ordered)?;
-	log::debug!("Inferred types:\n{ordered:#?}");
+	let inferred = types::check_and_infer(ordered)?;
+	log::debug!("Inferred types:\n{inferred:#?}");
 
 	let detyped = detype::detype(&ordered)?;
 	log::debug!("Detyped:\n{detyped:#?}");
