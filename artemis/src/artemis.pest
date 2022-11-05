@@ -17,7 +17,7 @@ prefix              = { metrix_prefix | binary_prefix }
 
 ws = _{ whitespace? }
 
-var_name     = { (lower_case ~ (lower_case | digit | "_")*) ~ "'"+ | special }
+var_name     = { (lower_case ~ (lower_case | digit | "_")*) ~ "'"* | special }
 type_name    = { (mutable ~ whitespace)? ~ enum_type }
 mutable      = { "mut" }
 raw_type     = { native_types | struct_name | unit | tuple_type | struct_type | array_type }
