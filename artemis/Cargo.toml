@@ -25,4 +25,5 @@ simple_logger = { version = "2.1", default-features = false, features = [ "color
 backtrace = "0.3"
 derive_more = "0.99"
 clap = { version = "3.2", features = [ "derive" ] }
+itertools = "0.10"
 air = { path = "../air" }
