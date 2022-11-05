@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hash};
 use anyhow::Result;
 use derive_more::{Deref, DerefMut};
 use once_cell::sync::Lazy;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use smallvec::SmallVec;
 use variantly::Variantly;
 
@@ -231,7 +231,8 @@ impl RegisterSet {
 	}
 
 	pub fn index_of(&self, source: &Source) -> Option<usize> {
-		self.0.iter().position(|x| *x == Some(*source))
+		self.0.iter()
+			.position(|x| matches!(x, Some(y) if y == source))
 	}
 
 	pub fn reset(&mut self) {
@@ -365,10 +366,10 @@ fn find_empty_slot(
 	scope: &[SimpleBlock],
 	protected_registers: &[Source],
 ) -> Option<usize> {
-	registers.iter().position(|&reg| {
+	registers.iter().position(|reg| {
 		// Completely unused register
 		let inner_reg = if let Some(r) = reg {
-			r
+			r.clone()
 		} else {
 			return true;
 		};
@@ -401,9 +402,16 @@ fn select_register(
 		.registers
 		.iter()
 		.enumerate()
-		.filter(|(_, r)| !r.map(|s| protected_registers.contains(&s)).unwrap_or(false))
+		.filter(|(_, r)| {
+			if let Some(rr) = r {
+				protected_registers.contains(rr)
+			} else {
+				false
+			}
+		})
 		.map(|(idx, register)| {
-			let reg = register.expect("Any empty register slots should've been found in the above attempt")
+			let reg = register.clone()
+				.expect("Any empty register slots should've been found in the above attempt")
 				.lines_till_last_use(scope, pos);
 			(idx, reg)
 		})
@@ -423,7 +431,7 @@ fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
 	let mut visited_left = HashSet::new();
 	let mut visited_right = HashSet::new();
 
-	let (_, lhs, rhs) = scope[usize::from(start)].out.two()?;
+	let (_, lhs, rhs) = scope[usize::from(start)].clone().out.two()?;
 	if lhs == rhs {
 		return Some(lhs);
 	}
@@ -433,10 +441,12 @@ fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
 
 	// Search through the left branch until it ends or becomes an infinite loop
 	while let Some(block) = next {
-		next_id = block
-			.out
-			.one()
-			.or_else(|| block.out.two().and_then(|_| find_merge(scope, next_id)))?;
+		next_id = block.out.clone().one().or_else(|| {
+			block.out
+				.clone()
+				.two()
+				.and_then(|_| find_merge(scope, next_id))
+		})?;
 		if visited_left.insert(next_id) {
 			break;
 		}
@@ -448,10 +458,12 @@ fn find_merge(scope: &[SimpleBlock], start: BlockId) -> Option<BlockId> {
 	next_id = rhs;
 	next = scope.get(usize::from(next_id));
 	while let Some(block) = next {
-		next_id = block
-			.out
-			.one()
-			.or_else(|| block.out.two().and_then(|_| find_merge(scope, next_id)))?;
+		next_id = block.out.clone().one().or_else(|| {
+			block.out
+				.clone()
+				.two()
+				.and_then(|_| find_merge(scope, next_id))
+		})?;
 		if visited_left.contains(&next_id) {
 			return Some(next_id);
 		}
@@ -557,16 +569,18 @@ fn get_or_load_and_get_value(
 		);
 	}
 
-	// eprintln!("-----------------------------------------------");
-	// dbg!(&register_set, &state.stack, source);
-
-	load_value(source, new_register, &mut state.stack, &mut block.block);
+	load_value(
+		source.clone(),
+		new_register,
+		&mut state.stack,
+		&mut block.block,
+	);
 
 	log::trace!(
 		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
 		line!(),
 		register_set[register_idx as usize],
-		source
+		&source
 	);
 
 	register_set[register_idx as usize] = Some(source);
@@ -582,7 +596,7 @@ fn switch_or_load_value(
 	stack: &mut [Option<Source>],
 ) {
 	// Check if there's nothing to do
-	if bank[target_position] == Some(value) {
+	if bank[target_position] == Some(value.clone()) {
 		return;
 	}
 
@@ -596,7 +610,7 @@ fn switch_or_load_value(
 		block.push(swap);
 	} else {
 		load_value(
-			value,
+			value.clone(),
 			Register::GeneralPurpose(target_position),
 			stack,
 			block,
@@ -632,6 +646,7 @@ fn load_value(
 				rhs: Register::Literal(stack_position as u64),
 			})
 		}
+		Source::LinkerValue(_) => todo!("Linker values in reg alloc"),
 	};
 	block.push(expr);
 }
@@ -838,8 +853,8 @@ fn allocate_for_blocks_with_end(
 						&mut left_state,
 						&mut right_state,
 						state,
-						left.value,
-						right.value,
+						left.value.clone(),
+						right.value.clone(),
 						right_end_block,
 						left_end_block,
 					)?;
@@ -942,14 +957,14 @@ fn merge_untouched(
 	right: &[Option<Source>],
 	state: &mut [Option<Source>],
 ) {
-	for (&left_reg, merge_reg) in left
+	for (left_reg, merge_reg) in left
 		.iter()
 		.zip(right.iter())
 		.zip(state.iter_mut())
 		.filter(|((a, b), _)| a == b)
 		.map(|((a, _), b)| (a, b))
 	{
-		*merge_reg = left_reg;
+		*merge_reg = left_reg.clone();
 	}
 }
 
@@ -975,7 +990,7 @@ fn merge_moved(
 		}));
 		right.swap(idx, right_idx);
 		assert!(state[idx].is_none());
-		state[idx] = *val;
+		state[idx] = val.clone()
 	}
 }
 
@@ -987,8 +1002,10 @@ fn load_value_to_branch(
 ) -> Result<()> {
 	// Save the value we're overwriting
 	// TODO: switch this to `save_on_stack` to have a chance of reusing old stack values
-	if state.registers[idx].is_some() && !state.stack.iter().any(|v| v == &Some(value)) {
+	let cmp_val = Some(value.clone());
+	if state.registers[idx].is_some() && !state.stack.iter().any(|v| v == &cmp_val) {
 		// TODO: If there's a free slot on the stack, pre-add and use an unop store
+		let reg_idx = state.registers[idx].clone();
 		if let Some(stack_position) = state.stack.iter().position(Option::is_none) {
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
@@ -996,7 +1013,7 @@ fn load_value_to_branch(
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(stack_position as u64),
 			}));
-			state.stack[stack_position] = state.registers[idx];
+			state.stack[stack_position] = reg_idx;
 		} else {
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
@@ -1004,24 +1021,24 @@ fn load_value_to_branch(
 				lhs: Register::StackPointer,
 				rhs: Register::Literal(state.stack.len() as u64),
 			}));
-			state.stack.push(state.registers[idx]);
+			state.stack.push(reg_idx);
 		}
 	}
 	//load_value(value, Register::GeneralPurpose(idx), &mut state.stack, block);
 	// TODO: Remove below
-	match value {
+	match &value {
 		Source::Value(v) => {
 			block.push(Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::LoadMem,
-				lhs: Register::Literal(v),
+				lhs: Register::Literal(*v),
 			}));
 		}
 		Source::Register(_) => {
 			let stack_position = state
 				.stack
 				.iter()
-				.position(|&r| r == Some(value))
+				.position(|r| r == &cmp_val)
 				.ok_or(Error::MissingRegister(line!()))?;
 			block.push(Expression::BinOp(BinOp {
 				target: Register::GeneralPurpose(idx),
@@ -1030,6 +1047,7 @@ fn load_value_to_branch(
 				rhs: Register::Literal(stack_position as u64),
 			}));
 		}
+		Source::LinkerValue(_) => todo!("Reg alloc linker value"),
 	}
 	state.registers[idx] = Some(value);
 	Ok(())
@@ -1139,21 +1157,22 @@ fn handle_single_block(
 				lhs,
 				rhs,
 			}) if !op.is_floating_point() => {
+				let lhs_rhs = [lhs.clone(), rhs.clone()];
 				let lhs_register = get_or_load_and_get_value(
-					*lhs,
+					lhs.clone(),
 					state,
 					pos,
 					&mut new_block,
 					scope,
-					&[*lhs, *rhs],
+					&lhs_rhs,
 				);
 				let rhs_register = get_or_load_and_get_value(
-					*rhs,
+					rhs.clone(),
 					state,
 					pos,
 					&mut new_block,
 					scope,
-					&[*lhs, *rhs],
+					&lhs_rhs,
 				);
 
 				let target_register =
@@ -1190,7 +1209,7 @@ fn handle_single_block(
 				);
 				// Do the arguments that end up on the stack first as to not interfere with whatever calculations
 				// are required for the stack arguments
-				for (idx, &arg) in stack_args.iter().enumerate() {
+				for (idx, arg) in stack_args.iter().cloned().enumerate() {
 					let arg_register = get_or_load_and_get_value(
 						arg,
 						state,
@@ -1221,7 +1240,7 @@ fn handle_single_block(
 					match reg {
 						Register::GeneralPurpose(idx) => {
 							// Save it if it's used AND will be used again
-							if let Some(src) = state.registers[idx] {
+							if let Some(src) = &state.registers[idx] {
 								if src.lines_till_last_use(scope, pos).is_some() {
 									log::trace!("Saving {src:?}");
 									save_on_stack(
@@ -1240,8 +1259,8 @@ fn handle_single_block(
 					}
 				}
 				// And then loading in the new values
-				for (idx, &arg) in register_args.iter().enumerate() {
-					match state.registers[idx] {
+				for (idx, arg) in register_args.iter().cloned().enumerate() {
+					match &state.registers[idx] {
 						None => {
 							log::trace!("Loading to None: {arg:?}");
 							switch_or_load_value(
@@ -1254,7 +1273,7 @@ fn handle_single_block(
 						}
 						Some(src) => {
 							// Load if not already there
-							if src != arg {
+							if src != &arg {
 								log::trace!("Loading to {src:?}: {arg:?}");
 								switch_or_load_value(
 									idx,
@@ -1281,7 +1300,7 @@ fn handle_single_block(
 
 				// And lastly check if the return register needs preserving
 				let ret_reg = config.return_register as usize;
-				let value_in_return_slot = state.registers[ret_reg];
+				let value_in_return_slot = &state.registers[ret_reg];
 				if let Some(val) = value_in_return_slot {
 					if val.lines_till_last_use(scope, pos).is_some() {
 						log::trace!("Saving value that was in return slot: {val:?}");
@@ -1314,10 +1333,10 @@ fn handle_single_block(
 		);
 	}
 
-	let new_out = match *out {
+	let new_out = match out {
 		SimpleBlockEnd::Return(target) => {
 			let condition = get_or_load_condition(
-				target,
+				target.clone(),
 				block_idx,
 				state,
 				scope,
@@ -1325,16 +1344,16 @@ fn handle_single_block(
 			)?;
 			BlockEnd::Return(condition)
 		}
-		SimpleBlockEnd::One(o) => BlockEnd::One(o),
+		SimpleBlockEnd::One(o) => BlockEnd::One(o.clone()),
 		SimpleBlockEnd::Two(target, l, r) => {
 			let condition = get_or_load_condition(
-				target,
+				target.clone(),
 				block_idx,
 				state,
 				scope,
 				&mut new_block,
 			)?;
-			BlockEnd::Two(condition, l, r)
+			BlockEnd::Two(condition, *l, *r)
 		}
 	};
 	new_block.out = new_out;
@@ -1349,7 +1368,7 @@ fn get_or_load_condition(
 	scope: &[SimpleBlock],
 	new_block: &mut Block,
 ) -> Result<Register, Error> {
-	state.find(target)
+	state.find(target.clone())
 		.or_else(|| {
 			let idx = state
 				.registers

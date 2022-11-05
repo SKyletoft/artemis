@@ -97,7 +97,7 @@ impl Context {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Variantly)]
+#[derive(Clone, PartialEq, Variantly)]
 pub enum BlockEnd {
 	#[variantly(rename = "ret")]
 	Return(Source),
@@ -129,12 +129,14 @@ pub struct Block {
 }
 
 /// Registers | Value
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Variantly, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Variantly, Hash)]
 pub enum Source {
 	/// `Register`
 	Register(Register),
 	/// `u64`
 	Value(u64),
+	/// `SmallString`
+	LinkerValue(SmallString),
 }
 
 impl Source {
@@ -176,14 +178,17 @@ impl Source {
 
 		// If it's the condition of this block we don't need to search through every line
 		match &block.out {
-			&BlockEnd::Two(condition, left, right) if &condition == self => {
-				assert!(scope[usize::from(left)].intro.is_empty());
-				assert!(scope[usize::from(right)].intro.is_empty());
+			BlockEnd::Two(condition, left, right) if condition == self => {
+				let left = usize::from(*left);
+				let right = usize::from(*right);
+
+				assert!(scope[left].intro.is_empty());
+				assert!(scope[right].intro.is_empty());
 
 				let steps_in_left_block =
-					self.lines_till_last_use(scope, (left.into(), 0));
+					self.lines_till_last_use(scope, (left, 0));
 				let steps_in_right_block =
-					self.lines_till_last_use(scope, (right.into(), 0));
+					self.lines_till_last_use(scope, (right, 0));
 
 				return match (steps_in_left_block, steps_in_right_block) {
 					(Some(l), Some(r)) => Some(l.max(r) + in_this_block),
@@ -270,6 +275,7 @@ impl fmt::Display for Source {
 		match self {
 			Source::Register(Register(r)) => write!(f, "${r}"),
 			Source::Value(v) => write!(f, "{v}"),
+			Source::LinkerValue(s) => write!(f, "[L: {s}]"),
 		}
 	}
 }
@@ -326,7 +332,7 @@ impl SimpleOp {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SimpleBinOp {
 	pub target: Register,
 	pub op: SimpleOp,
@@ -411,7 +417,7 @@ pub enum SSAConstruct {
 	},
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PhiEdge {
 	pub from: BlockId,
 	pub value: Source,
