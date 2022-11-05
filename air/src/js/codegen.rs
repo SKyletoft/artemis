@@ -1,13 +1,9 @@
 use std::collections::HashSet;
 
-use rayon::prelude::*;
-
 use crate::simplify::{
-	Block, BlockEnd, BlockId, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression,
-	SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+	Block, BlockEnd, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression, SimpleFunctionCall,
+	SimpleOp, SimpleUnOp, Source,
 };
-
-type SmallString = smallstr::SmallString<[u8; 16]>;
 
 pub fn assemble(ssa: &[SSAConstruct]) -> String {
 	"\"use strict\";\n\n\
@@ -26,6 +22,7 @@ fn format_source(src: Source) -> String {
 	match src {
 		Source::Register(r) => format!("regs.r{}", usize::from(r)),
 		Source::Value(v) => format!("{v}"),
+		Source::LinkerValue(_) => todo!("Linker values in JS"),
 	}
 }
 
@@ -61,8 +58,8 @@ fn assemble_function(ssa: &SSAConstruct) -> String {
 					\t}}\n\
 				}};")
 		}
-		SSAConstruct::Variable { name, value } => todo!(),
-		SSAConstruct::ImmediateExpression { name, value } => todo!(),
+		SSAConstruct::Variable { .. } => todo!(),
+		SSAConstruct::ImmediateExpression { .. } => todo!(),
 	}
 }
 
@@ -71,7 +68,7 @@ fn assemble_block(block: &Block) -> String {
 
 	let phi = assemble_phi_nodes(intro);
 	let code = assemble_code(block);
-	let next = assemble_out(*out);
+	let next = assemble_out(out.clone());
 
 	format!("{phi}{code}{next}")
 }
@@ -85,8 +82,10 @@ fn assemble_phi_nodes(nodes: &[PhiNode]) -> String {
 			nodes.iter()
 				.flat_map(|PhiNode { target, value }| {
 					value.iter().filter_map(|phi_edge| {
-						(phi_edge.from == outer_from)
-							.then_some((*target, phi_edge.value))
+						(phi_edge.from == outer_from).then_some((
+							*target,
+							phi_edge.value.clone(),
+						))
 					})
 				})
 				.fold(
@@ -110,7 +109,7 @@ fn assemble_code(code: &[SimpleExpression]) -> String {
 
 fn assemble_expression(expr: &SimpleExpression) -> String {
 	match expr {
-		SimpleExpression::UnOp(SimpleUnOp { target, op, lhs }) => todo!(),
+		SimpleExpression::UnOp(SimpleUnOp { .. }) => todo!(),
 		SimpleExpression::BinOp(SimpleBinOp {
 			target,
 			op,
@@ -118,8 +117,8 @@ fn assemble_expression(expr: &SimpleExpression) -> String {
 			rhs,
 		}) => {
 			let tar = usize::from(*target);
-			let left = format_source(*lhs);
-			let right = format_source(*rhs);
+			let left = format_source(lhs.clone());
+			let right = format_source(rhs.clone());
 			match op {
 				SimpleOp::Add => format!("regs.r{tar} = ({left} + {right}) | 0;\n"),
 				SimpleOp::Sub => format!("regs.r{tar} = ({left} - {right}) | 0;\n"),
@@ -148,7 +147,7 @@ fn assemble_expression(expr: &SimpleExpression) -> String {
 			let tar = usize::from(*target);
 			let mut function_call = format!("regs.r{tar} = {function}(");
 
-			for arg in args.iter().copied().map(format_source) {
+			for arg in args.iter().cloned().map(format_source) {
 				function_call.push_str(&arg);
 				function_call.push_str(", ");
 			}

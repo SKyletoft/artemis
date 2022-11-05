@@ -1,4 +1,4 @@
-use std::fmt::{self, Write};
+use std::fmt;
 
 use crate::error::Error;
 
@@ -73,7 +73,7 @@ pub enum FloatingPointRegister {
 	XMM15,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
 	Global(SmallString),
 	Add(GeneralPurposeRegister, GeneralPurposeRegister),
@@ -116,7 +116,7 @@ pub enum Instruction {
 }
 use Instruction::*;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct AssemblyBuilder(Vec<Instruction>);
 

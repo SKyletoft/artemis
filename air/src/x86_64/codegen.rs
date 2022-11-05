@@ -37,7 +37,7 @@ pub fn assemble(constructs: &[CodeConstruct]) -> Result<String> {
 				name,
 				blocks,
 				frame_size,
-				arguments_on_stack,
+				..
 			} => {
 				assembler.global(name);
 				assembler.label(name.clone());
@@ -147,24 +147,24 @@ fn assemble_block(
 	id: BlockId,
 	assembler: &mut AssemblyBuilder,
 	name: &str,
-	used_registers: &HashSet<GeneralPurposeRegister>,
+	_used_registers: &HashSet<GeneralPurposeRegister>,
 ) -> Result<()> {
 	assembler.label(id.label(name)?);
 	for line in block {
 		match line {
 			&Expression::BinOp(BinOp {
-				target: Register::GeneralPurpose(t),
+				target: Register::GeneralPurpose(_t),
 				op: Op::Div,
-				lhs: Register::GeneralPurpose(l),
-				rhs: Register::GeneralPurpose(r),
+				lhs: Register::GeneralPurpose(_l),
+				rhs: Register::GeneralPurpose(_r),
 			}) => {
 				todo!("I hate x86 division so much");
 			}
 			&Expression::BinOp(BinOp {
-				target: Register::GeneralPurpose(t),
+				target: Register::GeneralPurpose(_t),
 				op: Op::UDiv,
-				lhs: Register::GeneralPurpose(l),
-				rhs: Register::GeneralPurpose(r),
+				lhs: Register::GeneralPurpose(_l),
+				rhs: Register::GeneralPurpose(_r),
 			}) => {
 				todo!("I hate x86 division so much");
 			}
@@ -329,7 +329,7 @@ fn assemble_block(
 			assembler.jne(left.label(name)?);
 			assembler.jmp(right.label(name)?);
 		}
-		BlockEnd::Two(Register::Literal(c), ..) => todo!(),
+		BlockEnd::Two(Register::Literal(_c), ..) => todo!(),
 		_ => todo!(),
 	}
 	Ok(())
