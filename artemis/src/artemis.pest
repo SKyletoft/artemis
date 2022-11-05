@@ -2,10 +2,11 @@ lower_case =  { 'a'..'z' | "å" | "ä" | "ö" }
 upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
 digit      =  { '0'..'9' }
 whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
-greek      =  {
+special    =  {
 	"α" | "β" | "Γ" | "γ" | "ε" | "ζ" | "η" | "Θ" | "θ" | "ι" | "Κ" |
 	"κ" | "μ" | "ν" | "Ξ" | "ξ" | "Π" | "π" | "ρ" | "Σ" | "σ" | "ς" |
-	"τ" | "υ" | "Φ" | "φ" | "Χ" | "χ" | "Ψ" | "ψ" | "Ω" | "ω"
+	"τ" | "υ" | "Φ" | "φ" | "Χ" | "χ" | "Ψ" | "ψ" | "Ω" | "ω" | "∫" |
+	"∂" | "∅"
 }
 
 large_metric_prefix = { "D" | "da"| "h" | "k" | "M" | "G" | "T" | "P" | "E" | "Z" | "Y" }
@@ -16,7 +17,7 @@ prefix              = { metrix_prefix | binary_prefix }
 
 ws = _{ whitespace? }
 
-var_name     = { (lower_case ~ (lower_case | digit | "_")*) | greek }
+var_name     = { (lower_case ~ (lower_case | digit | "_")*) ~ "'"+ | special }
 type_name    = { (mutable ~ whitespace)? ~ enum_type }
 mutable      = { "mut" }
 raw_type     = { native_types | struct_name | unit | tuple_type | struct_type | array_type }
