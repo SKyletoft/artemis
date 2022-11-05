@@ -12,6 +12,22 @@ pub enum Error {
 
 	TypeNonFunctionAsFunction(u32),
 	ForbiddenExprAtTopLevel(u32),
+	MismatchedTypes(u32),
+	InternalUnhandledTypeAliasConversion(u32),
+	UndefinedTypeAlias(u32),
+	TopLevelTypeAscription(u32),
+	DuplicateFunctionDefinition(u32),
+	IncorrectTypeAscription(u32),
+	MutableTypeAlias(u32),
+	ConditionIsntBoolean(u32),
+	UndefinedVariable(u32),
+	PatternDoesntMatch(u32),
+	UnprovedIrrefutablePattern(u32),
+	AssignmentToUndeclaredVariable(u32),
+	TODOUnsupportedAssignmentPattern(u32),
+	InternalMismatchedTypes(u32),
+	InternalIllegalConstructAtTopLevel(u32),
+	EmptyAssignment,
 }
 
 impl fmt::Display for Error {

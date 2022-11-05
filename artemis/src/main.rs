@@ -12,6 +12,7 @@ use air::{
 };
 use anyhow::{bail, Result};
 use artemis::{
+	detype2,
 	//detype,
 	error::Error,
 	ordered,
@@ -128,17 +129,16 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	let source = preprocess::remove_comments(&sources);
 	log::debug!("Preprocessed source code:\n{source}");
 
-	let ast = GeneratedParser::parse(Rule::top, &source)?;
+	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
 	log::debug!("Pest output:\n{ast:#?}");
 
-	let mut ordered = ordered::order(ast)?;
+	let ordered = ordered::order(ast)?;
 	log::debug!("AST:\n{ordered:#?}");
 
 	let inferred = types::check_and_infer(ordered)?;
 	log::debug!("Inferred types:\n{inferred:#?}");
 
-	let detyped = detype::detype(&ordered)?;
-	log::debug!("Detyped:\n{detyped:#?}");
+	let detyped = detype2::detype_program(inferred)?;
 
 	let ssa = simplify::simplify(&detyped)?;
 	log::debug!("SSA:\n{ssa:#?}");
@@ -197,7 +197,6 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 			fs::write(&config.output, js)?;
 		}
 	}
-	*/
 
 	Ok(())
 }

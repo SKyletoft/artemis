@@ -4,6 +4,9 @@ extern crate pest_derive;
 
 // pub mod detype;
 pub mod ast;
+pub mod ast2;
+pub mod detype2;
+pub mod detype2_types;
 pub mod error;
 pub mod ordered;
 pub mod preprocess;

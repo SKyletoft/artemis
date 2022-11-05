@@ -9,8 +9,8 @@ use rayon::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
-	detype::{
-		Assignment, BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
+	detype2_types::{
+		BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
 		TopLevelConstruct,
 	},
 	error::Error,
@@ -110,7 +110,9 @@ pub fn simplify_term(
 			if then_variables != else_variables {
 				old_variables
 					.keys()
-					.map(|key| (key, then_variables[key], else_variables[key]))
+					.map(|key| {
+						(key, &then_variables[key], &else_variables[key])
+					})
 					.filter(|(_, l, r)| l != r)
 					.for_each(|(key, then_var_src, else_var_src)| {
 						let target = ctx.next_register();
@@ -123,11 +125,11 @@ pub fn simplify_term(
 							value: [
 								PhiEdge {
 									from: then_end_id,
-									value: then_var_src,
+									value: then_var_src.clone(),
 								},
 								PhiEdge {
 									from: else_end_id,
-									value: else_var_src,
+									value: else_var_src.clone(),
 								},
 							],
 						});
@@ -169,7 +171,7 @@ pub fn simplify_term(
 		}
 		Term::Literal(v) => Source::Value(*v),
 		Term::Variable(v) => match ctx.variables.get(v) {
-			Some(&r) => anyhow::Ok(r),
+			Some(r) => anyhow::Ok(r.clone()),
 			None => todo!("Handle loading of globals"),
 		}?,
 		Term::Tuple(_) => todo!(
@@ -207,11 +209,16 @@ pub fn simplify_expr(
 	match expr {
 		Expr::Term(s) => simplify_term(s, current, blocks, ctx),
 		Expr::Declaration(Declaration { name, value })
-		| Expr::Assignment(Assignment { name, value }) => {
-			let source = simplify_expr(value, current, blocks, ctx)?;
-			ctx.variables.insert(name.clone(), source);
-			Ok(source)
+		| Expr::Assignment(Declaration { name, value }) => {
+			let mut last = Err(Error::EmptyAssignment);
+			for (n, v) in name.iter().cloned().zip(value.iter()) {
+				let source = simplify_expr(v, current, blocks, ctx)?;
+				ctx.variables.insert(n, source.clone());
+				last = Ok(source);
+			}
+			Ok(last?) // anyhow type hack
 		}
+		Expr::Function(f) => Ok(Source::LinkerValue(f.name.clone())),
 	}
 }
 
@@ -226,7 +233,7 @@ pub fn simplify_exprs(
 	for expr in exprs.iter() {
 		last_source = simplify_expr(expr, current, blocks, ctx)?;
 	}
-	current.out = BlockEnd::Return(last_source);
+	current.out = BlockEnd::Return(last_source.clone());
 	let final_block = mem::take(current);
 	blocks.push(final_block);
 	let final_id = blocks.len() - 1;
