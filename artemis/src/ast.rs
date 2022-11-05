@@ -11,7 +11,13 @@ pub struct Type {
 	pub(crate) enum_type: EnumType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly)]
+pub enum ActualType {
+	Declared(Type),
+	Inferred,
+}
+
+#[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum RawType {
 	Natural,
 	Real,
@@ -21,7 +27,7 @@ pub enum RawType {
 	Type,
 	StructNameOrAlias(SmallString),
 	Unit,
-	Tuple(Vec<Type>),
+	Tuple(Vec<EnumType>),
 	StructType(StructType),
 }
 
@@ -31,7 +37,7 @@ pub struct Tuple(pub(crate) Vec<Expr>);
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
 	pub(crate) pattern: Pattern,
-	pub(crate) type_name: Option<Type>,
+	pub(crate) type_name: ActualType,
 	pub(crate) expr: Expr,
 }
 
@@ -122,8 +128,29 @@ pub enum Expr {
 	Leaf(Box<Term>),
 }
 
+impl From<Term> for Expr {
+	fn from(t: Term) -> Self {
+		Expr::Leaf(Box::new(t))
+	}
+}
+
+impl From<RawTerm> for Expr {
+	fn from(raw_term: RawTerm) -> Self {
+		Expr::Leaf(Box::new(Term {
+			raw_term,
+			type_ascription: None,
+		}))
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term {
+pub struct Term {
+	pub(crate) raw_term: RawTerm,
+	pub(crate) type_ascription: Option<EnumType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RawTerm {
 	Float(f64),
 	Integer(i64),
 	Boolean(bool),
@@ -144,11 +171,12 @@ pub enum Term {
 	VarName(SmallString),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOperator {
 	Exp,
 	Mul,
 	Div,
+	Rem,
 	Add,
 	Sub,
 	Delta,
@@ -156,9 +184,17 @@ pub enum BinaryOperator {
 	Or,
 	Xor,
 	Dot,
+	Eq,
+	Neq,
+	Gt,
+	Lt,
+	Gte,
+	Lte,
+	LShift,
+	RShift,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOperator {
 	Not,
 	Sub,
@@ -167,7 +203,7 @@ pub enum UnaryOperator {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
 	pub(crate) name: SmallString,
-	pub(crate) type_name: EnumType,
+	pub(crate) type_name: Type,
 }
 
 #[derive(Debug, Clone, PartialEq)]

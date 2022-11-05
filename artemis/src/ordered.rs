@@ -10,11 +10,11 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
 	ast::{
-		Argument, ArgumentList, Assignment, BinaryOperator, Block, Case, Declaration,
-		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
-		PartialApplication, Pattern, RawType, ReturnType, StructField, StructFieldLiteral,
-		StructFieldPattern, StructLiteral, StructPattern, StructType, Term, Tuple,
-		TuplePattern, Type, TypeAlias, UnaryOperator,
+		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Block, Case,
+		Declaration, EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr,
+		InnerPattern, MatchExpr, PartialApplication, Pattern, RawTerm, RawType, ReturnType,
+		StructField, StructFieldLiteral, StructFieldPattern, StructLiteral, StructPattern,
+		StructType, Term, Tuple, TuplePattern, Type, TypeAlias, UnaryOperator,
 	},
 	error::Error,
 	Rule,
@@ -87,7 +87,11 @@ impl TryFrom<Pair<'_, Rule>> for RawType {
 			},
 			Rule::struct_name => RawType::StructNameOrAlias(inner.as_str().into()),
 			Rule::unit => RawType::Unit,
-			Rule::tuple_type => todo!(),
+			Rule::tuple_type => RawType::Tuple(
+				inner.into_inner()
+					.map(EnumType::try_from)
+					.collect::<Result<_>>()?,
+			),
 			Rule::struct_type => RawType::StructType(StructType::try_from(inner)?),
 			_ => bail!(Error::ParseError(line!())),
 		};
@@ -118,7 +122,7 @@ impl TryFrom<Pair<'_, Rule>> for Declaration {
 		let res = match inner.as_slice() {
 			[pattern, type_name, expr] => {
 				let pattern = Pattern::try_from(pattern.clone())?;
-				let type_name = Some(Type::try_from(type_name.clone())?);
+				let type_name = ActualType::Declared(type_name.clone().try_into()?);
 				let expr = Expr::try_from(expr.clone())?;
 				Declaration {
 					pattern,
@@ -129,9 +133,10 @@ impl TryFrom<Pair<'_, Rule>> for Declaration {
 			[pattern, expr] => {
 				let pattern = Pattern::try_from(pattern.clone())?;
 				let expr = Expr::try_from(expr.clone())?;
+				let type_name = ActualType::Inferred;
 				Declaration {
 					pattern,
-					type_name: None,
+					type_name,
 					expr,
 				}
 			}
@@ -158,7 +163,10 @@ impl TryFrom<Pair<'_, Rule>> for Assignment {
 				let op = BinaryOperator::try_from(op.clone())?;
 				let rhs = Expr::try_from(expr.clone())?;
 				let expr = Expr::BinOp {
-					left: Box::new(Expr::Leaf(Box::new(Term::VarName(lhs)))),
+					left: Box::new(Expr::Leaf(Box::new(Term {
+						raw_term: RawTerm::VarName(lhs),
+						type_ascription: None,
+					}))),
 					right: Box::new(rhs),
 					op,
 				};
@@ -387,18 +395,12 @@ impl TryFrom<Pair<'_, Rule>> for TuplePattern {
 	}
 }
 
-impl From<Term> for Expr {
-	fn from(t: Term) -> Self {
-		Expr::Leaf(Box::new(t))
-	}
-}
-
 impl TryFrom<Pair<'_, Rule>> for Expr {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::expr);
-		PRATT.map_primary(|pair| Term::try_from(pair).map(|t| Expr::Leaf(Box::new(t))))
+		PRATT.map_primary(|pair| RawTerm::try_from(pair).map(|t| -> Expr { t.into() }))
 			.map_prefix(|pair, subexpr| {
 				let op = UnaryOperator::try_from(pair)?;
 				let right = subexpr?.into();
@@ -406,10 +408,11 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 			})
 			.map_postfix(|f, args| {
 				let func = f?;
-				let res = match args.as_rule() {
-					Rule::application => {
-						let args =
-							args.into_inner()
+				let res =
+					match args.as_rule() {
+						Rule::application => {
+							let args = args
+								.into_inner()
 								.map(|p| {
 									let res = match p.as_rule() {
 										Rule::expr => Some(Expr::try_from(p)?),
@@ -419,38 +422,51 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 									Ok(res)
 								})
 								.collect::<Result<_>>()?;
-						Term::PartialApplication(PartialApplication {
-							func,
-							args,
-						})
-					}
-					Rule::function => {
-						let args = args
-							.into_inner()
-							.map(Expr::try_from)
-							.collect::<Result<_>>()?;
-						Term::FunctionCall(FunctionCall { func, args })
-					}
-					_ => bail!(Error::ParseError(line!())),
-				};
+							let raw_term = RawTerm::PartialApplication(
+								PartialApplication { func, args },
+							);
+							Term {
+								raw_term,
+								type_ascription: None,
+							}
+						}
+						Rule::function => {
+							let args = args
+								.into_inner()
+								.map(Expr::try_from)
+								.collect::<Result<_>>()?;
+							let raw_term = RawTerm::FunctionCall(
+								FunctionCall { func, args },
+							);
+							Term {
+								raw_term,
+								type_ascription: None,
+							}
+						}
+						_ => bail!(Error::ParseError(line!())),
+					};
 				Ok(Expr::Leaf(Box::new(res)))
 			})
 			.map_infix(|lhs, pair, rhs| match pair.as_rule() {
 				Rule::lpipe => {
 					let func = lhs?;
 					let args = vec![rhs?];
-					Ok(Expr::Leaf(Box::new(Term::FunctionCall(FunctionCall {
-						func,
-						args,
-					}))))
+					let raw_term =
+						RawTerm::FunctionCall(FunctionCall { func, args });
+					Ok(Expr::Leaf(Box::new(Term {
+						raw_term,
+						type_ascription: None,
+					})))
 				}
 				Rule::rpipe => {
 					let func = rhs?;
 					let args = vec![lhs?];
-					Ok(Expr::Leaf(Box::new(Term::FunctionCall(FunctionCall {
-						func,
-						args,
-					}))))
+					let raw_term =
+						RawTerm::FunctionCall(FunctionCall { func, args });
+					Ok(Expr::Leaf(Box::new(Term {
+						raw_term,
+						type_ascription: None,
+					})))
 				}
 				_ => {
 					let op = BinaryOperator::try_from(pair)?;
@@ -463,32 +479,32 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 	}
 }
 
-impl TryFrom<Pair<'_, Rule>> for Term {
+impl TryFrom<Pair<'_, Rule>> for RawTerm {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		// dbg!(backtrace::Backtrace::new());
-		assert_eq!(pair.as_rule(), Rule::term);
+		assert_eq!(pair.as_rule(), Rule::raw_term);
 		let inner = inner(pair)?;
 		let res = match inner.as_rule() {
-			Rule::float => Term::Float(inner.as_str().parse()?),
-			Rule::integer => Term::Integer(inner.as_str().parse()?),
-			Rule::boolean => Term::Boolean(inner.as_str().parse()?),
-			Rule::string => Term::String(inner.as_str().into()),
+			Rule::float => RawTerm::Float(inner.as_str().parse()?),
+			Rule::integer => RawTerm::Integer(inner.as_str().parse()?),
+			Rule::boolean => RawTerm::Boolean(inner.as_str().parse()?),
+			Rule::string => RawTerm::String(inner.as_str().into()),
 			Rule::char => todo!(),
-			Rule::unit => Term::Unit,
-			Rule::tuple => Term::Tuple(Tuple::try_from(inner)?),
+			Rule::unit => RawTerm::Unit,
+			Rule::tuple => RawTerm::Tuple(Tuple::try_from(inner)?),
 			Rule::struct_literal => todo!(),
-			Rule::block => Term::Block(Block::try_from(inner)?),
-			Rule::if_expr => Term::IfExpr(IfExpr::try_from(inner)?),
-			Rule::match_expr => Term::MatchExpr(MatchExpr::try_from(inner)?),
-			Rule::declaration => Term::Declaration(Declaration::try_from(inner)?),
-			Rule::assignment => Term::Assignment(Assignment::try_from(inner)?),
+			Rule::block => RawTerm::Block(Block::try_from(inner)?),
+			Rule::if_expr => RawTerm::IfExpr(IfExpr::try_from(inner)?),
+			Rule::match_expr => RawTerm::MatchExpr(MatchExpr::try_from(inner)?),
+			Rule::declaration => RawTerm::Declaration(Declaration::try_from(inner)?),
+			Rule::assignment => RawTerm::Assignment(Assignment::try_from(inner)?),
 			Rule::function_definition => {
-				Term::FunctionDefinition(FunctionDefinition::try_from(inner)?)
+				RawTerm::FunctionDefinition(FunctionDefinition::try_from(inner)?)
 			}
-			Rule::type_alias => Term::TypeAlias(TypeAlias::try_from(inner)?),
-			Rule::var_name => Term::VarName(inner.as_str().into()),
+			Rule::type_alias => RawTerm::TypeAlias(TypeAlias::try_from(inner)?),
+			Rule::var_name => RawTerm::VarName(inner.as_str().into()),
 			_ => {
 				log::error!(
 					"[{}] {}\n{:?}",
@@ -511,6 +527,7 @@ impl TryFrom<Pair<'_, Rule>> for BinaryOperator {
 			Rule::exp => BinaryOperator::Exp,
 			Rule::times => BinaryOperator::Mul,
 			Rule::div => BinaryOperator::Div,
+			Rule::rem => BinaryOperator::Rem,
 			Rule::plus => BinaryOperator::Add,
 			Rule::minus => BinaryOperator::Sub,
 			Rule::delta => BinaryOperator::Delta,
@@ -518,7 +535,18 @@ impl TryFrom<Pair<'_, Rule>> for BinaryOperator {
 			Rule::or => BinaryOperator::Or,
 			Rule::xor => BinaryOperator::Xor,
 			Rule::dot => BinaryOperator::Dot,
-			_ => bail!(Error::ParseError(line!())),
+			Rule::eq => BinaryOperator::Eq,
+			Rule::neq => BinaryOperator::Neq,
+			Rule::greater => BinaryOperator::Gt,
+			Rule::greater_eq => BinaryOperator::Gte,
+			Rule::less => BinaryOperator::Lt,
+			Rule::less_eq => BinaryOperator::Lte,
+			Rule::lshift => BinaryOperator::LShift,
+			Rule::rshift => BinaryOperator::RShift,
+			_ => {
+				log::error!("{:#?}\n{:#?}", pair, pair.as_rule());
+				bail!(Error::ParseError(line!()))
+			}
 		};
 
 		Ok(res)
@@ -550,7 +578,7 @@ impl TryFrom<Pair<'_, Rule>> for Argument {
 		let res = match inner.as_slice() {
 			[name, type_name] => {
 				let name = name.as_str().into();
-				let type_name = EnumType::try_from(type_name.clone())?;
+				let type_name = Type::try_from(type_name.clone())?;
 
 				Argument { name, type_name }
 			}
@@ -742,7 +770,7 @@ impl TryFrom<Pair<'_, Rule>> for StructFieldLiteral {
 		let res = match inner.as_slice() {
 			[name] => {
 				let name: SmallString = name.as_str().into();
-				let expr = Expr::Leaf(Box::new(Term::VarName(name.clone())));
+				let expr: Expr = RawTerm::VarName(name.clone()).into();
 
 				StructFieldLiteral { name, expr }
 			}
