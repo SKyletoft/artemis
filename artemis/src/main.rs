@@ -129,7 +129,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	let source = preprocess::remove_comments(&sources);
 	log::debug!("Preprocessed source code:\n{source}");
 
-	let ast = GeneratedParser::parse(Rule::function_definition, &source)?;
+	let ast = GeneratedParser::parse(Rule::top, &source)?;
 	log::debug!("Pest output:\n{ast:#?}");
 
 	let ordered = ordered::order(ast)?;
