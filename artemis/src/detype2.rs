@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use once_cell::sync::Lazy;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
