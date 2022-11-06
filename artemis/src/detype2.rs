@@ -156,7 +156,14 @@ impl Ast2Term {
 				let typ = Type::Unsigned;
 				(Term::Expr(Box::new(Expr::Function(Box::new(f)))), typ)
 			}
-			Ast2Term::VarName(_) => todo!(),
+			Ast2Term::VarName(n) => {
+				let typ = ctx
+					.variables
+					.get(&n)
+					.ok_or(Error::InternalCheckedUndefinedVariable(line!()))?
+					.into();
+				(Term::Variable(n), typ)
+			}
 		};
 		Ok(res)
 	}
