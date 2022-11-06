@@ -108,7 +108,26 @@ impl Ast2Term {
 					);
 				(Term::Block(res), typ)
 			}
-			Ast2Term::IfExpr(_) => todo!(),
+			Ast2Term::IfExpr(ast2::IfExpr {
+				condition,
+				then_branch,
+				else_branch,
+			}) => {
+				let (condition, _) = condition.detype(ctx)?;
+				let (lhs, lhs_typ) = then_branch.detype(ctx)?;
+				let (rhs, rhs_typ) = else_branch.detype(ctx)?;
+
+				if lhs_typ != rhs_typ {
+					bail!(Error::InternalMismatchedTypes(line!()));
+				}
+
+				let if_expr = IfExpr {
+					condition: Box::new(condition),
+					lhs: Box::new(lhs),
+					rhs: Box::new(rhs),
+				};
+				(Term::IfExpr(if_expr), lhs_typ)
+			}
 			Ast2Term::MatchExpr(_) => todo!(),
 			Ast2Term::FunctionCall(_) => todo!(),
 			Ast2Term::PartialApplication(_) => todo!(),
