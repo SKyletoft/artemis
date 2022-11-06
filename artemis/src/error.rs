@@ -28,6 +28,7 @@ pub enum Error {
 	InternalMismatchedTypes(u32),
 	InternalIllegalConstructAtTopLevel(u32),
 	EmptyAssignment,
+	InternalCheckedUndefinedVariable(u32),
 }
 
 impl fmt::Display for Error {
