@@ -91,6 +91,22 @@ pub enum Op {
 	Or,
 	Xor,
 	Dot,
+	GT,
+	FGT,
+	UGT,
+	GTE,
+	FGTE,
+	UGTE,
+	LT,
+	FLT,
+	ULT,
+	LTE,
+	FLTE,
+	ULTE,
+	Eq,
+	FEq,
+	Neq,
+	FNeq,
 }
 
 impl From<(UnaryOperator, Type)> for Op {
@@ -166,7 +182,7 @@ impl From<&ActualType2> for Type {
 			[RawType2::Natural] => Type::Unsigned,
 			[RawType2::Real] => Type::Floating,
 			[RawType2::Integer] => Type::Signed,
-			[RawType2::NumberLiteral] => Type::Signed,
+			[RawType2::NumberLiteral] => todo!("make consistent with type checker defaults"),
 			_ => Default::default(),
 		}
 	}

@@ -65,6 +65,23 @@ pub fn simplify_term(
 				Op::Delta | Op::FDelta | Op::Exp | Op::FExp | Op::Not => {
 					unreachable!("Separate cases above")
 				}
+
+				Op::GT => todo!(),
+				Op::FGT => todo!(),
+				Op::UGT => todo!(),
+				Op::GTE => todo!(),
+				Op::FGTE => todo!(),
+				Op::UGTE => todo!(),
+				Op::LT => todo!(),
+				Op::FLT => todo!(),
+				Op::ULT => todo!(),
+				Op::LTE => todo!(),
+				Op::FLTE => todo!(),
+				Op::ULTE => todo!(),
+				Op::Eq => todo!(),
+				Op::FEq => todo!(),
+				Op::Neq => todo!(),
+				Op::FNeq => todo!(),
 			};
 			let this = SimpleBinOp {
 				target,
