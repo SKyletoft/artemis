@@ -11,8 +11,8 @@ pub mod error;
 pub mod ordered;
 pub mod preprocess;
 pub mod simplify;
-pub mod types;
 pub mod type_definition;
+pub mod types;
 // pub mod type_check;
 
 #[derive(Parser)]
