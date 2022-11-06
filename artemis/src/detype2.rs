@@ -112,17 +112,12 @@ impl Ast2Term {
 			Ast2Term::MatchExpr(_) => todo!(),
 			Ast2Term::FunctionCall(_) => todo!(),
 			Ast2Term::PartialApplication(_) => todo!(),
-			Ast2Term::Declaration(Ast2Declaration {
-				pattern,
-				type_name,
-				expr,
-			}) => {
+			Ast2Term::Declaration(Ast2Declaration { pattern, expr, .. }) => {
 				let (expr, typ) = expr.detype(ctx)?;
 
-				let d = Declaration {
-					name: todo!(),
-					value: todo!(),
-				};
+				let (name, value) = flatten_pattern(&pattern, &expr)?;
+				let d = Declaration { name, value };
+
 				(Term::Expr(Box::new(Expr::Declaration(d))), typ)
 			}
 			Ast2Term::Assignment(_) => todo!(),
@@ -148,16 +143,18 @@ impl Ast2Term {
 	}
 }
 
-fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<Vec<(SmallString, Expr)>> {
+fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<(SmallVec<[SmallString; 1]>, Vec<Expr>)> {
 	let Pattern {
 		label,
 		inner,
 		irrefutable,
 	} = pat;
-	let mut res = Vec::new();
+	let mut names = SmallVec::new();
+	let mut exprs = Vec::new();
 
 	if let Some(label) = label {
-		res.push((label.clone(), expr.clone()));
+		names.push(label.clone());
+		exprs.push(expr.clone());
 	}
 	match inner {
 		InnerPattern::StructPattern(StructPattern { fields, .. }) => {
@@ -171,9 +168,13 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<Vec<(SmallString, Expr)
 					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
 				}));
 				if let Some(pat) = pattern {
-					res.append(&mut flatten_pattern(pat, &e)?);
+					let (mut inner_names, mut inner_exprs) =
+						flatten_pattern(pat, &e)?;
+					names.append(&mut inner_names);
+					exprs.append(&mut inner_exprs);
 				} else {
-					res.push((name.clone(), e));
+					names.push(name.clone());
+					exprs.push(e);
 				}
 			}
 		}
@@ -185,11 +186,16 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<Vec<(SmallString, Expr)
 					op: Op::Dot,
 					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
 				}));
-				res.append(&mut flatten_pattern(pat, &e)?);
+
+				let (mut inner_names, mut inner_exprs) =
+					flatten_pattern(pattern, &e)?;
+				names.append(&mut inner_names);
+				exprs.append(&mut inner_exprs);
 			}
 		}
 		InnerPattern::Var(n) => {
-			res.push((n.clone(), expr.clone()));
+			names.push(n.clone());
+			exprs.push(expr.clone());
 		}
 
 		// Value patterns are only there for matching, not binding
@@ -201,5 +207,5 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<Vec<(SmallString, Expr)
 		| InnerPattern::Any => {}
 	}
 
-	Ok(res)
+	Ok((names, exprs))
 }
