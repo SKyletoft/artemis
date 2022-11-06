@@ -3,7 +3,10 @@ use once_cell::sync::Lazy;
 use smallvec::{smallvec, SmallVec};
 use variantly::Variantly;
 
-use crate::ast::{BinaryOperator, UnaryOperator};
+use crate::{
+	ast::{BinaryOperator, UnaryOperator},
+	type_definition::{RawType2, ActualType2},
+};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
@@ -140,9 +143,31 @@ pub enum TopLevelConstruct {
 	Declaration(Declaration),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Type {
 	Signed,
 	Unsigned,
 	Floating,
+}
+
+impl Default for Type {
+	fn default() -> Self {
+		Type::Unsigned
+	}
+}
+
+impl From<&ActualType2> for Type {
+	fn from(t: &ActualType2) -> Self {
+		let t = match t {
+			ActualType2::Declared(t) => t,
+			ActualType2::Inferred(t) => t.as_ref(),
+		};
+		match t.enum_type.0.as_slice() {
+			[RawType2::Natural] => Type::Unsigned,
+			[RawType2::Real] => Type::Floating,
+			[RawType2::Integer] => Type::Signed,
+			[RawType2::NumberLiteral] => Type::Signed,
+			_ => Default::default(),
+		}
+	}
 }
