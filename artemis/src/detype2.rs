@@ -154,8 +154,13 @@ impl Ast2Term {
 				expr,
 				..
 			}) => {
+				let mut inner_ctx = ctx.clone();
+				for Argument { name, type_name } in args.iter().cloned() {
+					inner_ctx.variables.insert(name, type_name.into());
+				}
+
 				let arguments = args.into_iter().map(|arg| arg.name).collect();
-				let (expr, _) = expr.detype(ctx)?;
+				let (expr, _) = expr.detype(&mut inner_ctx)?;
 				let f = Function {
 					name,
 					arguments,
