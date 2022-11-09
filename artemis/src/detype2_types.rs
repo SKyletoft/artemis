@@ -182,7 +182,7 @@ impl From<&ActualType2> for Type {
 			[RawType2::Natural] => Type::Unsigned,
 			[RawType2::Real] => Type::Floating,
 			[RawType2::Integer] => Type::Signed,
-			[RawType2::NumberLiteral] => todo!("make consistent with type checker defaults"),
+			[RawType2::NumberLiteral] => Default::default(),
 			_ => Default::default(),
 		}
 	}
