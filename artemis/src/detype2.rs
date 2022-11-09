@@ -177,13 +177,18 @@ impl Ast2Term {
 	}
 }
 
-fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<(SmallVec<[SmallString; 1]>, Vec<Expr>)> {
+fn flatten_pattern(
+	pat: &Pattern,
+	typ: &Type2,
+	expr: &Expr,
+) -> Result<(SmallVec<[SmallString; 1]>, Vec<Type2>, Vec<Expr>)> {
 	let Pattern {
 		label,
 		inner,
 		irrefutable,
 	} = pat;
 	let mut names = SmallVec::new();
+	let mut types = Vec::new();
 	let mut exprs = Vec::new();
 
 	if let Some(label) = label {
@@ -191,20 +196,39 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<(SmallVec<[SmallString;
 		exprs.push(expr.clone());
 	}
 	match inner {
-		InnerPattern::StructPattern(StructPattern { fields, .. }) => {
+		InnerPattern::StructPattern(StructPattern {
+			fields: existing_fields,
+			..
+		}) => {
+			let [RawType2::StructType(StructType2(all_fields))] = typ.enum_type.0.as_slice() else {
+				bail!(Error::InternalCheckedMismatchedTypes(line!()))
+			};
+
 			// TODO: Skipped fields?
 			// TODO: Am I even handling non-labelled fields properly?
-			for (idx, StructFieldPattern { name, pattern }) in fields.iter().enumerate()
-			{
+			for (idx, StructFieldPattern { name, pattern }, field_type) in all_fields
+				.iter()
+				.enumerate()
+				.filter_map(|(idx, StructField2 { name, type_name })| {
+					existing_fields
+						.iter()
+						.find(|field| &field.name == name)
+						.map(|x| (idx, x, type_name))
+				}) {
 				let e = Expr::Term(Term::BinOp(BinOp {
 					lhs: Box::new(expr.clone()),
 					op: Op::Dot,
 					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
 				}));
 				if let Some(pat) = pattern {
-					let (mut inner_names, mut inner_exprs) =
-						flatten_pattern(pat, &e)?;
+					let inner_type = Type2 {
+						mutable: typ.mutable,
+						enum_type: field_type.clone(),
+					};
+					let (mut inner_names, mut inner_types, mut inner_exprs) =
+						flatten_pattern(pat, &inner_type, &e)?;
 					names.append(&mut inner_names);
+					types.append(&mut inner_types);
 					exprs.append(&mut inner_exprs);
 				} else {
 					names.push(name.clone());
@@ -221,14 +245,16 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<(SmallVec<[SmallString;
 					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
 				}));
 
-				let (mut inner_names, mut inner_exprs) =
-					flatten_pattern(pattern, &e)?;
+				let (mut inner_names, mut inner_types, mut inner_exprs) =
+					flatten_pattern(pattern, todo!(), &e)?;
 				names.append(&mut inner_names);
+				types.append(&mut inner_types);
 				exprs.append(&mut inner_exprs);
 			}
 		}
 		InnerPattern::Var(n) => {
 			names.push(n.clone());
+			types.push(typ.clone());
 			exprs.push(expr.clone());
 		}
 
@@ -241,5 +267,5 @@ fn flatten_pattern(pat: &Pattern, expr: &Expr) -> Result<(SmallVec<[SmallString;
 		| InnerPattern::Any => {}
 	}
 
-	Ok((names, exprs))
+	Ok((names, types, exprs))
 }
