@@ -85,7 +85,7 @@ impl Ast2Term {
 		let res = match self {
 			Ast2Term::TypeValue(t) => (Term::Literal(t), Type::Unsigned),
 			Ast2Term::Float(f) => (Term::Literal(f.to_bits()), Type::Floating),
-			Ast2Term::Integer(i) => (Term::Literal(i as u64), Type::Unsigned),
+			Ast2Term::Integer(i) => (Term::Literal(i as u64), Default::default()),
 			Ast2Term::Boolean(b) => (Term::Literal(b as u64), Type::Unsigned),
 			Ast2Term::String(_) => todo!(),
 			Ast2Term::Char(_) => todo!(),
