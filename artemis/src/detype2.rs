@@ -147,7 +147,22 @@ impl Ast2Term {
 
 				(Term::Expr(Box::new(Expr::Declaration(d))), typ)
 			}
-			Ast2Term::Assignment(_) => todo!(),
+			Ast2Term::Assignment(Ast2Assignment { pattern, expr }) => {
+				let (expr, typ) = expr.detype(ctx)?;
+				match pattern.inner {
+					InnerPattern::Var(name) => (
+						Term::Expr(Box::new(Expr::Assignment(
+							Declaration {
+								name: smallvec![name],
+								value: vec![expr],
+							},
+						))),
+						typ,
+					),
+					InnerPattern::Any => (Term::Expr(Box::new(expr)), typ),
+					_ => todo!("TODO: Proper patterns in assignments"),
+				}
+			}
 			Ast2Term::FunctionDefinition(Ast2FunctionDefinition {
 				name,
 				args,
