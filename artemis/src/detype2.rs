@@ -11,15 +11,15 @@ use crate::{
 		TuplePattern, UnaryOperator,
 	},
 	ast2::{
-		self, Argument, Declaration as Ast2Declaration, Expr as Ast2Expr,
-		FunctionDefinition as Ast2FunctionDefinition, Term as Ast2Term,
+		self, Argument, Assignment as Ast2Assignment, Declaration as Ast2Declaration,
+		Expr as Ast2Expr, FunctionDefinition as Ast2FunctionDefinition, Term as Ast2Term,
 	},
 	detype2_types::{
 		BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
 		TopLevelConstruct, Type, UnOp,
 	},
 	error::Error,
-	type_definition::Context,
+	type_definition::{ActualType2, Context, RawType2, StructField2, StructType2, Type2},
 };
 
 pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
