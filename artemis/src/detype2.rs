@@ -131,10 +131,18 @@ impl Ast2Term {
 			Ast2Term::MatchExpr(_) => todo!(),
 			Ast2Term::FunctionCall(_) => todo!(),
 			Ast2Term::PartialApplication(_) => todo!(),
-			Ast2Term::Declaration(Ast2Declaration { pattern, expr, .. }) => {
+			Ast2Term::Declaration(Ast2Declaration {
+				pattern,
+				expr,
+				type_name,
+			}) => {
 				let (expr, typ) = expr.detype(ctx)?;
 
-				let (name, value) = flatten_pattern(&pattern, &expr)?;
+				let (name, types, value) =
+					flatten_pattern(&pattern, &type_name, &expr)?;
+				for (var_name, typ) in name.iter().cloned().zip(types.into_iter()) {
+					ctx.variables.insert(var_name, typ.into());
+				}
 				let d = Declaration { name, value };
 
 				(Term::Expr(Box::new(Expr::Declaration(d))), typ)
