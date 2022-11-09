@@ -61,6 +61,12 @@ impl From<RawType2> for ActualType2 {
 	}
 }
 
+impl From<Type2> for ActualType2 {
+	fn from(type2: Type2) -> Self {
+		ActualType2::Declared(type2)
+	}
+}
+
 impl ActualType2 {
 	pub fn try_from_ast_type(ast_type: &Type, context: &Context) -> Result<Self> {
 		Type2::try_from_ast(ast_type, context).map(ActualType2::Declared)
