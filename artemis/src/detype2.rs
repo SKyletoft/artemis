@@ -37,9 +37,13 @@ impl TryFrom<Expr> for TopLevelConstruct {
 
 	fn try_from(e: Expr) -> Result<Self> {
 		match e {
+			Expr::Term(Term::Expr(inner)) => TopLevelConstruct::try_from(*inner),
 			Expr::Declaration(d) => Ok(TopLevelConstruct::Declaration(d)),
 			Expr::Function(f) => Ok(TopLevelConstruct::Function(*f)),
-			_ => bail!(Error::InternalIllegalConstructAtTopLevel(line!())),
+			e => {
+				log::trace!("{e:#?}");
+				bail!(Error::InternalIllegalConstructAtTopLevel(line!()))
+			}
 		}
 	}
 }
