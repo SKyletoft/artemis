@@ -360,7 +360,7 @@ impl Check for TypeAlias {
 			bail!(Error::MutableTypeAlias(line!()));
 		}
 		ctx.types.insert(name, converted_type.clone());
-		Ok((Term2::TypeValue(0), converted_type))
+		Ok((Term2::TypeValue(converted_type.id()), converted_type))
 	}
 }
 

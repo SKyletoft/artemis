@@ -1,4 +1,8 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+	collections::{hash_map::DefaultHasher, HashMap},
+	hash::{Hash, Hasher, SipHasher},
+	rc::Rc,
+};
 
 use anyhow::{bail, Result};
 use derive_more::From;
@@ -135,7 +139,7 @@ impl Type2 {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Variantly)]
+#[derive(Debug, Clone, PartialEq, Eq, Variantly, Hash)]
 pub enum RawType2 {
 	Natural,
 	Real,
@@ -187,9 +191,15 @@ impl RawType2 {
 			(a, b) => a == b,
 		}
 	}
+
+	pub fn id(&self) -> u64 {
+		let mut hasher = DefaultHasher::new();
+		self.hash(&mut hasher);
+		hasher.finish()
+	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField2 {
 	pub(crate) name: SmallString,
 	pub(crate) type_name: EnumType2,
@@ -215,7 +225,7 @@ impl StructField2 {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, From, Eq)]
+#[derive(Debug, Clone, PartialEq, From, Eq, Hash)]
 pub struct EnumType2(pub(crate) SmallVec<[RawType2; 1]>);
 
 impl From<RawType2> for EnumType2 {
@@ -268,9 +278,15 @@ impl EnumType2 {
 
 		EnumType2(l_inner)
 	}
+
+	pub fn id(&self) -> u64 {
+		let mut hasher = DefaultHasher::new();
+		self.hash(&mut hasher);
+		hasher.finish()
+	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructType2(pub(crate) Vec<StructField2>);
 
 impl StructType2 {
