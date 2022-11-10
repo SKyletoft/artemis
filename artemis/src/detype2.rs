@@ -51,7 +51,11 @@ impl Ast2Expr {
 				let (lhs, l_type) = left.detype(ctx)?;
 				let (rhs, r_type) = right.detype(ctx)?;
 				if l_type != r_type {
-					bail!(Error::InternalMismatchedTypes(line!()));
+					if (l_type == Type::Floating) ^ (r_type == Type::Floating) {
+						bail!(Error::InternalMismatchedTypes(line!()));
+					} else {
+						log::trace!("Type issue with mixed signedness");
+					}
 				}
 				let op = Op::from((op, l_type));
 				let res = Expr::Term(Term::BinOp(BinOp {
