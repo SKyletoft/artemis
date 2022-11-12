@@ -30,11 +30,11 @@ fn assignment_to_same() {
 
 #[test]
 fn literals_as_either_type() {
-	let s = "λf () = {
+	let s = "λf () = (
 		x : ℤ = 1
 		y : ℕ = 1;
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -63,150 +63,150 @@ fn reject_non_bool_condition() {
 
 #[test]
 fn reject_same_scope_same_type_shadowing() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x := 1
 		x := 1
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn reject_same_scope_different_type_shadowing() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x := 1
 		x := true
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn accept_inner_scope_shadowing() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x := 1
-		y := {
+		y := (
 			x := true
 			x
-		}
+		)
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn reject_use_of_undeclared_variable() {
-	let s = "λf() -> ℕ = {
+	let s = "λf() → ℕ = (
 		x
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn reject_use_of_undeclared_function() {
-	let s = "λf() -> ℕ = {
+	let s = "λf() → ℕ = (
 		g()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn reject_use_of_variable_as_function() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x := 1
 		y := x()
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn reject_assignment_to_const() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x : ℤ = 1
 		x = 2
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn accept_assignment_to_mut() {
-	let s = "λf() = {
+	let s = "λf() = (
 		x : mut ℤ = 1
 		x = 2
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn accept_if_returns_same() {
-	let s = "λf() = {
-		x : ℝ = if true {
+	let s = "λf() = (
+		x : ℝ = if true (
 			1.0
-		} else {
+		) else (
 			2.0
-		}
+		)
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 #[test]
 fn reject_if_returns_different() {
-	let s = "λf() = {
-		x := if true {
+	let s = "λf() = (
+		x := if true (
 			true
-		} else {
+		) else (
 			1.0
-		}
+		)
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn accept_block_return_of_inner_variable() {
-	let s = "λf (x: ℤ) → ℤ = {
-		a := {
+	let s = "λf (x: ℤ) → ℤ = (
+		a := (
 			a : mut ℤ = 1
 			a = x + a
 			a
-		}
+		)
 		a + 2
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn infer_types() {
-	let s = "λf () = {
+	let s = "λf () = (
 		x := 1
 		y := true
 		z := -2
 		w := 4.0
 		()
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
 
 #[test]
 fn accept_ending_on_declaration() {
-	let s = "λf () → ℤ = {
+	let s = "λf () → ℤ = (
 		x := 5
-	}".into();
+	)".into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
