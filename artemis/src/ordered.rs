@@ -443,7 +443,10 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 								type_ascription: None,
 							}
 						}
-						_ => bail!(Error::ParseError(line!())),
+						r => {
+							log::error!("{:#?}", r);
+							bail!(Error::ParseError(line!()))
+						}
 					};
 				Ok(Expr::Leaf(Box::new(res)))
 			})
