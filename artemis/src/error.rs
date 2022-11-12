@@ -24,6 +24,7 @@ pub enum Error {
 	PatternDoesntMatch(u32),
 	UnprovedIrrefutablePattern(u32),
 	AssignmentToUndeclaredVariable(u32),
+	AssignmentToConst(u32),
 	TODOUnsupportedAssignmentPattern(u32),
 	InternalMismatchedTypes(u32),
 	InternalIllegalConstructAtTopLevel(u32),
