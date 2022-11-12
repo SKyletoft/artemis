@@ -171,7 +171,7 @@ fn accept_assignment_to_mut() {
 
 #[test]
 fn accept_if_returns_same() {
-	let s = "λf() = (
+	let s = "λf () = (
 		x : ℝ = if true (
 			1.0
 		) else (
@@ -183,6 +183,7 @@ fn accept_if_returns_same() {
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
+
 #[test]
 fn reject_if_returns_different() {
 	let s = "λf () = (
