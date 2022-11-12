@@ -64,7 +64,7 @@ fn reject_integer_conversion() {
 #[test]
 fn reject_non_bool_condition() {
 	let s = "λf () = (
-		if 1 () else ()
+		if 1 then () else ()
 	)"
 	.into();
 	let res = compile_and_typecheck(s);
@@ -189,7 +189,7 @@ fn accept_assignment_to_mut() {
 #[test]
 fn accept_if_returns_same() {
 	let s = "λf () = (
-		x : ℝ = if true (
+		x : ℝ = if true then (
 			1.0
 		) else (
 			2.0
@@ -204,7 +204,7 @@ fn accept_if_returns_same() {
 #[test]
 fn reject_if_returns_different() {
 	let s = "λf () = (
-		x : ℝ = if true (
+		x : ℝ = if true then (
 			true
 		) else (
 			1.0
@@ -223,7 +223,7 @@ fn reject_if_returns_different() {
 #[test]
 fn accept_if_returns_different() {
 	let s = "λf () = (
-		x := if true (
+		x := if true then (
 			true
 		) else (
 			1.0
