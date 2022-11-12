@@ -185,7 +185,26 @@ fn accept_if_returns_same() {
 }
 #[test]
 fn reject_if_returns_different() {
-	let s = "λf() = (
+	let s = "λf () = (
+		x : ℝ = if true (
+			true
+		) else (
+			1.0
+		)
+		()
+	)"
+	.into();
+	let res = compile_and_typecheck(s);
+	assert!(res.is_err());
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::MismatchedTypes(_))
+	));
+}
+
+#[test]
+fn accept_if_returns_different() {
+	let s = "λf () = (
 		x := if true (
 			true
 		) else (
