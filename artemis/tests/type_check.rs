@@ -64,7 +64,7 @@ fn reject_integer_conversion() {
 #[test]
 fn reject_non_bool_condition() {
 	let s = "λf () = (
-		if 1 {()} else {()}
+		if 1 () else ()
 	)"
 	.into();
 	let res = compile_and_typecheck(s);
