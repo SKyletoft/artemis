@@ -8,12 +8,17 @@ use simple_logger::SimpleLogger;
 static LOGGER: Lazy<()> = Lazy::new(|| SimpleLogger::new().init().expect("Logger init failure"));
 
 fn compile_and_typecheck(code: String) -> Result<()> {
-	log::trace!("{}", &code);
+	eprintln!("IN: {}", &code);
 
 	let source = preprocess::remove_comments(&[code]);
-	let ast = GeneratedParser::parse(Rule::top, &source)?;
-	let ordered = ordered::order(ast)?;
-	types::check_and_infer(ordered).map(|_| ())
+	// Conversion Result<_, ParseError> -> Result<_, AnyhowError>
+	let res = (|| Ok(GeneratedParser::parse(Rule::top, &source)?))()
+		.and_then(ordered::order)
+		.and_then(types::check_and_infer)
+		.map(|_| ());
+	
+	eprintln!("OUT: {:#?}", &res);
+	res
 }
 
 #[test]
