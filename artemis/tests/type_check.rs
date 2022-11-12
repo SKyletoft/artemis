@@ -16,7 +16,7 @@ fn compile_and_typecheck(code: String) -> Result<()> {
 		.and_then(ordered::order)
 		.and_then(types::check_and_infer)
 		.map(|_| ());
-	
+
 	eprintln!("OUT: {:#?}", &res);
 	res
 }
