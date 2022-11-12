@@ -1,5 +1,5 @@
 use anyhow::Result;
-use artemis::{ordered, preprocess, types, GeneratedParser, Rule, error::Error};
+use artemis::{error::Error, ordered, preprocess, types, GeneratedParser, Rule};
 use once_cell::sync::Lazy;
 use pest::Parser;
 use simple_logger::SimpleLogger;
@@ -22,7 +22,8 @@ fn assignment_to_same() {
 		x : ℤ = 1
 		y : ℤ = x
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -33,7 +34,8 @@ fn literals_as_either_type() {
 		x : ℤ = 1
 		y : ℕ = 1;
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -44,20 +46,28 @@ fn reject_integer_conversion() {
 		x : ℤ = 1
 		y : ℕ = x;
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(res.is_err());
-	assert!(matches!(res.unwrap_err().downcast_ref::<Error>(), Some(Error::MismatchedTypes(_))));
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::MismatchedTypes(_))
+	));
 }
 
 #[test]
 fn reject_non_bool_condition() {
 	let s = "λf () = (
 		if 1 {()} else {()}
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(res.is_err());
-	assert!(matches!(res.unwrap_err().downcast_ref::<Error>(), Some(Error::MismatchedTypes(_))));
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::MismatchedTypes(_))
+	));
 }
 
 #[test]
@@ -66,7 +76,8 @@ fn reject_same_scope_same_type_shadowing() {
 		x := 1
 		x := 1
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -77,7 +88,8 @@ fn reject_same_scope_different_type_shadowing() {
 		x := 1
 		x := true
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -91,7 +103,8 @@ fn accept_inner_scope_shadowing() {
 			x
 		)
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -100,7 +113,8 @@ fn accept_inner_scope_shadowing() {
 fn reject_use_of_undeclared_variable() {
 	let s = "λf() → ℕ = (
 		x
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -109,7 +123,8 @@ fn reject_use_of_undeclared_variable() {
 fn reject_use_of_undeclared_function() {
 	let s = "λf() → ℕ = (
 		g()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -120,7 +135,8 @@ fn reject_use_of_variable_as_function() {
 		x := 1
 		y := x()
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -131,7 +147,8 @@ fn reject_assignment_to_const() {
 		x : ℤ = 1
 		x = 2
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -142,7 +159,8 @@ fn accept_assignment_to_mut() {
 		x : mut ℤ = 1
 		x = 2
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -156,7 +174,8 @@ fn accept_if_returns_same() {
 			2.0
 		)
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -169,7 +188,8 @@ fn reject_if_returns_different() {
 			1.0
 		)
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -183,7 +203,8 @@ fn accept_block_return_of_inner_variable() {
 			a
 		)
 		a + 2
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -196,7 +217,8 @@ fn infer_types() {
 		z := -2
 		w := 4.0
 		()
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
@@ -205,7 +227,8 @@ fn infer_types() {
 fn accept_ending_on_declaration() {
 	let s = "λf () → ℤ = (
 		x := 5
-	)".into();
+	)"
+	.into();
 	let res = compile_and_typecheck(s);
 	assert!(matches!(res, Ok(())))
 }
