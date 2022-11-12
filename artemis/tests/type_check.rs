@@ -121,7 +121,11 @@ fn reject_use_of_undeclared_variable() {
 	)"
 	.into();
 	let res = compile_and_typecheck(s);
-	assert!(matches!(res, Ok(())))
+	assert!(res.is_err());
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::UndefinedVariable(_))
+	));
 }
 
 #[test]
