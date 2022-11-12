@@ -150,7 +150,11 @@ fn reject_assignment_to_const() {
 	)"
 	.into();
 	let res = compile_and_typecheck(s);
-	assert!(matches!(res, Ok(())))
+	assert!(res.is_err());
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::AssignmentToConst(_))
+	));
 }
 
 #[test]
