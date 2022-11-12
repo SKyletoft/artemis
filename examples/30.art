@@ -7,7 +7,7 @@ c := (
 )
 // a, b, c
 
-if (e := foo()) Λ (m := bar()) (
+if (e := foo()) Λ (m := bar()) then (
 	// a, b, c, e?
 ) else (
 	// a, b, c, e?
@@ -15,7 +15,7 @@ if (e := foo()) Λ (m := bar()) (
 
 // e?
 
-if (f := true) (
+if (f := true) then (
 	// a, b, c, e?, f?
 ) else (
 	// a, b, c, e?, f?
@@ -33,7 +33,7 @@ bar(
 )
 // h? i?
 
-j := if foo
+j := if foo then
 	k :mut _ = 1
 else
 	l := 1

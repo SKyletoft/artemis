@@ -1,7 +1,7 @@
 λf (a: 𝔹) → ℤ = (
 	x := 1 + 2
 	y := 3 + 4
-	z := if a (
+	z := if a then (
 		x + y
 	) else (
 		x - y

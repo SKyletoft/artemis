@@ -1,7 +1,7 @@
 λf (a: 𝔹) → ℤ = (
-	w := 2 + z := 5 + 2 + 1 + (if true 10 else 20)
+	w := 2 + z := 5 + 2 + 1 + (if true then 10 else 20)
 	x : mut ℤ = 3 + 3
-	y := if a (
+	y := if a then (
 		x = 2 + 1 × x - 43
 		1 + 2
 	) else (

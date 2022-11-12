@@ -83,9 +83,9 @@ application = {
 function = _{ (" " | "\t" | "\r")* ~ (call | application) ~ (ws ~ enum_type)? }
 
 if_expr = {
-	("?" | "if" | "`if`" ) ~ ws ~ expr ~ ws ~
-	expr ~ ws ~
-	("|" | "else" | "`else`" ) ~ ws ~ expr
+	"if" ~ ws ~ expr ~ ws ~
+	"then" ~ expr ~ ws ~
+	"else" ~ ws ~ expr
 }
 match_expr = {
 	"case" ~ ws ~ expr ~ ws ~ case+

@@ -13,7 +13,7 @@
 	m := 23 + 24
 	n := 25 + 26
 
-	if a (
+	if a then (
 		b+c+d+e+f+g+h+i+j+k+l+m+n
 	) else (
 		n+m+l+k+j+i+h+g+f+e+d+c+b+2

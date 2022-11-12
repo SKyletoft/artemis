@@ -1,7 +1,7 @@
 λf () → ℤ = (
-	if true (
-		if true ( 1 ) else ( 2 )
+	if true then (
+		if true then ( 1 ) else ( 2 )
 	) else (
-		if false ( 3 ) else ( 4 )
+		if false then ( 3 ) else ( 4 )
 	)
 )
