@@ -2,6 +2,8 @@ lower_case =  { 'a'..'z' | "å" | "ä" | "ö" }
 upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
 digit      =  { '0'..'9' }
 whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
+ws         = _{ whitespace? }
+nonbreakws = _{ (" " | "\t" | "\r")* }
 special    =  {
 	"α" | "β" | "Γ" | "γ" | "ε" | "ζ" | "η" | "Θ" | "θ" | "ι" | "Κ" |
 	"κ" | "μ" | "ν" | "Ξ" | "ξ" | "Π" | "π" | "ρ" | "Σ" | "σ" | "ς" |
@@ -15,7 +17,6 @@ metrix_prefix       = { small_metric_prefix | large_metric_prefix }
 binary_prefix       = { "ki" | "Mi" | "Gi" | "Ti" | "Pi" | "Ei" | "Zi" | "Yi" }
 prefix              = { metrix_prefix | binary_prefix }
 
-ws = _{ whitespace? }
 
 var_name     = { ((lower_case ~ (lower_case | digit | "_")*) | special) ~ "'"* }
 type_name    = { (mutable ~ whitespace)? ~ enum_type }
@@ -126,7 +127,7 @@ tuple_pattern = {
 
 expr = {
 	unary_operator* ~ ws ~ raw_term ~ function* ~
-	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ raw_term ~ function*)*
+	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ raw_term ~ nonbreakws ~ function*)*
 }
 
 term = { raw_term ~ (ws ~ ":" ~ ws ~ enum_type)? }
