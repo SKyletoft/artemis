@@ -326,8 +326,10 @@ impl Check for Assignment {
 		};
 
 		let (new_expr, typ) = expr.check(ctx)?;
-		let Type2 { mutable, enum_type: correct_type } = ctx
-			.variables
+		let Type2 {
+			mutable,
+			enum_type: correct_type,
+		} = ctx.variables
 			.get(v)
 			.ok_or(Error::AssignmentToUndeclaredVariable(line!()))?
 			.clone()
