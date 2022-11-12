@@ -3,7 +3,6 @@ use artemis::{ordered, preprocess, types, GeneratedParser, Rule, error::Error};
 use once_cell::sync::Lazy;
 use pest::Parser;
 use simple_logger::SimpleLogger;
-use smallvec::SmallVec;
 
 #[allow(unused_variables, dead_code)]
 static LOGGER: Lazy<()> = Lazy::new(|| SimpleLogger::new().init().expect("Logger init failure"));
