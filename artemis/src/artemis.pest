@@ -79,7 +79,7 @@ application = {
 	((expr | any) ~ ws ~ ("," ~ ws ~ (expr | any) ~ ws)* ~ ","? ~ ws)? ~
 	"]"
 }
-function = _{ (" " | "\t" | "\r")* ~ (call | application) ~ (ws ~ enum_type)? }
+function = _{ (" " | "\t" | "\r")* ~ (call | application) ~ (ws ~ ":" ~ ws ~ enum_type)? }
 
 if_expr = {
 	"if" ~ ws ~ expr ~ ws ~
