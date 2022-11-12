@@ -75,6 +75,7 @@ impl Check for FunctionDefinition {
 
 		// Check that the return type is correct
 		if !ret_type.contains(&actual_ret_type) {
+			log::error!("{ret_type} ≠ {actual_ret_type}");
 			bail!(Error::MismatchedTypes(line!()));
 		}
 
