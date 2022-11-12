@@ -37,7 +37,7 @@ fn assignment_to_same() {
 fn literals_as_either_type() {
 	let s = "λf () = (
 		x : ℤ = 1
-		y : ℕ = 1;
+		y : ℕ = 1
 		()
 	)"
 	.into();
@@ -49,7 +49,7 @@ fn literals_as_either_type() {
 fn reject_integer_conversion() {
 	let s = "λf () = (
 		x : ℤ = 1
-		y : ℕ = x;
+		y : ℕ = x
 		()
 	)"
 	.into();
