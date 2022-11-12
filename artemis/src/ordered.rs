@@ -430,7 +430,7 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 								type_ascription: None,
 							}
 						}
-						Rule::function => {
+						Rule::call => {
 							let args = args
 								.into_inner()
 								.map(Expr::try_from)
