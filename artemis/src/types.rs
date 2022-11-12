@@ -419,13 +419,17 @@ fn check_expr_array(exprs: Vec<Expr>, ctx: &mut Context) -> Result<(Vec<Expr2>, 
 		.into_iter()
 		.map(|e| e.check(ctx))
 		.collect::<Result<Vec<_>>>()?;
-	let mut exprs = Vec::with_capacity(results.len());
-	let mut types = Vec::with_capacity(results.len());
-	for (expr, typ) in results.into_iter() {
-		exprs.push(expr);
-		types.push(typ);
+	Ok(split_vec(results))
+}
+
+fn split_vec<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
+	let mut l_vec = Vec::with_capacity(v.len());
+	let mut r_vec = Vec::with_capacity(v.len());
+	for (l, r) in v.into_iter() {
+		l_vec.push(l);
+		r_vec.push(r);
 	}
-	Ok((exprs, types))
+	(l_vec, r_vec)
 }
 
 fn argument2_try_from_ast(args: &ArgumentList, ctx: &Context) -> Result<SmallVec<[Argument2; 1]>> {
