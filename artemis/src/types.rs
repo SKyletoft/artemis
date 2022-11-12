@@ -285,12 +285,26 @@ impl Check for FunctionCall {
 	fn check(self, ctx: &mut Context) -> Result<(FunctionCall2, EnumType2)> {
 		let FunctionCall { func, args } = self;
 		let (func, typ) = func.check(ctx)?;
-		let args = args
-			.into_iter()
-			.map(|e| e.check(ctx).map(|(a, _)| a))
-			.collect::<Result<Vec<_>>>()?;
+		let (args, types) = split_vec(
+			args.into_iter()
+				.map(|e| e.check(ctx))
+				.collect::<Result<Vec<_>>>()?,
+		);
+
+		let ret = if let [RawType2::FunctionType { args, ret }] = typ.0.as_slice() {
+			if let Some((expected, actual)) =
+				args.iter().zip(types.iter()).find(|(a, b)| a != b)
+			{
+				log::error!("{expected} ≠ {actual}");
+				bail!(Error::MismatchedTypes(line!()));
+			}
+			ret.as_ref().clone()
+		} else {
+			bail!(Error::TypeNonFunctionAsFunction(line!()));
+		};
+
 		let res = FunctionCall2 { func, args };
-		Ok((res, typ))
+		Ok((res, ret))
 	}
 }
 
