@@ -3,7 +3,6 @@ upper_case =  { 'A'..'Z' | "Å" | "Ä" | "Ö" }
 digit      =  { '0'..'9' }
 whitespace = _{ (" " | "\t" | "\r" | "\n")+ }
 ws         = _{ whitespace? }
-nonbreakws = _{ (" " | "\t" | "\r")* }
 special    =  {
 	"α" | "β" | "Γ" | "γ" | "ε" | "ζ" | "η" | "Θ" | "θ" | "ι" | "Κ" |
 	"κ" | "μ" | "ν" | "Ξ" | "ξ" | "Π" | "π" | "ρ" | "Σ" | "σ" | "ς" |
@@ -127,7 +126,7 @@ tuple_pattern = {
 
 expr = {
 	unary_operator* ~ ws ~ raw_term ~ function* ~
-	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ raw_term ~ nonbreakws ~ function*)*
+	(ws ~ binary_operator ~ ws ~ unary_operator* ~ ws ~ raw_term ~ function*)*
 }
 
 term = { raw_term ~ (ws ~ ":" ~ ws ~ enum_type)? }
