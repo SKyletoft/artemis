@@ -21,6 +21,7 @@ pub enum Error {
 	MutableTypeAlias(u32),
 	ConditionIsntBoolean(u32),
 	UndefinedVariable(u32),
+	UndefinedFunction(u32),
 	PatternDoesntMatch(u32),
 	UnprovedIrrefutablePattern(u32),
 	AssignmentToUndeclaredVariable(u32),
