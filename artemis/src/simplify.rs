@@ -227,7 +227,7 @@ pub fn simplify_expr(
 		Expr::Term(s) => simplify_term(s, current, blocks, ctx),
 		Expr::Declaration(Declaration { name, value })
 		| Expr::Assignment(Declaration { name, value }) => {
-			let mut last = Err(Error::EmptyAssignment);
+			let mut last = Err(Error::EmptyAssignment(line!()));
 			for (n, v) in name.iter().cloned().zip(value.iter()) {
 				let source = simplify_expr(v, current, blocks, ctx)?;
 				ctx.variables.insert(n, source.clone());

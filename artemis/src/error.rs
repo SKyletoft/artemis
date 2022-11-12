@@ -29,7 +29,7 @@ pub enum Error {
 	TODOUnsupportedAssignmentPattern(u32),
 	InternalMismatchedTypes(u32),
 	InternalIllegalConstructAtTopLevel(u32),
-	EmptyAssignment,
+	EmptyAssignment(u32),
 	InternalCheckedUndefinedVariable(u32),
 	InternalCheckedMismatchedTypes(u32),
 	InternalCallOfUnknownFunction(u32),
