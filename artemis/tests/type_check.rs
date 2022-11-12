@@ -131,14 +131,18 @@ fn reject_use_of_undeclared_function() {
 
 #[test]
 fn reject_use_of_variable_as_function() {
-	let s = "λf() = (
+	let s = "λf () = (
 		x := 1
 		y := x()
 		()
 	)"
 	.into();
 	let res = compile_and_typecheck(s);
-	assert!(matches!(res, Ok(())))
+	assert!(res.is_err());
+	assert!(matches!(
+		res.unwrap_err().downcast_ref::<Error>(),
+		Some(Error::TypeNonFunctionAsFunction(_))
+	));
 }
 
 #[test]
