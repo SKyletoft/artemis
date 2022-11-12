@@ -1,5 +1,6 @@
 use std::{
 	collections::{hash_map::DefaultHasher, HashMap},
+	fmt,
 	hash::{Hash, Hasher, SipHasher},
 	rc::Rc,
 };
@@ -158,6 +159,38 @@ pub enum RawType2 {
 	},
 }
 
+impl fmt::Display for RawType2 {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			RawType2::Natural => write!(f, "ℕ"),
+			RawType2::Real => write!(f, "ℝ"),
+			RawType2::Integer => write!(f, "ℤ"),
+			RawType2::NumberLiteral => write!(f, "ComptimeInt"),
+			RawType2::Bool => write!(f, "𝔹"),
+			RawType2::Any => write!(f, "∀"),
+			RawType2::Type => write!(f, "𝕋"),
+			RawType2::Unit => write!(f, "()"),
+			RawType2::Tuple(_) => todo!(),
+			RawType2::StructType(_) => todo!(),
+			RawType2::EnumType(e) => write!(f, "{e}"),
+			RawType2::FunctionType { args, ret } => {
+				write!(f, "λ(")?;
+				match args.as_slice() {
+					[] => write!(f, "∅")?,
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				write!(f, ") → {ret}")
+			}
+		}
+	}
+}
+
 impl RawType2 {
 	pub fn try_from_ast(ast: &RawType, ctx: &Context) -> Result<Self> {
 		let res = match ast {
@@ -227,6 +260,22 @@ impl StructField2 {
 
 #[derive(Debug, Clone, PartialEq, From, Eq, Hash)]
 pub struct EnumType2(pub(crate) SmallVec<[RawType2; 1]>);
+
+impl fmt::Display for EnumType2 {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self.0.as_slice() {
+			[] => write!(f, "∅"),
+			[x] => write!(f, "{x}"),
+			[x, xs @ ..] => {
+				write!(f, "{x}")?;
+				for x in xs.iter() {
+					write!(f, "| {x}")?;
+				}
+				Ok(())
+			}
+		}
+	}
+}
 
 impl From<RawType2> for EnumType2 {
 	fn from(r: RawType2) -> Self {
