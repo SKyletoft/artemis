@@ -6,13 +6,14 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
 	ast::{
 		self, ActualType, Argument, ArgumentList, Assignment, Declaration, Expr,
-		FunctionDefinition, IfExpr, InnerPattern, Pattern, RawTerm, RawType, StructPattern,
-		Term, TypeAlias,
+		FunctionCall, FunctionDefinition, IfExpr, InnerPattern, PartialApplication,
+		Pattern, RawTerm, RawType, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block,
-		Declaration as Declaration2, Expr as Expr2,
-		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2, Term as Term2, Tuple,
+		Declaration as Declaration2, Expr as Expr2, FunctionCall as FunctionCall2,
+		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2,
+		PartialApplication as PartialApplication2, Term as Term2, Tuple,
 	},
 	error::Error,
 	type_definition::{ActualType2, Context, EnumType2, RawType2, Type2},
