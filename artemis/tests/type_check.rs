@@ -71,7 +71,7 @@ fn reject_non_bool_condition() {
 	assert!(res.is_err());
 	assert!(matches!(
 		res.unwrap_err().downcast_ref::<Error>(),
-		Some(Error::MismatchedTypes(_))
+		Some(Error::ConditionIsntBoolean(_))
 	));
 }
 
@@ -138,7 +138,7 @@ fn reject_use_of_undeclared_function() {
 	assert!(res.is_err());
 	assert!(matches!(
 		res.unwrap_err().downcast_ref::<Error>(),
-		Some(Error::UndefinedFunction(_))
+		Some(Error::UndefinedVariable(_))
 	));
 }
 
