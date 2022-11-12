@@ -186,6 +186,10 @@ impl Check for Term {
 				let (fun, typ) = fun.check(ctx)?;
 				(Term2::FunctionCall(fun), typ)
 			}
+			RawTerm::PartialApplication(fun) => {
+				let (fun, typ) = fun.check(ctx)?;
+				(Term2::PartialApplication(fun), typ)
+			}
 			RawTerm::Declaration(def) => {
 				let (decl, typ) = def.check(ctx)?;
 				(Term2::Declaration(decl), typ)
@@ -277,6 +281,21 @@ impl Check for FunctionCall {
 			.map(|e| e.check(ctx).map(|(a, _)| a))
 			.collect::<Result<Vec<_>>>()?;
 		let res = FunctionCall2 { func, args };
+		Ok((res, typ))
+	}
+}
+
+impl Check for PartialApplication {
+	type Output = PartialApplication2;
+
+	fn check(self, ctx: &mut Context) -> Result<(PartialApplication2, EnumType2)> {
+		let PartialApplication { func, args } = self;
+		let (func, typ) = func.check(ctx)?;
+		let args = args
+			.into_iter()
+			.map(|o| o.map(|e| e.check(ctx).map(|(a, _)| a)).transpose())
+			.collect::<Result<Vec<_>>>()?;
+		let res = PartialApplication2 { func, args };
 		Ok((res, typ))
 	}
 }
