@@ -119,7 +119,16 @@ impl Check for Expr {
 					t1.join(t2),
 				))
 			}
-			Expr::UnOp { op, right } => todo!(),
+			Expr::UnOp { op, right } => {
+				let (r, typ) = right.check(ctx)?;
+				Ok((
+					Expr2::UnOp {
+						op,
+						right: Box::new(r),
+					},
+					typ,
+				))
+			}
 			Expr::Leaf(t) => {
 				let (t2, typ) = t.check(ctx)?;
 				Ok((Expr2::Leaf(Box::new(t2)), typ))

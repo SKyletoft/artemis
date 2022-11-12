@@ -557,11 +557,10 @@ impl TryFrom<Pair<'_, Rule>> for UnaryOperator {
 	type Error = anyhow::Error;
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
-		assert_eq!(pair.as_rule(), Rule::unary_operator);
-		let inner = inner(pair)?;
-		let res = match inner.as_rule() {
+		assert!(matches!(pair.as_rule(), Rule::negate | Rule::not));
+		let res = match pair.as_rule() {
 			Rule::not => UnaryOperator::Not,
-			Rule::minus => UnaryOperator::Sub,
+			Rule::negate => UnaryOperator::Sub,
 			_ => bail!(Error::ParseError(line!())),
 		};
 
