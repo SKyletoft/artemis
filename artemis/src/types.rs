@@ -326,13 +326,16 @@ impl Check for Assignment {
 		};
 
 		let (new_expr, typ) = expr.check(ctx)?;
-		let correct_type = ctx
+		let Type2 { mutable, enum_type: correct_type } = ctx
 			.variables
 			.get(v)
 			.ok_or(Error::AssignmentToUndeclaredVariable(line!()))?
 			.clone()
-			.inner()
-			.enum_type;
+			.inner();
+
+		if !mutable {
+			bail!(Error::AssignmentToConst(line!()));
+		}
 
 		if !correct_type.contains(&typ) {
 			bail!(Error::MismatchedTypes(line!()));
