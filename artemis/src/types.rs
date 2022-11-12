@@ -182,8 +182,10 @@ impl Check for Term {
 				(Term2::IfExpr(res), if_type)
 			}
 			RawTerm::MatchExpr(_) => todo!(),
-			RawTerm::FunctionCall(_) => todo!(),
-			RawTerm::PartialApplication(_) => todo!(),
+			RawTerm::FunctionCall(fun) => {
+				let (fun, typ) = fun.check(ctx)?;
+				(Term2::FunctionCall(fun), typ)
+			}
 			RawTerm::Declaration(def) => {
 				let (decl, typ) = def.check(ctx)?;
 				(Term2::Declaration(decl), typ)
@@ -261,6 +263,21 @@ impl Check for Declaration {
 			},
 			typ,
 		))
+	}
+}
+
+impl Check for FunctionCall {
+	type Output = FunctionCall2;
+
+	fn check(self, ctx: &mut Context) -> Result<(FunctionCall2, EnumType2)> {
+		let FunctionCall { func, args } = self;
+		let (func, typ) = func.check(ctx)?;
+		let args = args
+			.into_iter()
+			.map(|e| e.check(ctx).map(|(a, _)| a))
+			.collect::<Result<Vec<_>>>()?;
+		let res = FunctionCall2 { func, args };
+		Ok((res, typ))
 	}
 }
 
