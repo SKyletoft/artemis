@@ -34,7 +34,7 @@ impl Context {
 
 	pub fn join(&mut self, other: Context) {
 		for (key, val) in other.variables.into_iter() {
-			self.variables.insert(key, val);
+			self.variables.insert(key, val.default_literals());
 		}
 		for (key, val) in other.types.into_iter() {
 			self.types.insert(key, val);
@@ -107,6 +107,20 @@ impl ActualType2 {
 			ActualType2::Inferred(t) => t.as_ref().clone(),
 		}
 	}
+
+	pub fn default_literals(self) -> Self {
+		match self {
+			s @ ActualType2::Declared(_) => s,
+			ActualType2::Inferred(mut types) => {
+				Rc::get_mut(&mut types)
+					.expect("This can't happen, right?")
+					.enum_type
+					.default_literals();
+				ActualType2::Inferred(types)
+			}
+		}
+	}
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +151,11 @@ impl Type2 {
 		let res = Type2 { mutable, enum_type };
 
 		Ok(res)
+	}
+
+	pub fn default_literals(mut self) -> Self {
+		self.enum_type.default_literals();
+		self
 	}
 }
 
@@ -332,6 +351,21 @@ impl EnumType2 {
 		let mut hasher = DefaultHasher::new();
 		self.hash(&mut hasher);
 		hasher.finish()
+	}
+
+	pub fn default_literals(&mut self) {
+		for t in self.0.iter_mut() {
+			match t {
+				RawType2::NumberLiteral => *t = RawType2::Natural,
+				RawType2::Tuple(ts) => {
+					ts.iter_mut().for_each(EnumType2::default_literals)
+				}
+				RawType2::StructType(fs) => todo!(),
+				RawType2::EnumType(e) => e.default_literals(),
+				RawType2::FunctionType { args, ret } => todo!(),
+				_ => {}
+			}
+		}
 	}
 }
 

@@ -271,7 +271,7 @@ impl Check for Declaration {
 		Ok((
 			Declaration2 {
 				pattern,
-				type_name: actual_type.or(typ.clone()),
+				type_name: actual_type.or(typ.clone()).default_literals(),
 				expr,
 			},
 			typ,
