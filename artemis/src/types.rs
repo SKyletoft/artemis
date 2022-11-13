@@ -261,7 +261,11 @@ impl Check for Declaration {
 		let actual_type = ActualType2::try_from_ast(&type_name, ctx)?;
 		let (expr, typ) = expr.check(ctx)?;
 
-		let bindings = enum_type_matches_pattern(actual_type.enum_type(), &pattern, actual_type.mutable())?;
+		let bindings = enum_type_matches_pattern(
+			actual_type.enum_type(),
+			&pattern,
+			actual_type.mutable(),
+		)?;
 		ctx.join(bindings);
 
 		if !actual_type.contains(&typ) {

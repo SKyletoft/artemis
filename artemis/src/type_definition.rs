@@ -124,7 +124,7 @@ impl ActualType2 {
 	pub fn inner_ref(&self) -> &Type2 {
 		match self {
 			ActualType2::Declared(t) => t,
-			ActualType2::Inferred(t) => t.as_ref()
+			ActualType2::Inferred(t) => t.as_ref(),
 		}
 	}
 
