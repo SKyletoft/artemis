@@ -121,11 +121,19 @@ impl ActualType2 {
 		}
 	}
 
-	pub fn mutable(&self) -> bool {
+	pub fn inner_ref(&self) -> &Type2 {
 		match self {
-			ActualType2::Declared(t) => t.mutable,
-			ActualType2::Inferred(t) => t.as_ref().mutable,
+			ActualType2::Declared(t) => t,
+			ActualType2::Inferred(t) => t.as_ref()
 		}
+	}
+
+	pub fn mutable(&self) -> bool {
+		self.inner_ref().mutable
+	}
+
+	pub fn enum_type(&self) -> &EnumType2 {
+		&self.inner_ref().enum_type
 	}
 }
 
