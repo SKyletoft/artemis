@@ -121,6 +121,12 @@ impl ActualType2 {
 		}
 	}
 
+	pub fn mutable(&self) -> bool {
+		match self {
+			ActualType2::Declared(t) => t.mutable,
+			ActualType2::Inferred(t) => t.as_ref().mutable,
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

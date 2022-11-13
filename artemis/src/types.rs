@@ -261,7 +261,7 @@ impl Check for Declaration {
 		let actual_type = ActualType2::try_from_ast(&type_name, ctx)?;
 		let (expr, typ) = expr.check(ctx)?;
 
-		let bindings = enum_type_matches_pattern(&typ, &pattern)?;
+		let bindings = enum_type_matches_pattern(&typ, &pattern, actual_type.mutable())?;
 		ctx.join(bindings);
 
 		if !actual_type.contains(&typ) {
@@ -366,7 +366,7 @@ impl Check for Assignment {
 	}
 }
 
-fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern) -> Result<Context> {
+fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> Result<Context> {
 	let mut new_ctx = Context::new();
 	let Pattern {
 		label,
@@ -404,7 +404,13 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern) -> Result<Context> 
 			} else {
 				v.clone()
 			};
-			new_ctx.variables.insert(name, typ.clone().into());
+			new_ctx.variables.insert(
+				name,
+				ActualType2::Declared(Type2 {
+					mutable,
+					enum_type: typ.clone(),
+				}),
+			);
 		}
 		InnerPattern::Any => {}
 	};
