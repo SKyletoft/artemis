@@ -296,20 +296,19 @@ impl Check for FunctionCall {
 				.collect::<Result<Vec<_>>>()?,
 		);
 
-		let ret = if let [RawType2::FunctionType { args, ret }] = typ.0.as_slice() {
-			if let Some((expected, actual)) =
-				args.iter().zip(types.iter()).find(|(a, b)| a != b)
-			{
-				log::error!("{expected} ≠ {actual}");
-				bail!(Error::MismatchedTypes(line!()));
-			}
-			ret.as_ref().clone()
-		} else {
+		let [RawType2::FunctionType { args: typ_args, ret }] = typ.0.as_slice() else {
 			bail!(Error::TypeNonFunctionAsFunction(line!()));
 		};
 
+		if let Some((expected, actual)) =
+			typ_args.iter().zip(types.iter()).find(|(a, b)| a != b)
+		{
+			log::error!("{expected} ≠ {actual}");
+			bail!(Error::MismatchedTypes(line!()));
+		}
+
 		let res = FunctionCall2 { func, args };
-		Ok((res, ret))
+		Ok((res, ret.as_ref().clone()))
 	}
 }
 
