@@ -139,6 +139,7 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 	log::debug!("Inferred types:\n{inferred:#?}");
 
 	let detyped = detype2::detype_program(inferred)?;
+	log::debug!("Detyped:\n{detyped:#?}");
 
 	let ssa = simplify::simplify(&detyped)?;
 	log::debug!("SSA:\n{ssa:#?}");
