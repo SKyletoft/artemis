@@ -1,8 +1,19 @@
-Foo : mut Type = (a: ℕ, b: ℝ)
-Bar := Foo | (c: ℕ)
+Foo : mut Type = {a: ℕ, b: ℝ}
+Bar := Foo | {c: ℕ}
 
 λf (bar: Bar) → ℕ = case bar
-	(a: 1, b: 1)              → 1
-	(c: 2)                    → 2
-	(a, b) | (a + 2) % 2 == 0 → 3
+	{a: 1, b: 1}              → 1
+	{c: 2}                    → 2
+	{a, b} | (a + 2) % 2 == 0 → 3
 	_                         → 4
+
+λmain() = (
+	b := {a: 1, b: 5.0}
+	print_n(f(b))
+
+	c := {c: 2}
+	print_n(f(c))
+
+	d := {c: 0}
+	print_n(f(d))
+)
