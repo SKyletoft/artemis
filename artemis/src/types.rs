@@ -5,15 +5,16 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
 	ast::{
-		self, ActualType, Argument, ArgumentList, Assignment, Declaration, Expr,
-		FunctionCall, FunctionDefinition, IfExpr, InnerPattern, PartialApplication,
-		Pattern, RawTerm, RawType, StructPattern, Term, TypeAlias,
+		self, ActualType, Argument, ArgumentList, Assignment, Case, Declaration, Expr,
+		FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
+		PartialApplication, Pattern, RawTerm, RawType, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
-		Argument as Argument2, Assignment as Assignment2, Block,
+		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,
 		Declaration as Declaration2, Expr as Expr2, FunctionCall as FunctionCall2,
 		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2,
-		PartialApplication as PartialApplication2, Term as Term2, Tuple,
+		MatchExpr as MatchExpr2, PartialApplication as PartialApplication2, Term as Term2,
+		Tuple,
 	},
 	error::Error,
 	type_definition::{ActualType2, Context, EnumType2, RawType2, Type2},
@@ -190,7 +191,10 @@ impl Check for Term {
 
 				(Term2::IfExpr(res), if_type)
 			}
-			RawTerm::MatchExpr(_) => todo!(),
+			RawTerm::MatchExpr(mat) => {
+				let (mat, typ) = mat.check(ctx)?;
+				(Term2::MatchExpr(mat), typ)
+			}
 			RawTerm::FunctionCall(fun) => {
 				let (fun, typ) = fun.check(ctx)?;
 				(Term2::FunctionCall(fun), typ)
@@ -245,6 +249,28 @@ impl Check for Term {
 		}
 
 		Ok((term, typ))
+	}
+}
+
+impl Check for MatchExpr {
+	type Output = MatchExpr2;
+
+	fn check(self, ctx: &mut Context) -> Result<(MatchExpr2, EnumType2)> {
+		let MatchExpr { expr, cases } = self;
+		let (expr, e_typ) = expr.check(ctx)?;
+
+		let case_typ_pairs = cases
+			.into_iter()
+			.map(|c| c.check(ctx))
+			.collect::<Result<_>>()?;
+		let (cases, types) = split_vec(case_typ_pairs);
+		let typ = types
+			.into_iter()
+			.reduce(EnumType2::join)
+			.ok_or(Error::NoCasesInMatch(line!()))?;
+
+		let res = MatchExpr2 { expr, cases };
+		Ok((res, typ))
 	}
 }
 
