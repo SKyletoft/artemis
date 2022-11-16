@@ -274,6 +274,14 @@ impl Check for MatchExpr {
 	}
 }
 
+impl Check for Case {
+	type Output = Case2;
+
+	fn check(self, ctx: &mut Context) -> Result<(Case2, EnumType2)> {
+		todo!()
+	}
+}
+
 impl Check for Declaration {
 	type Output = Declaration2;
 
