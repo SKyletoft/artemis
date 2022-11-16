@@ -33,6 +33,7 @@ pub enum Error {
 	InternalCheckedUndefinedVariable(u32),
 	InternalCheckedMismatchedTypes(u32),
 	InternalCallOfUnknownFunction(u32),
+	NoCasesInMatch(u32),
 }
 
 impl fmt::Display for Error {
