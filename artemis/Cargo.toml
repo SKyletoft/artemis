@@ -14,11 +14,7 @@ path = "src/main.rs"
 rayon = "1.5"
 variantly = "0.2"
 smallstr = { version = "0.3", default-features = false, features = [ "union" ] }
-smallvec = {
-	version = "1.8",
-	default-features = false,
-	features = [ "union", "const_generics", "const_new", "write" ]
-}
+smallvec = { version = "1.8", default-features = false, features = [ "union", "const_generics", "const_new", "write" ] }
 anyhow = "1.0"
 parking_lot = "0.12"
 once_cell = "1.10"
