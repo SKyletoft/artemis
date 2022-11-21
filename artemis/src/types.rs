@@ -307,7 +307,7 @@ impl Check for Declaration {
 		ctx.join(bindings);
 
 		if !actual_type.contains(&typ) {
-			log::error!("{typ:?} cannot be assigned to {actual_type:?}");
+			log::error!("{typ} cannot be assigned to {actual_type}");
 			bail!(Error::MismatchedTypes(line!()));
 		}
 
