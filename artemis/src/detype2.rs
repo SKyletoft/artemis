@@ -206,6 +206,7 @@ impl Ast2Term {
 	}
 }
 
+#[allow(clippy::type_complexity)]
 fn flatten_pattern(
 	pat: &Pattern,
 	typ: &Type2,
