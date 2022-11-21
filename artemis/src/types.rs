@@ -162,7 +162,10 @@ impl Check for Term {
 				let (tuple, types) = check_expr_array(t.0, &mut ctx.clone())?;
 				(Term2::Tuple(Tuple(tuple)), RawType2::Tuple(types).into())
 			}
-			RawTerm::StructLiteral(_) => todo!(),
+			RawTerm::StructLiteral(l) => {
+				let (lit, typ) = l.check(ctx)?;
+				(Term2::StructLiteral(lit), typ)
+			}
 			RawTerm::Block(b) => {
 				let (block, mut types) = check_expr_array(b.0, &mut ctx.clone())?;
 				(
