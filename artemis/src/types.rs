@@ -325,6 +325,46 @@ impl Check for Declaration {
 	}
 }
 
+impl Check for StructLiteral {
+	type Output = StructLiteral2;
+
+	fn check(self, ctx: &mut Context) -> Result<(StructLiteral2, EnumType2)> {
+		let StructLiteral(fields) = self;
+		let split_struct_field_literal = |(StructFieldLiteral2 { name, expr }, typ)| {
+			let field_lit = StructFieldLiteral2 {
+				name: name.clone(),
+				expr,
+			};
+			let struct_field = StructField2 {
+				name,
+				type_name: typ,
+			};
+			(field_lit, struct_field)
+		};
+
+		let (checked_fields, types) = split_vec(
+			fields.into_iter()
+				.map(|f| f.check(ctx).map(split_struct_field_literal))
+				.collect::<Result<_>>()?,
+		);
+
+		let typ = EnumType2(smallvec![RawType2::StructType(StructType2(types))]);
+		let lit = StructLiteral2(checked_fields);
+
+		Ok((lit, typ))
+	}
+}
+
+impl Check for StructFieldLiteral {
+	type Output = StructFieldLiteral2;
+
+	fn check(self, ctx: &mut Context) -> Result<(StructFieldLiteral2, EnumType2)> {
+		let StructFieldLiteral { name, expr } = self;
+		let (expr, typ) = expr.check(ctx)?;
+		Ok((StructFieldLiteral2 { name, expr }, typ))
+	}
+}
+
 impl Check for FunctionCall {
 	type Output = FunctionCall2;
 
