@@ -28,7 +28,7 @@ pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
 		.map(|x| x.detype(&mut ctx))
 		.collect::<Result<Vec<_>>>()?
 		.into_iter()
-		.filter(|(x,_)| !matches!(x, Expr::Term(Term::Literal(_)))) // Top level type alias
+		.filter(|(x, _)| !matches!(x, Expr::Term(Term::Literal(_)))) // Top level type alias
 		.map(|(x, _)| x.try_into())
 		.collect()
 }
