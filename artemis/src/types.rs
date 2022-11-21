@@ -7,17 +7,21 @@ use crate::{
 	ast::{
 		self, ActualType, Argument, ArgumentList, Assignment, Case, Declaration, Expr,
 		FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
-		PartialApplication, Pattern, RawTerm, RawType, StructPattern, Term, TypeAlias,
+		PartialApplication, Pattern, RawTerm, RawType, StructField, StructFieldLiteral,
+		StructLiteral, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,
 		Declaration as Declaration2, Expr as Expr2, FunctionCall as FunctionCall2,
 		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2,
-		MatchExpr as MatchExpr2, PartialApplication as PartialApplication2, Term as Term2,
-		Tuple,
+		MatchExpr as MatchExpr2, PartialApplication as PartialApplication2,
+		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
+		Term as Term2, Tuple,
 	},
 	error::Error,
-	type_definition::{ActualType2, Context, EnumType2, RawType2, Type2},
+	type_definition::{
+		ActualType2, Context, EnumType2, RawType2, StructField2, StructType2, Type2,
+	},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
