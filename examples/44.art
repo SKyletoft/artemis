@@ -2,7 +2,7 @@ Foo := {a: ℕ, b: ℝ}
 
 λmain () = (
 	foo : Foo = {a: 1, b: 2.0}
-	{a, b} = foo
+	{a, b} := foo
 	print_n(a)
 	print_r(b)
 )
