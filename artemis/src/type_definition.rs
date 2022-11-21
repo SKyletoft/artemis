@@ -54,6 +54,13 @@ pub enum ActualType2 {
 	Inferred(Rc<Type2>),
 }
 
+impl fmt::Display for ActualType2 {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let inner = self.inner_ref();
+		write!(f, "{inner}")
+	}
+}
+
 impl From<EnumType2> for ActualType2 {
 	fn from(enum_type: EnumType2) -> Self {
 		ActualType2::Declared(enum_type.into())
@@ -143,6 +150,15 @@ pub struct Type2 {
 	pub(crate) enum_type: EnumType2,
 }
 
+impl fmt::Display for Type2 {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if self.mutable {
+			write!(f, "mut ")?;
+		}
+		write!(f, "{}", self.enum_type)
+	}
+}
+
 impl From<EnumType2> for Type2 {
 	fn from(enum_type: EnumType2) -> Self {
 		Type2 {
@@ -204,7 +220,20 @@ impl fmt::Display for RawType2 {
 			RawType2::Type => write!(f, "𝕋"),
 			RawType2::Unit => write!(f, "()"),
 			RawType2::Tuple(_) => todo!(),
-			RawType2::StructType(_) => todo!(),
+			RawType2::StructType(StructType2(fields)) => {
+				write!(f, "{{")?;
+				match fields.as_slice() {
+					[] => write!(f, "∅")?,
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				write!(f, "}}")
+			}
 			RawType2::EnumType(e) => write!(f, "{e}"),
 			RawType2::FunctionType { args, ret } => {
 				write!(f, "λ(")?;
@@ -269,6 +298,12 @@ impl RawType2 {
 pub struct StructField2 {
 	pub(crate) name: SmallString,
 	pub(crate) type_name: EnumType2,
+}
+
+impl fmt::Display for StructField2 {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}: {}", self.name, self.type_name)
+	}
 }
 
 impl PartialOrd for StructField2 {
