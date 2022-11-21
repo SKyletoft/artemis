@@ -497,7 +497,9 @@ impl TryFrom<Pair<'_, Rule>> for RawTerm {
 			Rule::char => todo!(),
 			Rule::unit => RawTerm::Unit,
 			Rule::tuple => RawTerm::Tuple(Tuple::try_from(inner)?),
-			Rule::struct_literal => todo!(),
+			Rule::struct_literal => {
+				RawTerm::StructLiteral(StructLiteral::try_from(inner)?)
+			}
 			Rule::block => RawTerm::Block(Block::try_from(inner)?),
 			Rule::if_expr => RawTerm::IfExpr(IfExpr::try_from(inner)?),
 			Rule::match_expr => RawTerm::MatchExpr(MatchExpr::try_from(inner)?),
