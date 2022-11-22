@@ -283,6 +283,11 @@ impl RawType2 {
 			| (Self::NumberLiteral, Self::Natural)
 			| (Self::Integer, Self::NumberLiteral)
 			| (Self::Natural, Self::NumberLiteral) => true,
+			(Self::StructType(StructType2(a)), Self::StructType(StructType2(b))) => {
+				a.iter().zip(b.iter()).all(|(a, b)| {
+					a.name == b.name && a.type_name.contains(&b.type_name)
+				})
+			}
 			(a, b) => a == b,
 		}
 	}
