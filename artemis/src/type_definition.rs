@@ -414,7 +414,10 @@ impl EnumType2 {
 				RawType2::Tuple(ts) => {
 					ts.iter_mut().for_each(EnumType2::default_literals)
 				}
-				RawType2::StructType(fs) => todo!(),
+				RawType2::StructType(StructType2(fs)) => fs
+					.iter_mut()
+					.map(|f| &mut f.type_name)
+					.for_each(EnumType2::default_literals),
 				RawType2::EnumType(e) => e.default_literals(),
 				RawType2::FunctionType { args, ret } => todo!(),
 				_ => {}
