@@ -461,7 +461,35 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 
 	match inner {
 		InnerPattern::StructPattern(StructPattern { fields, more }) => {
-			todo!()
+			let matches_all_options = typ.0.iter().all(|t| {
+				if let RawType2::StructType(StructType2(ts)) = t {
+					ts.iter().zip(fields.iter()).all(
+						|(
+							StructField2 {
+								name: ts_name,
+								type_name,
+							},
+							StructFieldPattern {
+								name: pat_name,
+								pattern,
+							},
+						)| {
+
+
+							//TODO:
+							// Check that inner bindings are also equal
+							// Check that fields are equal
+
+							todo!()
+						}
+					)
+				} else {
+					false
+				}
+			});
+			if !(matches_all_options || *irrefutable) {
+				bail!(Error::UnprovedIrrefutablePattern(line!()));
+			}
 		}
 		InnerPattern::TuplePattern(_) => todo!(),
 		InnerPattern::Float(_) => todo!(),
