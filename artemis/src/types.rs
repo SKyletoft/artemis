@@ -8,7 +8,7 @@ use crate::{
 		self, ActualType, Argument, ArgumentList, Assignment, Case, Declaration, Expr,
 		FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
 		PartialApplication, Pattern, RawTerm, RawType, StructField, StructFieldLiteral,
-		StructLiteral, StructPattern, Term, TypeAlias,
+		StructFieldPattern, StructLiteral, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,
