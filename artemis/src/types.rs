@@ -234,10 +234,10 @@ impl Check for Term {
 			}
 			RawTerm::TypeAlias(ta) => ta.check(ctx)?,
 			RawTerm::VarName(n) => {
-				let typ = ctx
-					.variables
-					.get(&n)
-					.ok_or(Error::UndefinedVariable(line!()))?;
+				let typ = ctx.variables.get(&n).ok_or_else(|| {
+					log::error!("Undefined variable: {n}");
+					Error::UndefinedVariable(line!())
+				})?;
 				let typ = match typ {
 					ActualType2::Declared(t) => t.enum_type.clone(),
 					ActualType2::Inferred(t) => t.enum_type.clone(),
