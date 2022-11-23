@@ -35,7 +35,7 @@ where
 }
 
 pub fn check_and_infer(program: Vec<Expr>) -> Result<Vec<Expr2>> {
-	let mut ctx = Context::default();
+	let mut ctx = Context::with_builtins();
 	program.into_iter()
 		.map(|e| check_top_level(e, &mut ctx))
 		.collect()
