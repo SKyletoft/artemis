@@ -18,7 +18,7 @@ use crate::{
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Context {
 	pub(crate) variables: HashMap<SmallString, ActualType2>,
 	pub(crate) types: HashMap<SmallString, EnumType2>,
@@ -110,7 +110,7 @@ impl Context {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Variantly)]
+#[derive(Debug, Clone, PartialEq, Eq, Variantly)]
 pub enum ActualType2 {
 	Declared(Type2),
 	Inferred(Rc<Type2>),
