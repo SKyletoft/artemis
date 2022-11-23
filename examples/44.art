@@ -6,4 +6,6 @@ Foo := {a: ℕ, b: ℝ}
 	{a, b} := bar
 	print_n(a)
 	print_r(b)
+	print_n(foo.a)
+	print_r(bar.b)
 )
