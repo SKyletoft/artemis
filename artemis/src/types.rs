@@ -474,14 +474,12 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 								pattern,
 							},
 						)| {
-
-
 							//TODO:
 							// Check that inner bindings are also equal
 							// Check that fields are equal
 
 							todo!()
-						}
+						},
 					)
 				} else {
 					false
