@@ -46,6 +46,68 @@ impl Context {
 			self.variables.insert(lbl.clone(), val);
 		}
 	}
+
+	pub fn with_builtins() -> Self {
+		// TODO: Turn this function into a prelude in the standard library
+		let mut ret = Context::default();
+		ret.variables.insert(
+			"print_n".into(),
+			ActualType2::Declared(Type2 {
+				mutable: false,
+				enum_type: EnumType2(smallvec![RawType2::FunctionType {
+					args: vec![EnumType2(smallvec![RawType2::Natural])],
+					ret: Box::new(EnumType2(smallvec![RawType2::Unit]))
+				}]),
+			}),
+		);
+		ret.variables.insert(
+			"print_z".into(),
+			ActualType2::Declared(Type2 {
+				mutable: false,
+				enum_type: EnumType2(smallvec![RawType2::FunctionType {
+					args: vec![EnumType2(smallvec![RawType2::Integer])],
+					ret: Box::new(EnumType2(smallvec![RawType2::Unit]))
+				}]),
+			}),
+		);
+		ret.variables.insert(
+			"print_r".into(),
+			ActualType2::Declared(Type2 {
+				mutable: false,
+				enum_type: EnumType2(smallvec![RawType2::FunctionType {
+					args: vec![EnumType2(smallvec![RawType2::Real])],
+					ret: Box::new(EnumType2(smallvec![RawType2::Unit]))
+				}]),
+			}),
+		);
+		ret.variables.insert(
+			"print_b".into(),
+			ActualType2::Declared(Type2 {
+				mutable: false,
+				enum_type: EnumType2(smallvec![RawType2::FunctionType {
+					args: vec![EnumType2(smallvec![RawType2::Bool])],
+					ret: Box::new(EnumType2(smallvec![RawType2::Unit]))
+				}]),
+			}),
+		);
+		ret.types.insert(
+			"Nat".into(),
+			EnumType2(smallvec![RawType2::Natural])
+		);
+		ret.types.insert(
+			"Int".into(),
+			EnumType2(smallvec![RawType2::Integer])
+		);
+		ret.types.insert(
+			"Real".into(),
+			EnumType2(smallvec![RawType2::Real])
+		);
+		ret.types.insert(
+			"Bool".into(),
+			EnumType2(smallvec![RawType2::Bool])
+		);
+		ret
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
