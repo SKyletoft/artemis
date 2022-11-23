@@ -1,3 +1,5 @@
+use std::fmt;
+
 use anyhow::Result;
 use derive_more::From;
 use smallvec::SmallVec;
@@ -128,6 +130,16 @@ pub enum Expr {
 	Leaf(Box<Term>),
 }
 
+impl fmt::Display for Expr {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Expr::BinOp { left, right, op } => write!(f, "{left} {op} {right}"),
+			Expr::UnOp { op, right } => write!(f, "{op}{right}"),
+			Expr::Leaf(l) => write!(f, "{l}"),
+		}
+	}
+}
+
 impl From<Term> for Expr {
 	fn from(t: Term) -> Self {
 		Expr::Leaf(Box::new(t))
@@ -147,6 +159,21 @@ impl From<RawTerm> for Expr {
 pub struct Term {
 	pub(crate) raw_term: RawTerm,
 	pub(crate) type_ascription: Option<EnumType>,
+}
+
+impl fmt::Display for Term {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Term {
+				raw_term,
+				type_ascription: None,
+			} => write!(f, "{raw_term}"),
+			Term {
+				raw_term,
+				type_ascription: Some(typ),
+			} => write!(f, "({raw_term}: {typ})"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -169,6 +196,37 @@ pub enum RawTerm {
 	FunctionDefinition(FunctionDefinition),
 	TypeAlias(TypeAlias),
 	VarName(SmallString),
+}
+
+impl fmt::Display for RawTerm {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			RawTerm::Float(d) => write!(f, "{d}"),
+			RawTerm::Integer(i) => write!(f, "{i}"),
+			RawTerm::Boolean(b) => write!(f, "{b}"),
+			RawTerm::String(_) => todo!(),
+			RawTerm::Char(_) => todo!(),
+			RawTerm::Unit => write!(f, "()"),
+			RawTerm::Tuple(t) => write!(f, "(tuple)"),
+			RawTerm::StructLiteral(s) => write!(f, "(struct)"),
+			RawTerm::Block(b) => f.debug_tuple("Block").field(b).finish(),
+			RawTerm::IfExpr(_) => todo!(),
+			RawTerm::MatchExpr(_) => todo!(),
+			RawTerm::FunctionCall(_) => todo!(),
+			RawTerm::PartialApplication(_) => todo!(),
+			RawTerm::Declaration(Declaration {
+				pattern,
+				type_name,
+				expr,
+			}) => {
+				write!(f, "{pattern} : {type_name} = {expr}")
+			}
+			RawTerm::Assignment(_) => todo!(),
+			RawTerm::FunctionDefinition(_) => todo!(),
+			RawTerm::TypeAlias(_) => todo!(),
+			RawTerm::VarName(_) => todo!(),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
