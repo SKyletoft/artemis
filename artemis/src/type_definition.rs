@@ -90,22 +90,14 @@ impl Context {
 				}]),
 			}),
 		);
-		ret.types.insert(
-			"Nat".into(),
-			EnumType2(smallvec![RawType2::Natural])
-		);
-		ret.types.insert(
-			"Int".into(),
-			EnumType2(smallvec![RawType2::Integer])
-		);
-		ret.types.insert(
-			"Real".into(),
-			EnumType2(smallvec![RawType2::Real])
-		);
-		ret.types.insert(
-			"Bool".into(),
-			EnumType2(smallvec![RawType2::Bool])
-		);
+		ret.types
+			.insert("Nat".into(), EnumType2(smallvec![RawType2::Natural]));
+		ret.types
+			.insert("Int".into(), EnumType2(smallvec![RawType2::Integer]));
+		ret.types
+			.insert("Real".into(), EnumType2(smallvec![RawType2::Real]));
+		ret.types
+			.insert("Bool".into(), EnumType2(smallvec![RawType2::Bool]));
 		ret
 	}
 }
