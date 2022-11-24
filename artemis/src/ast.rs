@@ -13,10 +13,28 @@ pub struct Type {
 	pub(crate) enum_type: EnumType,
 }
 
+impl fmt::Display for Type {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if self.mutable {
+			write!(f, "mut ")?;
+		}
+		write!(f, "{}", self.enum_type)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum ActualType {
 	Declared(Type),
 	Inferred,
+}
+
+impl fmt::Display for ActualType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			ActualType::Declared(t) => write!(f, "{t}"),
+			ActualType::Inferred => write!(f, "_"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Variantly)]
@@ -31,6 +49,36 @@ pub enum RawType {
 	Unit,
 	Tuple(Vec<EnumType>),
 	StructType(StructType),
+}
+
+impl fmt::Display for RawType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			RawType::Natural => write!(f, "ℕ"),
+			RawType::Real => write!(f, "ℝ"),
+			RawType::Integer => write!(f, "ℤ"),
+			RawType::Bool => write!(f, "𝔹"),
+			RawType::Any => write!(f, "∀"),
+			RawType::Type => write!(f, "𝕋"),
+			RawType::Unit => write!(f, "()"),
+			RawType::Tuple(_) => todo!(),
+			RawType::StructType(StructType(fields)) => {
+				write!(f, "{{")?;
+				match fields.as_slice() {
+					[] => write!(f, "∅")?,
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				write!(f, "}}")
+			}
+			RawType::StructNameOrAlias(n) => write!(f, "{n}"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -88,6 +136,21 @@ pub struct Pattern {
 	pub(crate) irrefutable: bool,
 }
 
+impl fmt::Display for Pattern {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let Pattern {
+			label,
+			inner,
+			irrefutable,
+		} = self;
+		let end = if *irrefutable { "!" } else { "" };
+		match label {
+			Some(l) => write!(f, "{l} @ {inner}{end}"),
+			None => write!(f, "{inner}{end}"),
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum InnerPattern {
 	StructPattern(StructPattern),
@@ -99,6 +162,22 @@ pub enum InnerPattern {
 	Char(char),
 	Var(SmallString),
 	Any,
+}
+
+impl fmt::Display for InnerPattern {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			InnerPattern::StructPattern(s) => todo!(),
+			InnerPattern::TuplePattern(t) => todo!(),
+			InnerPattern::Float(d) => write!(f, "{d}"),
+			InnerPattern::Integer(i) => write!(f, "{i}"),
+			InnerPattern::Boolean(b) => write!(f, "{b}"),
+			InnerPattern::String(s) => write!(f, "\"{s}\""),
+			InnerPattern::Char(n) => write!(f, "'{n}'"),
+			InnerPattern::Var(n) => write!(f, "{n}"),
+			InnerPattern::Any => write!(f, "_"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -252,10 +331,45 @@ pub enum BinaryOperator {
 	RShift,
 }
 
+impl fmt::Display for BinaryOperator {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			BinaryOperator::Exp => write!(f, "^"),
+			BinaryOperator::Mul => write!(f, "×"),
+			BinaryOperator::Div => write!(f, "÷"),
+			BinaryOperator::Rem => write!(f, "%"),
+			BinaryOperator::Add => write!(f, "+"),
+			BinaryOperator::Sub => write!(f, "-"),
+			BinaryOperator::Delta => write!(f, "Δ"),
+			BinaryOperator::And => write!(f, "Λ"),
+			BinaryOperator::Or => write!(f, "V"),
+			BinaryOperator::Xor => write!(f, "⊕"),
+			BinaryOperator::Dot => write!(f, "."),
+			BinaryOperator::Eq => write!(f, "=="),
+			BinaryOperator::Neq => write!(f, "≠"),
+			BinaryOperator::Gt => write!(f, ">"),
+			BinaryOperator::Lt => write!(f, "<"),
+			BinaryOperator::Gte => write!(f, ">="),
+			BinaryOperator::Lte => write!(f, "<="),
+			BinaryOperator::LShift => write!(f, "<<"),
+			BinaryOperator::RShift => write!(f, ">>"),
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOperator {
 	Not,
 	Sub,
+}
+
+impl fmt::Display for UnaryOperator {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			UnaryOperator::Not => write!(f, "¬"),
+			UnaryOperator::Sub => write!(f, "-"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -287,11 +401,34 @@ pub struct StructField {
 	pub(crate) type_name: EnumType,
 }
 
+impl fmt::Display for StructField {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let StructField { name, type_name } = self;
+		write!(f, "{}: {}", name, type_name)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructType(pub(crate) Vec<StructField>);
 
 #[derive(Debug, Clone, PartialEq, From)]
 pub struct EnumType(pub(crate) SmallVec<[RawType; 1]>);
+
+impl fmt::Display for EnumType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self.0.as_slice() {
+			[] => write!(f, "Empty Type"),
+			[x] => write!(f, "{x}"),
+			[x, xs @ ..] => {
+				write!(f, "{x}")?;
+				for x in xs.iter() {
+					write!(f, " | {x}")?;
+				}
+				Ok(())
+			}
+		}
+	}
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeAlias {
