@@ -167,8 +167,24 @@ pub enum InnerPattern {
 impl fmt::Display for InnerPattern {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			InnerPattern::StructPattern(s) => todo!(),
-			InnerPattern::TuplePattern(t) => todo!(),
+			InnerPattern::StructPattern(StructPattern { fields, more }) => {
+				write!(f, "{{")?;
+				match fields.as_slice() {
+					[] => {}
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				if *more {
+					write!(f, ", ..")?;
+				}
+				write!(f, "}}")
+			}
+			InnerPattern::TuplePattern(t) => write!(f, "(tuple)"),
 			InnerPattern::Float(d) => write!(f, "{d}"),
 			InnerPattern::Integer(i) => write!(f, "{i}"),
 			InnerPattern::Boolean(b) => write!(f, "{b}"),
@@ -184,6 +200,16 @@ impl fmt::Display for InnerPattern {
 pub struct StructFieldPattern {
 	pub(crate) name: SmallString,
 	pub(crate) pattern: Option<Pattern>,
+}
+
+impl fmt::Display for StructFieldPattern {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let StructFieldPattern { name, pattern } = self;
+		match pattern {
+			Some(p) => write!(f, "{name}: {p}"),
+			None => write!(f, "{name}"),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -287,12 +313,62 @@ impl fmt::Display for RawTerm {
 			RawTerm::Char(_) => todo!(),
 			RawTerm::Unit => write!(f, "()"),
 			RawTerm::Tuple(t) => write!(f, "(tuple)"),
-			RawTerm::StructLiteral(s) => write!(f, "(struct)"),
-			RawTerm::Block(b) => f.debug_tuple("Block").field(b).finish(),
+			RawTerm::StructLiteral(StructLiteral(s)) => {
+				write!(f, "{{")?;
+				match s.as_slice() {
+					[] => write!(f, "")?,
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				write!(f, "}}")
+			}
+			RawTerm::Block(Block(exprs)) => {
+				write!(f, "(")?;
+				for expr in exprs.iter() {
+					write!(f, "\n\t{expr}")?;
+				}
+				write!(f, "\n)")
+			}
 			RawTerm::IfExpr(_) => todo!(),
 			RawTerm::MatchExpr(_) => todo!(),
-			RawTerm::FunctionCall(_) => todo!(),
-			RawTerm::PartialApplication(_) => todo!(),
+			RawTerm::FunctionCall(FunctionCall { func, args }) => {
+				write!(f, "{func}(")?;
+				match args.as_slice() {
+					[] => write!(f, "")?,
+					[x] => write!(f, "{x}")?,
+					[x, xs @ ..] => {
+						write!(f, "{x}")?;
+						for x in xs.iter() {
+							write!(f, ", {x}")?;
+						}
+					}
+				}
+				write!(f, ")")
+			}
+			RawTerm::PartialApplication(PartialApplication { func, args }) => {
+				write!(f, "{func}[")?;
+				let print_arg =
+					|f: &mut fmt::Formatter, arg: &Option<Expr>| match arg {
+						Some(a) => write!(f, "{a}"),
+						None => write!(f, "_"),
+					};
+				match args.as_slice() {
+					[] => write!(f, "")?,
+					[x] => print_arg(f, x)?,
+					[x, xs @ ..] => {
+						print_arg(f, x)?;
+						for x in xs.iter() {
+							print_arg(f, x)?;
+						}
+					}
+				}
+				write!(f, "]")
+			}
 			RawTerm::Declaration(Declaration {
 				pattern,
 				type_name,
@@ -301,9 +377,16 @@ impl fmt::Display for RawTerm {
 				write!(f, "{pattern} : {type_name} = {expr}")
 			}
 			RawTerm::Assignment(_) => todo!(),
-			RawTerm::FunctionDefinition(_) => todo!(),
-			RawTerm::TypeAlias(_) => todo!(),
-			RawTerm::VarName(_) => todo!(),
+			RawTerm::FunctionDefinition(FunctionDefinition {
+				name,
+				args,
+				return_type,
+				expr,
+			}) => {
+				write!(f, "λ{name} ({args}) → {return_type} = {expr}")
+			}
+			RawTerm::TypeAlias(t) => write!(f, "{t}"),
+			RawTerm::VarName(n) => write!(f, "{n}"),
 		}
 	}
 }
@@ -378,6 +461,13 @@ pub struct Argument {
 	pub(crate) type_name: Type,
 }
 
+impl fmt::Display for Argument {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let Argument { name, type_name } = self;
+		write!(f, "{}: {}", name, type_name)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDefinition {
 	pub(crate) name: SmallString,
@@ -391,6 +481,22 @@ pub struct ReturnType(pub(crate) Option<EnumType>);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgumentList(pub(crate) SmallVec<[Argument; 1]>);
+
+impl fmt::Display for ArgumentList {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self.0.as_slice() {
+			[] => write!(f, ""),
+			[x] => write!(f, "{x}"),
+			[x, xs @ ..] => {
+				write!(f, "{x}")?;
+				for x in xs.iter() {
+					write!(f, "{x}")?;
+				}
+				Ok(())
+			}
+		}
+	}
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block(pub(crate) Vec<Expr>);
@@ -437,10 +543,32 @@ pub struct TypeAlias {
 	pub(crate) type_name: EnumType,
 }
 
+impl fmt::Display for TypeAlias {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let TypeAlias {
+			name,
+			mutable,
+			type_name,
+		} = self;
+		if *mutable {
+			write!(f, "{name} : mut Type = {type_name}")
+		} else {
+			write!(f, "{name} := {type_name}")
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructFieldLiteral {
 	pub(crate) name: SmallString,
 	pub(crate) expr: Expr,
+}
+
+impl fmt::Display for StructFieldLiteral {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let StructFieldLiteral { name, expr } = self;
+		write!(f, "{name}: {expr}")
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
