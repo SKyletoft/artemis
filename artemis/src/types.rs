@@ -299,8 +299,14 @@ impl Check for Declaration {
 			expr,
 		} = self;
 
-		let actual_type = ActualType2::try_from_ast(&type_name, ctx)?;
 		let (expr, typ) = expr.check(ctx)?;
+		let actual_type = match type_name {
+			ActualType::Declared(d) => ActualType2::try_from_ast_type(&d, ctx)?,
+			ActualType::Inferred => ActualType2::Inferred(Rc::new(Type2 {
+				mutable: false,
+				enum_type: typ.clone(),
+			})),
+		};
 
 		let bindings = enum_type_matches_pattern(
 			actual_type.enum_type(),
