@@ -34,6 +34,7 @@ pub enum Error {
 	InternalCheckedMismatchedTypes(u32),
 	InternalCallOfUnknownFunction(u32),
 	NoCasesInMatch(u32),
+	UnknownStructField(u32),
 }
 
 impl fmt::Display for Error {
