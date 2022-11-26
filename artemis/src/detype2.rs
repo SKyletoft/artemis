@@ -109,15 +109,7 @@ impl Ast2Term {
 			Ast2Term::Char(_) => todo!(),
 			Ast2Term::Unit => (Term::Unit, Type::Unsigned),
 			Ast2Term::Tuple(_) => todo!(),
-			Ast2Term::StructLiteral(StructLiteral2(fields)) => {
-				dbg!(fields);
-				let (fields, types) = split_vec(
-					fields.into_iter()
-						.map(|f| f.detype(ctx))
-						.collect::<Result<Vec<_>>>()?,
-				);
-				todo!()
-			}
+			Ast2Term::StructLiteral(s) => s.detype(ctx)?,
 			Ast2Term::Block(ast2::Block(b)) => {
 				let len = b.len();
 				let (res, typ) = b
@@ -223,11 +215,31 @@ impl Ast2Term {
 	}
 }
 
-impl Detype for StructFieldLiteral2 {
-	type Output;
+impl Detype for StructLiteral2 {
+	type Output = Term;
 
 	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)> {
-		todo!()
+		let StructLiteral2(fields) = self;
+
+		let mut ops = vec![Expr::Declaration(Declaration {
+			name: smallvec!["_tmp".into()],
+			value: vec![Expr::Term(Term::FunctionCall(FunctionCall {
+				function_name: "malloc".into(),
+				arguments: vec![Expr::Term(Term::Literal(fields.len() as u64 * 8))],
+			}))],
+		})];
+
+		for (idx, StructFieldLiteral2 { name, expr }) in fields.into_iter().enumerate() {
+			ops.push(Expr::Term(Term::BinOp(BinOp {
+				lhs: todo!(),
+				op: todo!(),
+				rhs: todo!(),
+			})));
+		}
+
+		ops.push(Expr::Term(Term::Variable("_tmp".into())));
+
+		Ok((Term::Block(ops), Type::default()))
 	}
 }
 
