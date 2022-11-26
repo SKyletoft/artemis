@@ -478,6 +478,22 @@ impl EnumType2 {
 			}
 		}
 	}
+
+	pub fn get_field(&self, name: &str) -> Result<EnumType2> {
+		let mut e = EnumType2(SmallVec::new());
+		for t in self.0.iter().map(|t| match t {
+			RawType2::StructType(StructType2(fields)) => fields
+				.iter()
+				.find(|f| f.name == name)
+				.map(|f| &f.type_name)
+				.ok_or(Error::UnknownStructField(line!())),
+			RawType2::EnumType(inner) => Ok(inner.as_ref()),
+			_ => Err(Error::NotAStructType(line!())),
+		}) {
+			e = e.join(t?.clone());
+		}
+		Ok(e)
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
