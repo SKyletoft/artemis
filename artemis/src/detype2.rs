@@ -35,6 +35,12 @@ pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
 		.collect()
 }
 
+trait Detype {
+	type Output;
+
+	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)>;
+}
+
 impl TryFrom<Expr> for TopLevelConstruct {
 	type Error = anyhow::Error;
 
