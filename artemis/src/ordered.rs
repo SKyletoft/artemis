@@ -353,21 +353,33 @@ impl TryFrom<Pair<'_, Rule>> for StructFieldPattern {
 				let label = Some(label.as_str().into());
 				let name = name.as_str().into();
 				let pattern = None;
-				StructFieldPattern { label, name, pattern }
-			},
+				StructFieldPattern {
+					label,
+					name,
+					pattern,
+				}
+			}
 			[name, pattern] if pattern.as_rule() == Rule::pattern => {
 				let label = None;
 				let name = name.as_str().into();
 				let pattern = Some(Pattern::try_from(pattern.clone())?);
 
-				StructFieldPattern { label, name, pattern }
+				StructFieldPattern {
+					label,
+					name,
+					pattern,
+				}
 			}
 			[name] => {
 				let label = None;
 				let name = name.as_str().into();
 				let pattern = None;
 
-				StructFieldPattern { label, name, pattern }
+				StructFieldPattern {
+					label,
+					name,
+					pattern,
+				}
 			}
 			_ => bail!(Error::ParseError(line!())),
 		};
