@@ -236,15 +236,22 @@ fn flatten_pattern(
 
 			// TODO: Skipped fields?
 			// TODO: Am I even handling non-labelled fields properly?
-			for (idx, StructFieldPattern { label: field_label, name, pattern }, field_type) in all_fields
-				.iter()
-				.enumerate()
-				.filter_map(|(idx, StructField2 { name, type_name })| {
+			for (
+				idx,
+				StructFieldPattern {
+					label: field_label,
+					name,
+					pattern,
+				},
+				field_type,
+			) in all_fields.iter().enumerate().filter_map(
+				|(idx, StructField2 { name, type_name })| {
 					existing_fields
 						.iter()
 						.find(|field| &field.name == name)
 						.map(|x| (idx, x, type_name))
-				}) {
+				},
+			) {
 				// Assert so it's easy to find whenever I actually need to implement support for this
 				assert!(field_label.is_none());
 				let e = Expr::Term(Term::BinOp(BinOp {
