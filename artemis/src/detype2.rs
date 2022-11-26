@@ -21,6 +21,7 @@ use crate::{
 		TopLevelConstruct, Type, UnOp,
 	},
 	error::Error,
+	split_vec,
 	type_definition::{ActualType2, Context, RawType2, StructField2, StructType2, Type2},
 };
 

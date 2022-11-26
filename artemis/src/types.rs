@@ -20,6 +20,7 @@ use crate::{
 		Term as Term2, Tuple,
 	},
 	error::Error,
+	split_vec,
 	type_definition::{
 		ActualType2, Context, EnumType2, RawType2, StructField2, StructType2, Type2,
 	},
@@ -629,16 +630,6 @@ fn check_expr_array(exprs: Vec<Expr>, ctx: &mut Context) -> Result<(Vec<Expr2>, 
 	Ok(split_vec(results))
 }
 
-fn split_vec<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
-	let mut l_vec = Vec::with_capacity(v.len());
-	let mut r_vec = Vec::with_capacity(v.len());
-	for (l, r) in v.into_iter() {
-		l_vec.push(l);
-		r_vec.push(r);
-	}
-	(l_vec, r_vec)
-}
-
 fn argument2_try_from_ast(args: &ArgumentList, ctx: &Context) -> Result<SmallVec<[Argument2; 1]>> {
 	args.0.iter()
 		.map(|Argument { name, type_name }| {
@@ -648,8 +639,4 @@ fn argument2_try_from_ast(args: &ArgumentList, ctx: &Context) -> Result<SmallVec
 			Ok(Argument2 { name, type_name })
 		})
 		.collect::<Result<_>>()
-}
-
-fn float_eq(a: f64, b: f64) -> bool {
-	(a - b).abs() < EPSILON || (b - a).abs() < EPSILON
 }
