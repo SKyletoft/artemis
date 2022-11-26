@@ -256,7 +256,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::pattern);
-		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
+		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
 
 		let res = match inner.as_slice() {
 			[label, pattern, _] => {
@@ -270,7 +270,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[label, pattern] if pattern.as_rule() == Rule::pattern => {
+			[label, pattern] if pattern.as_rule() == Rule::inner_pattern => {
 				let label = Some(label.as_str().into());
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = false;
@@ -281,7 +281,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[pattern, _] if pattern.as_rule() == Rule::pattern => {
+			[pattern, _] if pattern.as_rule() == Rule::inner_pattern => {
 				let label = None;
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = true;
@@ -292,7 +292,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[pattern] => {
+			[pattern] if pattern.as_rule() == Rule::inner_pattern => {
 				let label = None;
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = false;
@@ -303,7 +303,10 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			_ => bail!(Error::ParseError(line!())),
+			_ => {
+				log::trace!("Failing parse: {inner:#?}");
+				bail!(Error::ParseError(line!()))
+			}
 		};
 		Ok(res)
 	}
@@ -345,17 +348,26 @@ impl TryFrom<Pair<'_, Rule>> for StructFieldPattern {
 		assert_eq!(pair.as_rule(), Rule::struct_field_pattern);
 		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
 		let res = match inner.as_slice() {
-			[name, pattern] => {
+			[label, name, pattern] => todo!(),
+			[label, name] if name.as_rule() == Rule::var_name => {
+				let label = Some(label.as_str().into());
+				let name = name.as_str().into();
+				let pattern = None;
+				StructFieldPattern { label, name, pattern }
+			},
+			[name, pattern] if pattern.as_rule() == Rule::pattern => {
+				let label = None;
 				let name = name.as_str().into();
 				let pattern = Some(Pattern::try_from(pattern.clone())?);
 
-				StructFieldPattern { name, pattern }
+				StructFieldPattern { label, name, pattern }
 			}
 			[name] => {
+				let label = None;
 				let name = name.as_str().into();
 				let pattern = None;
 
-				StructFieldPattern { name, pattern }
+				StructFieldPattern { label, name, pattern }
 			}
 			_ => bail!(Error::ParseError(line!())),
 		};
