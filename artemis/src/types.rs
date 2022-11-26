@@ -113,6 +113,28 @@ impl Check for Expr {
 
 	fn check(self, ctx: &mut Context) -> Result<(Expr2, EnumType2)> {
 		match self {
+			Expr::BinOp {
+				left,
+				right,
+				op: BinaryOperator::Dot,
+			} => {
+				let (l, t1) = left.check(ctx)?;
+				let Term { raw_term: RawTerm::VarName(n), ..} = *right.leaf().ok_or(Error::UnknownStructField(line!()))? else {
+					bail!(Error::UnknownStructField(line!()));
+				};
+
+				let typ = t1.get_field(&n)?;
+				Ok((
+					Expr2::BinOp {
+						left: Box::new(l),
+						right: Box::new(Expr2::Leaf(Box::new(
+							Term2::VarName(n),
+						))),
+						op: BinaryOperator::Dot,
+					},
+					typ,
+				))
+			}
 			Expr::BinOp { left, right, op } => {
 				let (l, t1) = left.check(ctx)?;
 				let (r, t2) = right.check(ctx)?;
