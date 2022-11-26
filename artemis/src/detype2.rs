@@ -108,7 +108,15 @@ impl Ast2Term {
 			Ast2Term::Char(_) => todo!(),
 			Ast2Term::Unit => (Term::Unit, Type::Unsigned),
 			Ast2Term::Tuple(_) => todo!(),
-			Ast2Term::StructLiteral(_) => todo!(),
+			Ast2Term::StructLiteral(StructLiteral2(fields)) => {
+				dbg!(fields);
+				let (fields, types) = split_vec(
+					fields.into_iter()
+						.map(|f| f.detype(ctx))
+						.collect::<Result<Vec<_>>>()?,
+				);
+				todo!()
+			}
 			Ast2Term::Block(ast2::Block(b)) => {
 				let len = b.len();
 				let (res, typ) = b
@@ -211,6 +219,14 @@ impl Ast2Term {
 			}
 		};
 		Ok(res)
+	}
+}
+
+impl Detype for StructFieldLiteral2 {
+	type Output;
+
+	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)> {
+		todo!()
 	}
 }
 
