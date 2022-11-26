@@ -7,12 +7,14 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 
 use crate::{
 	ast::{
-		BinaryOperator, InnerPattern, Pattern, StructFieldPattern, StructPattern,
-		TuplePattern, UnaryOperator,
+		BinaryOperator, InnerPattern, Pattern, StructFieldLiteral, StructFieldPattern,
+		StructPattern, TuplePattern, UnaryOperator,
 	},
 	ast2::{
 		self, Argument, Assignment as Ast2Assignment, Declaration as Ast2Declaration,
-		Expr as Ast2Expr, FunctionDefinition as Ast2FunctionDefinition, Term as Ast2Term,
+		Expr as Ast2Expr, FunctionDefinition as Ast2FunctionDefinition,
+		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
+		Term as Ast2Term,
 	},
 	detype2_types::{
 		BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
