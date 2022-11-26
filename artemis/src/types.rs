@@ -488,6 +488,7 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 		irrefutable,
 	} = pat;
 
+	new_ctx.try_insert(label, typ.clone().into());
 	match inner {
 		InnerPattern::StructPattern(StructPattern { fields, more }) => {
 			let matches_all_options = typ.0.iter().all(|t| {
@@ -521,7 +522,6 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 		InnerPattern::TuplePattern(_) => todo!(),
 		InnerPattern::Float(_) => todo!(),
 		InnerPattern::Integer(_) => {
-			new_ctx.try_insert(label, RawType2::Integer.try_into().unwrap());
 			let matches = typ.0.iter().any(|x| {
 				matches!(
 					x,
@@ -529,28 +529,27 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 						| RawType2::Integer | RawType2::NumberLiteral
 				)
 			});
-			match (matches, *irrefutable) {
-				(true, true) => bail!(Error::UnprovedIrrefutablePattern(line!())),
-				(false, _) => bail!(Error::PatternDoesntMatch(line!())),
-				_ => {}
+			if !matches {
+				bail!(Error::PatternDoesntMatch(line!()));
+			}
+			// Any pattern with a literal needs to be irrefutable
+			if !*irrefutable {
+				bail!(Error::UnprovedIrrefutablePattern(line!()));
 			}
 		}
 		InnerPattern::Boolean(_) => todo!(),
 		InnerPattern::String(_) => todo!(),
 		InnerPattern::Char(_) => todo!(),
 		InnerPattern::Var(v) => {
-			let name = if let Some(lbl) = label {
-				lbl.clone()
-			} else {
-				v.clone()
-			};
-			new_ctx.variables.insert(
-				name,
-				ActualType2::Declared(Type2 {
-					mutable,
-					enum_type: typ.clone(),
-				}),
-			);
+			if label.is_none() {
+				new_ctx.variables.insert(
+					v.clone(),
+					ActualType2::Declared(Type2 {
+						mutable,
+						enum_type: typ.clone(),
+					}),
+				);
+			}
 		}
 		InnerPattern::Any => {}
 	};
