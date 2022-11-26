@@ -198,13 +198,21 @@ impl fmt::Display for InnerPattern {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructFieldPattern {
+	pub(crate) label: Option<SmallString>,
 	pub(crate) name: SmallString,
 	pub(crate) pattern: Option<Pattern>,
 }
 
 impl fmt::Display for StructFieldPattern {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let StructFieldPattern { name, pattern } = self;
+		let StructFieldPattern {
+			label,
+			name,
+			pattern,
+		} = self;
+		if let Some(l) = label {
+			write!(f, "{l} @ ")?
+		}
 		match pattern {
 			Some(p) => write!(f, "{name}: {p}"),
 			None => write!(f, "{name}"),
