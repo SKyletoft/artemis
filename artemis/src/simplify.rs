@@ -82,6 +82,11 @@ pub fn simplify_term(
 				Op::FEq => todo!(),
 				Op::Neq => todo!(),
 				Op::FNeq => todo!(),
+
+				Op::LoadMut => todo!(),
+				Op::LoadConst => todo!(),
+				Op::StoreExclusive => todo!(),
+				Op::StoreVolatile => todo!(),
 			};
 			let this = SimpleBinOp {
 				target,

@@ -71,7 +71,7 @@ pub struct IfExpr {
 	pub rhs: Box<Expr>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Op {
 	Plus,
 	Minus,
@@ -107,6 +107,10 @@ pub enum Op {
 	FEq,
 	Neq,
 	FNeq,
+	LoadMut,
+	LoadConst,
+	StoreExclusive,
+	StoreVolatile,
 }
 
 impl From<(UnaryOperator, Type)> for Op {
