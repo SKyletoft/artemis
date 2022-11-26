@@ -491,30 +491,76 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 	new_ctx.try_insert(label, typ.clone().into());
 	match inner {
 		InnerPattern::StructPattern(StructPattern { fields, more }) => {
-			let matches_all_options = typ.0.iter().all(|t| {
-				if let RawType2::StructType(StructType2(ts)) = t {
-					ts.iter().zip(fields.iter()).all(
-						|(
-							StructField2 {
-								name: ts_name,
-								type_name,
-							},
-							StructFieldPattern {
-								name: pat_name,
-								pattern,
-							},
-						)| {
-							//TODO:
-							// Check that inner bindings are also equal
-							// Check that fields are equal
+			assert!(!*more, "todo");
+			let mut matches_all_options = true;
 
-							todo!()
-						},
-					)
-				} else {
-					false
+			'outer: for StructFieldPattern {
+				label,
+				name,
+				pattern,
+			} in fields.iter()
+			{
+				let mut field_type = EnumType2(SmallVec::new());
+				for variant in typ.0.iter() {
+					let RawType2::StructType(StructType2(ts)) = variant else {
+						bail!(Error::PatternDoesntMatch(line!()))
+					};
+					let field = ts.iter().find(|field| &field.name == name);
+					let Some(field) = field else {
+						matches_all_options = false;
+						continue 'outer;
+					};
+					field_type = field_type.join(field.type_name.clone());
 				}
-			});
+
+				match (label, pattern) {
+					(None, None) => {
+						new_ctx.variables.insert(
+							name.clone(),
+							Type2 {
+								mutable,
+								enum_type: field_type,
+							}
+							.into(),
+						);
+					}
+					(None, Some(p)) => {
+						let bindings = enum_type_matches_pattern(
+							&field_type,
+							p,
+							mutable,
+						)?;
+						new_ctx.join(bindings);
+					}
+					(Some(l), None) => {
+						new_ctx.variables.insert(
+							l.clone(),
+							Type2 {
+								mutable,
+								enum_type: field_type,
+							}
+							.into(),
+						);
+					}
+					(Some(l), Some(p)) => {
+						let bindings = enum_type_matches_pattern(
+							&field_type,
+							p,
+							mutable,
+						)?;
+						new_ctx.join(bindings);
+						new_ctx.variables.insert(
+							l.clone(),
+							Type2 {
+								mutable,
+								enum_type: field_type,
+							}
+							.into(),
+						);
+					}
+				}
+			}
+
 			if !(matches_all_options || *irrefutable) {
 				bail!(Error::UnprovedIrrefutablePattern(line!()));
 			}
