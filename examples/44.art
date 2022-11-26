@@ -2,10 +2,9 @@ Foo := {a: ℕ, b: ℝ}
 
 λmain () = (
 	foo : Foo = {a: 1, b: 2.0}
-	bar := foo
-	{a, b} := bar
-	print_n(a)
-	print_r(b)
+	bar @ {a2 @ a, b2 @ b} := foo
+	print_n(a2)
+	print_r(b2)
 	print_n(foo.a)
 	print_r(bar.b)
 )
