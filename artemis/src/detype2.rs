@@ -58,7 +58,9 @@ impl TryFrom<Expr> for TopLevelConstruct {
 	}
 }
 
-impl Ast2Expr {
+impl Detype for Ast2Expr {
+	type Output = Expr;
+
 	fn detype(self, ctx: &mut Context) -> Result<(Expr, Type)> {
 		let res = match self {
 			Ast2Expr::BinOp { left, right, op } => {
@@ -98,7 +100,9 @@ impl Ast2Expr {
 	}
 }
 
-impl Ast2Term {
+impl Detype for Ast2Term {
+	type Output = Term;
+
 	fn detype(self, ctx: &mut Context) -> Result<(Term, Type)> {
 		let res = match self {
 			Ast2Term::TypeValue(t) => (Term::Literal(t), Type::Unsigned),
