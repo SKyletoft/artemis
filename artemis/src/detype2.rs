@@ -223,21 +223,27 @@ impl Detype for StructLiteral2 {
 	type Output = Term;
 
 	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)> {
-		let StructLiteral2(fields) = self;
+		let StructLiteral2(mut fields) = self;
+		fields.sort_by(|a, b| a.name.cmp(&b.name)); // Sort by key has a lifetime issue?
 
 		let mut ops = vec![Expr::Declaration(Declaration {
 			name: smallvec!["_tmp".into()],
 			value: vec![Expr::Term(Term::FunctionCall(FunctionCall {
-				function_name: "malloc".into(),
+				function_name: "malloc".into(), // TODO: Replace with GC-alloc later (when I have a GC)
 				arguments: vec![Expr::Term(Term::Literal(fields.len() as u64 * 8))],
 			}))],
 		})];
 
-		for (idx, StructFieldLiteral2 { name, expr }) in fields.into_iter().enumerate() {
+		for (idx, StructFieldLiteral2 { expr, .. }) in fields.into_iter().enumerate() {
+			let (e, _) = expr.detype(ctx)?;
 			ops.push(Expr::Term(Term::BinOp(BinOp {
-				lhs: todo!(),
-				op: todo!(),
-				rhs: todo!(),
+				lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+					lhs: Box::new(Expr::Term(Term::Variable("_tmp".into()))),
+					op: Op::Plus,
+					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
+				}))),
+				op: Op::StoreExclusive,
+				rhs: Box::new(e),
 			})));
 		}
 
