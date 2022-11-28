@@ -36,6 +36,7 @@ pub enum Error {
 	NoCasesInMatch(u32),
 	UnknownStructField(u32),
 	NotAStructType(u32),
+	TODONotYetSupportedPatternMatch(u32),
 }
 
 impl fmt::Display for Error {
