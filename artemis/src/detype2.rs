@@ -277,12 +277,24 @@ fn flatten_pattern(
 			fields: existing_fields,
 			..
 		}) => {
-			let [RawType2::StructType(StructType2(all_fields))] = typ.enum_type.0.as_slice() else {
-				bail!(Error::InternalCheckedMismatchedTypes(line!()))
-			};
+			let mut matchable_types = typ
+				.enum_type
+				.0
+				.iter()
+				.filter_map(|t| match t {
+					RawType2::StructType(StructType2(fields)) => {
+						Some((fields, t.id()))
+					}
+					_ => None,
+				})
+				.collect::<SmallVec<[_; 1]>>();
 
-			// TODO: Skipped fields?
-			// TODO: Am I even handling non-labelled fields properly?
+			if matchable_types.len() != 1 {
+				bail!(Error::TODONotYetSupportedPatternMatch(line!()));
+			}
+
+			let (all_fields, id) = matchable_types.remove(0);
+
 			for (
 				idx,
 				StructFieldPattern {
@@ -299,28 +311,20 @@ fn flatten_pattern(
 						.map(|x| (idx, x, type_name))
 				},
 			) {
-				// Assert so it's easy to find whenever I actually need to implement support for this
-				assert!(field_label.is_none());
 				let e = Expr::Term(Term::BinOp(BinOp {
 					lhs: Box::new(expr.clone()),
 					op: Op::Dot,
 					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
 				}));
-				if let Some(pat) = pattern {
-					let inner_type = Type2 {
-						mutable: typ.mutable,
-						enum_type: field_type.clone(),
-					};
-					let (mut inner_names, mut inner_types, mut inner_exprs) =
-						flatten_pattern(pat, &inner_type, &e)?;
-					names.append(&mut inner_names);
-					types.append(&mut inner_types);
-					exprs.append(&mut inner_exprs);
-				} else {
-					names.push(name.clone());
-					exprs.push(e);
+				match (field_label, pattern) {
+					(None, None) => todo!(),
+					(None, Some(_)) => todo!(),
+					(Some(_), None) => todo!(),
+					(Some(_), Some(_)) => todo!(),
 				}
 			}
+
+			todo!()
 		}
 		InnerPattern::TuplePattern(TuplePattern(fields)) => {
 			// TODO: Am I even handling non-labelled fields properly?
