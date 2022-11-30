@@ -217,6 +217,7 @@ pub fn simplify_term(
 			current.block.push(SimpleExpression::FunctionCall(call));
 			Source::Register(target)
 		}
+		Term::FunctionObjectCall(_) => todo!(),
 		Term::Unit => todo!(),
 	};
 	Ok(res)
