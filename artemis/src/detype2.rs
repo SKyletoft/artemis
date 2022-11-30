@@ -324,12 +324,14 @@ fn flatten_pattern(
 				match (field_label, pattern) {
 					(None, None) => todo!(),
 					(None, Some(_)) => todo!(),
-					(Some(_), None) => todo!(),
+					(Some(l), None) => {
+						names.push(l.clone());
+						types.push(Type2::from(field_type.clone()));
+						exprs.push(e);
+					}
 					(Some(_), Some(_)) => todo!(),
 				}
 			}
-
-			todo!()
 		}
 		InnerPattern::TuplePattern(TuplePattern(fields)) => {
 			// TODO: Am I even handling non-labelled fields properly?
