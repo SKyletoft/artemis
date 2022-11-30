@@ -310,8 +310,10 @@ fn flatten_pattern(
 
 	if let Some(label) = label {
 		names.push(label.clone());
+		types.push(typ.clone());
 		exprs.push(expr.clone());
 	}
+
 	match inner {
 		InnerPattern::StructPattern(StructPattern {
 			fields: existing_fields,
