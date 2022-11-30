@@ -411,6 +411,13 @@ impl From<RawType2> for EnumType2 {
 }
 
 impl EnumType2 {
+	pub fn get_only(&self) -> Option<&RawType2> {
+		match self.0.as_slice() {
+			[x] => Some(x),
+			_ => None,
+		}
+	}
+
 	/// Check that all types in the right enum are in the left enum
 	pub fn contains(&self, rhs: &EnumType2) -> bool {
 		rhs.0.iter().all(|x| self.0.iter().any(|y| y.int_eq(x)))
