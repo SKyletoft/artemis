@@ -71,7 +71,7 @@ pub enum Expr {
 	Leaf(Box<Term>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Variantly)]
 pub enum Term {
 	TypeValue(u64),
 	Float(f64),
