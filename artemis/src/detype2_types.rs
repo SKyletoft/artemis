@@ -183,18 +183,20 @@ impl Default for Type {
 	}
 }
 
-impl From<&ActualType2> for Type {
-	fn from(t: &ActualType2) -> Self {
-		let t = match t {
-			ActualType2::Declared(t) => t,
-			ActualType2::Inferred(t) => t.as_ref(),
-		};
-		match t.enum_type.0.as_slice() {
+impl From<&EnumType2> for Type {
+	fn from(enum_type: &EnumType2) -> Self {
+		match enum_type.0.as_slice() {
 			[RawType2::Natural] => Type::Unsigned,
 			[RawType2::Real] => Type::Floating,
 			[RawType2::Integer] => Type::Signed,
 			[RawType2::NumberLiteral] => Default::default(),
 			_ => Default::default(),
 		}
+	}
+}
+
+impl From<&ActualType2> for Type {
+	fn from(t: &ActualType2) -> Self {
+		(&t.inner_ref().enum_type).into()
 	}
 }
