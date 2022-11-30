@@ -12,7 +12,9 @@ use crate::{
 	},
 	ast2::{
 		self, Argument, Assignment as Ast2Assignment, Declaration as Ast2Declaration,
-		Expr as Ast2Expr, FunctionDefinition as Ast2FunctionDefinition,
+		Expr as Ast2Expr, FunctionCall as Ast2FunctionCall,
+		FunctionDefinition as Ast2FunctionDefinition,
+		PartialApplication as Ast2PartialApplication,
 		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
 		Term as Ast2Term,
 	},
