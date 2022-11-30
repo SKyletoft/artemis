@@ -153,7 +153,42 @@ impl Detype for Ast2Term {
 				(Term::IfExpr(if_expr), lhs_typ)
 			}
 			Ast2Term::MatchExpr(_) => todo!(),
-			Ast2Term::FunctionCall(_) => todo!(),
+			Ast2Term::FunctionCall(Ast2FunctionCall { func, args }) => {
+				let arguments = args
+					.into_iter()
+					.map(|e| e.detype(ctx).map(|(e, _)| e))
+					.collect::<Result<_>>()?;
+				let (term, typ) =
+					match func.leaf().and_then(|t| t.var_name()) {
+						Some(function_name) => {
+							let function_ret_type = ctx
+								.variables
+								.get(&function_name)
+								.and_then(|t| {
+									let raw = t.inner_ref().enum_type.get_only()?;
+									match raw {
+										RawType2::FunctionType { ret, .. } => Some(ret.as_ref()),
+										_ => None
+									}
+								})
+								.ok_or_else(|| {
+									dbg!(&function_name);
+									dbg!(&ctx.variables[&function_name]);
+									Error::InternalMismatchedTypes(line!())
+								})?;
+							(
+								Term::FunctionCall(FunctionCall {
+									function_name,
+									arguments,
+								}),
+								function_ret_type.into(),
+							)
+						}
+						None => todo!(),
+					};
+
+				(term, typ)
+			}
 			Ast2Term::PartialApplication(_) => todo!(),
 			Ast2Term::Declaration(Ast2Declaration {
 				pattern,
