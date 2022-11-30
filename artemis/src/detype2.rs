@@ -212,7 +212,10 @@ impl Detype for Ast2Term {
 				let typ = ctx
 					.variables
 					.get(&n)
-					.ok_or(Error::InternalCheckedUndefinedVariable(line!()))?
+					.ok_or_else(|| {
+						log::trace!("{n:#?}\n{ctx:#?}");
+						Error::InternalCheckedUndefinedVariable(line!())
+					})?
 					.into();
 				(Term::Variable(n), typ)
 			}
