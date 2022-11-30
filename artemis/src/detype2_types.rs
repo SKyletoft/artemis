@@ -30,6 +30,12 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct FunctionObjectCall {
+	pub function_name: Box<Expr>,
+	pub arguments: Vec<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
 	Term(Term),
 	Declaration(Declaration),
@@ -48,6 +54,7 @@ pub enum Term {
 	Variable(SmallString),
 	Tuple(Vec<Expr>),
 	FunctionCall(FunctionCall),
+	FunctionObjectCall(FunctionObjectCall),
 	Expr(Box<Expr>),
 }
 
