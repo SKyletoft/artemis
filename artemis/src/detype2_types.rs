@@ -5,7 +5,7 @@ use variantly::Variantly;
 
 use crate::{
 	ast::{BinaryOperator, UnaryOperator},
-	type_definition::{ActualType2, RawType2},
+	type_definition::{ActualType2, EnumType2, RawType2, Type2},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
