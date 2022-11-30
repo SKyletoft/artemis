@@ -28,7 +28,7 @@ use crate::{
 };
 
 pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
-	let mut ctx = Context::new();
+	let mut ctx = Context::with_builtins();
 	block.into_iter()
 		.map(|x| x.detype(&mut ctx))
 		.collect::<Result<Vec<_>>>()?
