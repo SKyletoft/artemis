@@ -67,6 +67,7 @@
 						gdb
 						mold
 						gcc12
+						rust-analyzer
 
 						glibc.dev
 						llvmPackages_14.libclang
