@@ -1,6 +1,6 @@
 use std::{mem, slice};
 
-use air::simplify::{
+use air::ir::{
 	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
 	SimpleExpression, SimpleFunctionCall, SimpleOp, Source,
 };
@@ -206,7 +206,7 @@ pub fn simplify_term(
 		}) => {
 			let args = arguments
 				.iter()
-				.map(|s| simplify_expr(s, current, blocks, ctx))
+				.map(|expr| simplify_expr(expr, current, blocks, ctx))
 				.collect::<Result<SmallVec<_>>>()?;
 			let target = ctx.next_register();
 			let call = SimpleFunctionCall {
