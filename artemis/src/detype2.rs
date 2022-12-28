@@ -177,14 +177,16 @@ impl Detype for Ast2Term {
 					.into_iter()
 					.map(|e| e.detype(ctx).map(|(e, _)| e))
 					.collect::<Result<_>>()?;
-				let (term, typ) =
-					match func.leaf().and_then(|t| t.var_name()) {
-						Some(function_name) => {
-							let function_ret_type = ctx
-								.variables
+				let (term, typ) = match func.leaf().and_then(|t| t.var_name()) {
+					Some(function_name) => {
+						let function_ret_type =
+							ctx.variables
 								.get(&function_name)
 								.and_then(|t| {
-									let raw = t.inner_ref().enum_type.get_only()?;
+									let raw = t
+										.inner_ref()
+										.enum_type
+										.get_only()?;
 									match raw {
 										RawType2::FunctionType { ret, .. } => Some(ret.as_ref()),
 										_ => None
@@ -192,19 +194,20 @@ impl Detype for Ast2Term {
 								})
 								.ok_or_else(|| {
 									dbg!(&function_name);
-									dbg!(&ctx.variables[&function_name]);
+									dbg!(&ctx.variables
+										[&function_name]);
 									Error::InternalMismatchedTypes(line!())
 								})?;
-							(
-								Term::FunctionCall(FunctionCall {
-									function_name,
-									arguments,
-								}),
-								function_ret_type.into(),
-							)
-						}
-						None => todo!(),
-					};
+						(
+							Term::FunctionCall(FunctionCall {
+								function_name,
+								arguments,
+							}),
+							function_ret_type.into(),
+						)
+					}
+					None => todo!(),
+				};
 
 				(term, typ)
 			}

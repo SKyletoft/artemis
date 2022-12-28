@@ -11,18 +11,7 @@ use air::{
 	x86_64,
 };
 use anyhow::{bail, Result};
-use artemis::{
-	detype2,
-	//detype,
-	error::Error,
-	ordered,
-	preprocess,
-	// type_check,
-	simplify,
-	types,
-	GeneratedParser,
-	Rule,
-};
+use artemis::{detype2, error::Error, ordered, preprocess, simplify, types, GeneratedParser, Rule};
 use clap::Parser as ClapParser;
 use log::LevelFilter;
 use pest::Parser as PestParser;
