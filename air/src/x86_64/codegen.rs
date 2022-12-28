@@ -7,10 +7,10 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 
 use crate::{
 	error::Error,
+	ir::BlockId,
 	register_allocation::{
 		BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 	},
-	ir::BlockId,
 	x86_64::definition::{AssemblyBuilder, GeneralPurposeRegister},
 };
 
