@@ -65,6 +65,25 @@ impl Detype for Ast2Expr {
 
 	fn detype(self, ctx: &mut Context) -> Result<(Expr, Type)> {
 		let res = match self {
+			Ast2Expr::BinOp {
+				left,
+				right,
+				op: BinaryOperator::Dot,
+			} => {
+				dbg!(&left, &right);
+				let (lhs, l_type) = left.detype(ctx)?;
+
+				let Ast2Expr::Leaf(r_box) = right.as_ref() else {
+					bail!(Error::InternalNonNameDot(line!()));
+				};
+				let Ast2Term::VarName(name) = r_box.as_ref() else {
+					bail!(Error::InternalNonNameDot(line!()))
+				};
+
+				let left_type = todo!();
+
+				todo!()
+			}
 			Ast2Expr::BinOp { left, right, op } => {
 				let (lhs, l_type) = left.detype(ctx)?;
 				let (rhs, r_type) = right.detype(ctx)?;
