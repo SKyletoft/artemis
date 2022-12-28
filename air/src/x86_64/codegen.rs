@@ -10,7 +10,7 @@ use crate::{
 	register_allocation::{
 		BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 	},
-	simplify::BlockId,
+	ir::BlockId,
 	x86_64::definition::{AssemblyBuilder, GeneralPurposeRegister},
 };
 

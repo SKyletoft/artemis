@@ -5,3 +5,4 @@ pub mod js;
 pub mod register_allocation;
 pub mod simplify;
 pub mod x86_64;
+pub mod ir;

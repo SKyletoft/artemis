@@ -1,446 +1,132 @@
-use std::{
-	cmp::Ordering,
-	collections::HashMap,
-	fmt::{self, Write},
-};
+use std::{cmp::Ordering, collections::HashMap};
 
 use anyhow::Result;
-use derive_more::{Add, AddAssign, From, Into};
-use smallvec::SmallVec;
-use variantly::Variantly;
+
+use crate::ir::{
+	Block, BlockEnd, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression,
+	SimpleFunctionCall, SimpleUnOp, Source,
+};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
-/// `usize`
-#[derive(
-	Debug,
-	Clone,
-	Copy,
-	Add,
-	PartialEq,
-	Eq,
-	PartialOrd,
-	Ord,
-	AddAssign,
-	Default,
-	From,
-	Into,
-	Hash,
-)]
-#[repr(transparent)]
-pub struct Register(usize);
-
-impl From<u64> for Register {
-	fn from(x: u64) -> Self {
-		Self(x as usize)
-	}
-}
-
-impl fmt::Display for Register {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "${}", self.0)
-	}
-}
-
-/// `usize`
-#[derive(
-	Debug,
-	Clone,
-	Copy,
-	Add,
-	PartialEq,
-	Eq,
-	PartialOrd,
-	Ord,
-	AddAssign,
-	Default,
-	From,
-	Into,
-	Hash,
-)]
-#[repr(transparent)]
-pub struct BlockId(usize);
-
-impl fmt::Display for BlockId {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "#{}", self.0)
-	}
-}
-
-impl BlockId {
-	pub fn u64(self) -> u64 {
-		self.0 as u64
+#[deprecated]
+pub fn has_been_used_for_the_last_time(
+	s: &Source,
+	(r_block, r_line): (usize, usize),
+	last_use_of_register: &HashMap<Source, (usize, usize)>,
+	debug: bool,
+) -> bool {
+	if debug {
+		dbg!(last_use_of_register, s, (r_block, r_line));
 	}
 
-	pub fn usize(self) -> usize {
-		self.0
-	}
-
-	pub fn label(self, name: &str) -> Result<SmallString> {
-		let mut s = SmallString::from(name);
-		write!(s, "_{}", self.0)?;
-		Ok(s)
-	}
+	last_use_of_register
+		.get(s)
+		.map(|&(l_block, l_line)| match r_block.cmp(&l_block) {
+			Ordering::Less => false,
+			Ordering::Equal => l_line < r_line,
+			Ordering::Greater => true,
+		})
+		.unwrap_or(true)
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Context {
-	pub variables: HashMap<SmallString, Source>,
-	pub next_register: Register,
-}
+/// Counts the amount of lines until the last use of a Source within this function
+// TODO: Needs memoisation
+// TODO: Doesn't work at all for loops
+pub fn lines_till_last_use(
+	s: &Source,
+	scope: &[Block],
+	(block_idx, line_idx): (usize, usize),
+) -> Option<usize> {
+	let block = &scope[block_idx];
+	let in_this_block = block
+		.intro
+		.len()
+		.saturating_add(block.block.len())
+		.saturating_sub(line_idx);
 
-impl Context {
-	pub fn next_register(&mut self) -> Register {
-		let next = self.next_register;
-		self.next_register += Register(1);
-		next
-	}
-}
+	// If it's the condition of this block we don't need to search through every line
+	match &block.out {
+		BlockEnd::Two(condition, left, right) if condition == s => {
+			let left = usize::from(*left);
+			let right = usize::from(*right);
 
-#[derive(Clone, PartialEq, Variantly)]
-pub enum BlockEnd {
-	#[variantly(rename = "ret")]
-	Return(Source),
-	One(BlockId),
-	Two(Source, BlockId, BlockId),
-}
+			assert!(scope[left].intro.is_empty());
+			assert!(scope[right].intro.is_empty());
 
-impl fmt::Debug for BlockEnd {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			Self::Return(reg) => write!(f, "ret {reg}"),
-			Self::One(target) => write!(f, "{target}"),
-			Self::Two(reg, left, right) => write!(f, "{reg} ? {left} : {right}"),
-		}
-	}
-}
+			let steps_in_left_block = lines_till_last_use(s, scope, (left, 0));
+			let steps_in_right_block = lines_till_last_use(s, scope, (right, 0));
 
-impl Default for BlockEnd {
-	fn default() -> Self {
-		BlockEnd::Return(Source::Value(0))
-	}
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Block {
-	pub intro: SmallVec<[PhiNode; 2]>, // Hardcoded 2 because I think this might be able to be an array or just 2 values, but I'm not 100% yet
-	pub block: SmallVec<[SimpleExpression; 4]>,
-	pub out: BlockEnd,
-}
-
-/// Registers | Value
-#[derive(Debug, Clone, PartialEq, Eq, Variantly, Hash)]
-pub enum Source {
-	/// `Register`
-	Register(Register),
-	/// `u64`
-	Value(u64),
-	/// `SmallString`
-	LinkerValue(SmallString),
-}
-
-impl Source {
-	#[deprecated]
-	pub fn has_been_used_for_the_last_time(
-		&self,
-		(r_block, r_line): (usize, usize),
-		last_use_of_register: &HashMap<Source, (usize, usize)>,
-		debug: bool,
-	) -> bool {
-		if debug {
-			dbg!(last_use_of_register, self, (r_block, r_line));
-		}
-
-		last_use_of_register
-			.get(self)
-			.map(|&(l_block, l_line)| match r_block.cmp(&l_block) {
-				Ordering::Less => false,
-				Ordering::Equal => l_line < r_line,
-				Ordering::Greater => true,
-			})
-			.unwrap_or(true)
-	}
-
-	/// Counts the amount of lines until the last use of a Source within this function
-	// TODO: Needs memoisation
-	// TODO: Doesn't work at all for loops
-	pub fn lines_till_last_use(
-		&self,
-		scope: &[Block],
-		(block_idx, line_idx): (usize, usize),
-	) -> Option<usize> {
-		let block = &scope[block_idx];
-		let in_this_block = block
-			.intro
-			.len()
-			.saturating_add(block.block.len())
-			.saturating_sub(line_idx);
-
-		// If it's the condition of this block we don't need to search through every line
-		match &block.out {
-			BlockEnd::Two(condition, left, right) if condition == self => {
-				let left = usize::from(*left);
-				let right = usize::from(*right);
-
-				assert!(scope[left].intro.is_empty());
-				assert!(scope[right].intro.is_empty());
-
-				let steps_in_left_block =
-					self.lines_till_last_use(scope, (left, 0));
-				let steps_in_right_block =
-					self.lines_till_last_use(scope, (right, 0));
-
-				return match (steps_in_left_block, steps_in_right_block) {
-					(Some(l), Some(r)) => Some(l.max(r) + in_this_block),
-					(Some(n), None) | (None, Some(n)) => {
-						Some(n + in_this_block)
-					}
-					(None, None) => Some(in_this_block),
-				};
-			}
-			_ => (),
-		}
-
-		// Count steps until the next use
-		for (steps, line) in block
-			.block
-			.iter()
-			.skip(line_idx.saturating_add(1))
-			.enumerate()
-		{
-			let contains_self = match line {
-				SimpleExpression::BinOp(SimpleBinOp { lhs, rhs, .. }) => {
-					lhs == self || rhs == self
-				}
-				SimpleExpression::UnOp(SimpleUnOp { lhs, .. }) => lhs == self,
-				SimpleExpression::FunctionCall(SimpleFunctionCall {
-					args, ..
-				}) => args.iter().any(|arg| arg == self),
+			return match (steps_in_left_block, steps_in_right_block) {
+				(Some(l), Some(r)) => Some(l.max(r) + in_this_block),
+				(Some(n), None) | (None, Some(n)) => Some(n + in_this_block),
+				(None, None) => Some(in_this_block),
 			};
-			if contains_self {
-				// Then recurse so we don't have issues with several uses within a block
-				let steps_so_far = steps + self
-					.lines_till_last_use(
-						scope,
-						(block_idx, line_idx + steps + 1),
-					)
-					.unwrap_or(0);
-				return Some(steps_so_far);
-			}
 		}
+		_ => (),
+	}
 
-		let res = match block.out {
-			BlockEnd::Return(_) => None,
-			BlockEnd::One(next) => {
-				let steps_in_intro =
-					scope[usize::from(next)].intro.iter().rposition(
-						|PhiNode {
-						         value:
-						                 [PhiEdge { value: l, .. }, PhiEdge { value: r, .. }],
-						         ..
-						 }| l == self || r == self,
-					);
-
-				let steps_in_next_block =
-					self.lines_till_last_use(scope, (next.into(), 0));
-				steps_in_next_block
-					.or(steps_in_intro)
-					.map(|n| n + in_this_block)
+	// Count steps until the next use
+	for (steps, line) in block
+		.block
+		.iter()
+		.skip(line_idx.saturating_add(1))
+		.enumerate()
+	{
+		let contains_self = match line {
+			SimpleExpression::BinOp(SimpleBinOp { lhs, rhs, .. }) => {
+				lhs == s || rhs == s
 			}
-			BlockEnd::Two(_, left, right) => {
-				// Not actually an invariant, just a todo
-				assert!(scope[usize::from(left)].intro.is_empty());
-				assert!(scope[usize::from(right)].intro.is_empty());
-
-				let steps_in_left_block =
-					self.lines_till_last_use(scope, (left.into(), 0));
-				let steps_in_right_block =
-					self.lines_till_last_use(scope, (right.into(), 0));
-
-				let max = match (steps_in_left_block, steps_in_right_block) {
-					(Some(l), Some(r)) => Some(l.max(r)),
-					(Some(n), None) | (None, Some(n)) => Some(n),
-					(None, None) => None,
-				};
-				max.map(|v| v + in_this_block)
+			SimpleExpression::UnOp(SimpleUnOp { lhs, .. }) => lhs == s,
+			SimpleExpression::FunctionCall(SimpleFunctionCall { args, .. }) => {
+				args.iter().any(|arg| arg == s)
 			}
 		};
-
-		res
-	}
-}
-
-impl fmt::Display for Source {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			Source::Register(Register(r)) => write!(f, "${r}"),
-			Source::Value(v) => write!(f, "{v}"),
-			Source::LinkerValue(s) => write!(f, "[L: {s}]"),
+		if contains_self {
+			// Then recurse so we don't have issues with several uses within a block
+			let steps_so_far = steps + lines_till_last_use(
+				s,
+				scope,
+				(block_idx, line_idx + steps + 1),
+			)
+			.unwrap_or(0);
+			return Some(steps_so_far);
 		}
 	}
-}
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum SimpleOp {
-	Add,
-	Sub,
-	Abs,
-	Mul,
-	Div,
-	UDiv,
-	FAdd,
-	FSub,
-	FAbs,
-	FMul,
-	FDiv,
-	And,
-	Or,
-	Xor,
-	Not,
-}
+	let res = match block.out {
+		BlockEnd::Return(_) => None,
+		BlockEnd::One(next) => {
+			let steps_in_intro = scope[usize::from(next)].intro.iter().rposition(
+				|PhiNode {
+				         value: [PhiEdge { value: l, .. }, PhiEdge { value: r, .. }],
+				         ..
+				 }| l == s || r == s,
+			);
 
-impl fmt::Display for SimpleOp {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			SimpleOp::Add => write!(f, "+"),
-			SimpleOp::Sub => write!(f, "-"),
-			SimpleOp::Abs => write!(f, "±"),
-			SimpleOp::Mul => write!(f, "×"),
-			SimpleOp::Div => write!(f, "÷"),
-			SimpleOp::UDiv => write!(f, "u÷"),
-			SimpleOp::FAdd => write!(f, "+."),
-			SimpleOp::FSub => write!(f, "-."),
-			SimpleOp::FAbs => write!(f, "±."),
-			SimpleOp::FMul => write!(f, "×."),
-			SimpleOp::FDiv => write!(f, "÷."),
-			SimpleOp::And => write!(f, "Λ"),
-			SimpleOp::Or => write!(f, "V"),
-			SimpleOp::Xor => write!(f, "⊕"),
-			SimpleOp::Not => write!(f, "¬"),
+			let steps_in_next_block = lines_till_last_use(s, scope, (next.into(), 0));
+			steps_in_next_block
+				.or(steps_in_intro)
+				.map(|n| n + in_this_block)
 		}
-	}
-}
+		BlockEnd::Two(_, left, right) => {
+			// Not actually an invariant, just a todo
+			assert!(scope[usize::from(left)].intro.is_empty());
+			assert!(scope[usize::from(right)].intro.is_empty());
 
-impl SimpleOp {
-	pub fn is_floating_point(&self) -> bool {
-		matches!(
-			self,
-			SimpleOp::FAdd
-				| SimpleOp::FSub | SimpleOp::FAbs
-				| SimpleOp::FMul | SimpleOp::FDiv
-		)
-	}
-}
+			let steps_in_left_block = lines_till_last_use(s, scope, (left.into(), 0));
+			let steps_in_right_block = lines_till_last_use(s, scope, (right.into(), 0));
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct SimpleBinOp {
-	pub target: Register,
-	pub op: SimpleOp,
-	pub lhs: Source,
-	pub rhs: Source,
-}
-
-impl SimpleBinOp {
-	pub fn is_same(&self, other: &Self) -> bool {
-		self.op == other.op
-			&& ((self.lhs == other.lhs && self.rhs == other.rhs)
-				|| (self.lhs == other.rhs && self.rhs == other.lhs))
-	}
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct SimpleUnOp {
-	pub target: Register,
-	pub op: SimpleOp,
-	pub lhs: Source,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct SimpleFunctionCall {
-	pub target: Register,
-	pub function: SmallString,
-	pub args: SmallVec<[Source; 4]>,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum SimpleExpression {
-	BinOp(SimpleBinOp),
-	UnOp(SimpleUnOp),
-	FunctionCall(SimpleFunctionCall),
-}
-
-impl fmt::Debug for SimpleExpression {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			SimpleExpression::BinOp(SimpleBinOp {
-				target,
-				op,
-				lhs,
-				rhs,
-			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
-			SimpleExpression::UnOp(SimpleUnOp { target, op, lhs }) => {
-				write!(f, "{target} ← {op} {lhs}")
-			}
-			SimpleExpression::FunctionCall(SimpleFunctionCall {
-				target,
-				function,
-				args,
-			}) => write!(f, "{target} ← {function}{args:?}"),
+			let max = match (steps_in_left_block, steps_in_right_block) {
+				(Some(l), Some(r)) => Some(l.max(r)),
+				(Some(n), None) | (None, Some(n)) => Some(n),
+				(None, None) => None,
+			};
+			max.map(|v| v + in_this_block)
 		}
-	}
-}
+	};
 
-impl SimpleExpression {
-	pub fn get_target(&self) -> Register {
-		match self {
-			SimpleExpression::BinOp(SimpleBinOp { target, .. })
-			| SimpleExpression::UnOp(SimpleUnOp { target, .. })
-			| SimpleExpression::FunctionCall(SimpleFunctionCall { target, .. }) => *target,
-		}
-	}
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SSAConstruct {
-	Function {
-		name: SmallString,
-		args: u64,
-		blocks: Vec<Block>,
-	},
-	Variable {
-		name: SmallString,
-		value: u64,
-	},
-	ImmediateExpression {
-		name: SmallString,
-		value: Vec<Block>,
-	},
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct PhiEdge {
-	pub from: BlockId,
-	pub value: Source,
-}
-
-impl fmt::Debug for PhiEdge {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		let PhiEdge { from, value } = self;
-		write!(f, "{from}:{value}")
-	}
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct PhiNode {
-	pub target: Register,
-	pub value: [PhiEdge; 2],
-}
-
-impl fmt::Debug for PhiNode {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		let PhiNode { target, value } = self;
-		write!(f, "{target} ← φ{value:?}")
-	}
+	res
 }
 
 pub fn validate_ir(construct: &SSAConstruct) -> Result<()> {

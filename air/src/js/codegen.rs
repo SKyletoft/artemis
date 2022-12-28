@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::simplify::{
+use crate::ir::{
 	Block, BlockEnd, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression, SimpleFunctionCall,
 	SimpleOp, SimpleUnOp, Source,
 };

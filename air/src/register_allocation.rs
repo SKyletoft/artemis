@@ -9,11 +9,12 @@ use variantly::Variantly;
 
 use crate::{
 	error::Error,
-	simplify::{
+	ir::{
 		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
 		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
 		SimpleFunctionCall, SimpleOp, Source,
 	},
+	simplify,
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -380,7 +381,7 @@ fn find_empty_slot(
 		}
 
 		// Register that has been used for the last time
-		inner_reg.lines_till_last_use(scope, pos).is_none()
+		simplify::lines_till_last_use(&inner_reg, scope, pos).is_none()
 	})
 }
 
@@ -410,9 +411,9 @@ fn select_register(
 			}
 		})
 		.map(|(idx, register)| {
-			let reg = register.clone()
-				.expect("Any empty register slots should've been found in the above attempt")
-				.lines_till_last_use(scope, pos);
+			let unwrapped_register = register.clone()
+				.expect("Any empty register slots should've been found in the above attempt");
+			let reg = simplify::lines_till_last_use(&unwrapped_register, scope, pos);
 			(idx, reg)
 		})
 		.min_by(|&lhs, &rhs| match (lhs.1, rhs.1) {
@@ -1241,7 +1242,7 @@ fn handle_single_block(
 						Register::GeneralPurpose(idx) => {
 							// Save it if it's used AND will be used again
 							if let Some(src) = &state.registers[idx] {
-								if src.lines_till_last_use(scope, pos).is_some() {
+								if simplify::lines_till_last_use(src, scope, pos).is_some() {
 									log::trace!("Saving {src:?}");
 									save_on_stack(
 										&mut state.registers,
@@ -1302,7 +1303,8 @@ fn handle_single_block(
 				let ret_reg = config.return_register as usize;
 				let value_in_return_slot = &state.registers[ret_reg];
 				if let Some(val) = value_in_return_slot {
-					if val.lines_till_last_use(scope, pos).is_some() {
+					if simplify::lines_till_last_use(val, scope, pos).is_some()
+					{
 						log::trace!("Saving value that was in return slot: {val:?}");
 						save_on_stack(
 							&mut state.registers,
