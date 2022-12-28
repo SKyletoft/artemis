@@ -37,6 +37,7 @@ pub enum Error {
 	UnknownStructField(u32),
 	NotAStructType(u32),
 	TODONotYetSupportedPatternMatch(u32),
+	InternalNonNameDot(u32),
 }
 
 impl fmt::Display for Error {
