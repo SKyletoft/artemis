@@ -32,6 +32,8 @@ Formatter
 Linker
 GC
 	Handle pointers to mid-array
+	Generational (= Having two heaps, one proper one and a bump-allocated one. Move stuff to the proper heap when it's survived a number of bump collections)
+	Prefetching memory?
 
 JS backend?
 
