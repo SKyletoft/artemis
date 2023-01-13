@@ -348,7 +348,7 @@ impl TryFrom<Pair<'_, Rule>> for StructFieldPattern {
 		assert_eq!(pair.as_rule(), Rule::struct_field_pattern);
 		let inner = pair.into_inner().collect::<SmallVec<[_; 2]>>();
 		let res = match inner.as_slice() {
-			[label, name, pattern] => todo!(),
+			[_label, _name, _pattern] => todo!(),
 			[label, name] if name.as_rule() == Rule::var_name => {
 				let label = Some(label.as_str().into());
 				let name = name.as_str().into();
