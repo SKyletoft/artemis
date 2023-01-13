@@ -1,6 +1,6 @@
 use std::{error, fmt};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Error {
 	WrongRegisterType(u32),
 	UnconvertedBlock(u32),

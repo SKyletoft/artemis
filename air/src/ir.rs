@@ -83,7 +83,7 @@ impl BlockId {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Context {
 	pub variables: HashMap<SmallString, Source>,
 	pub next_register: Register,
@@ -97,7 +97,7 @@ impl Context {
 	}
 }
 
-#[derive(Clone, PartialEq, Variantly)]
+#[derive(Clone, PartialEq, Eq, Variantly)]
 pub enum BlockEnd {
 	#[variantly(rename = "ret")]
 	Return(Source),
@@ -121,7 +121,7 @@ impl Default for BlockEnd {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Block {
 	pub intro: SmallVec<[PhiNode; 2]>, // Hardcoded 2 because I think this might be able to be an array or just 2 values, but I'm not 100% yet
 	pub block: SmallVec<[SimpleExpression; 4]>,
@@ -149,7 +149,7 @@ impl fmt::Display for Source {
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SimpleOp {
 	Add,
 	Sub,
@@ -201,7 +201,7 @@ impl SimpleOp {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleBinOp {
 	pub target: Register,
 	pub op: SimpleOp,
@@ -217,21 +217,21 @@ impl SimpleBinOp {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleUnOp {
 	pub target: Register,
 	pub op: SimpleOp,
 	pub lhs: Source,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleFunctionCall {
 	pub target: Register,
 	pub function: SmallString,
 	pub args: SmallVec<[Source; 4]>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum SimpleExpression {
 	BinOp(SimpleBinOp),
 	UnOp(SimpleUnOp),
@@ -269,7 +269,7 @@ impl SimpleExpression {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SSAConstruct {
 	Function {
 		name: SmallString,

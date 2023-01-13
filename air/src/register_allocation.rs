@@ -76,7 +76,7 @@ impl Default for Configuration {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodeConstruct {
 	Function {
 		name: SmallString,
@@ -186,13 +186,13 @@ impl From<&SimpleOp> for Op {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
 	pub block: SmallVec<[Expression; 4]>,
 	pub out: BlockEnd,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BinOp {
 	pub target: Register,
 	pub op: Op,
@@ -200,20 +200,20 @@ pub struct BinOp {
 	pub rhs: Register,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnOp {
 	pub target: Register,
 	pub op: Op,
 	pub lhs: Register,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionCall {
 	pub function_name: SmallString,
 	pub args: usize,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Expression {
 	BinOp(BinOp),
 	UnOp(UnOp),
@@ -221,7 +221,7 @@ pub enum Expression {
 }
 
 /// `Vec<Option<Source>>`
-#[derive(Debug, Clone, PartialEq, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 #[deref(forward)]
 #[repr(transparent)]
 pub struct RegisterSet(Vec<Option<Source>>);
@@ -315,7 +315,7 @@ impl fmt::Debug for Expression {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Variantly)]
+#[derive(Clone, Copy, PartialEq, Eq, Variantly)]
 pub enum BlockEnd {
 	#[variantly(rename = "ret")]
 	Return(Register),
