@@ -287,7 +287,7 @@ impl Check for MatchExpr {
 
 	fn check(self, ctx: &mut Context) -> Result<(MatchExpr2, EnumType2)> {
 		let MatchExpr { expr, cases } = self;
-		let (expr, e_typ) = expr.check(ctx)?;
+		let (expr, _) = expr.check(ctx)?;
 
 		let case_typ_pairs = cases
 			.into_iter()
@@ -307,7 +307,7 @@ impl Check for MatchExpr {
 impl Check for Case {
 	type Output = Case2;
 
-	fn check(self, ctx: &mut Context) -> Result<(Case2, EnumType2)> {
+	fn check(self, _ctx: &mut Context) -> Result<(Case2, EnumType2)> {
 		todo!()
 	}
 }

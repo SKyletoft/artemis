@@ -320,7 +320,7 @@ fn flatten_pattern(
 	let Pattern {
 		label,
 		inner,
-		irrefutable,
+		irrefutable: _,
 	} = pat;
 	let mut names = SmallVec::new();
 	let mut types = Vec::new();
@@ -353,13 +353,13 @@ fn flatten_pattern(
 				bail!(Error::TODONotYetSupportedPatternMatch(line!()));
 			}
 
-			let (all_fields, id) = matchable_types.remove(0);
+			let (all_fields, _id) = matchable_types.remove(0);
 
 			for (
 				idx,
 				StructFieldPattern {
 					label: field_label,
-					name,
+					name: _,
 					pattern,
 				},
 				field_type,
