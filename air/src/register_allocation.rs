@@ -1087,7 +1087,7 @@ fn merge_registers(
 			l
 		}
 		// Left is available, right is not, go for left
-		(Some(l), true, None, _) => {
+		(Some(_l), true, None, _) => {
 			// load @ left, -> left
 			todo!()
 		}
@@ -1105,7 +1105,7 @@ fn merge_registers(
 			r
 		}
 		// Right is available and free, left is not, go for right
-		(None, _, Some(r), true) => {
+		(None, _, Some(_r), true) => {
 			// load @ right, -> right
 			todo!()
 		}

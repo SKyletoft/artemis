@@ -129,6 +129,6 @@ pub fn lines_till_last_use(
 	res
 }
 
-pub fn validate_ir(construct: &SSAConstruct) -> Result<()> {
+pub fn validate_ir(_construct: &SSAConstruct) -> Result<()> {
 	todo!()
 }
