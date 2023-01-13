@@ -184,7 +184,7 @@ impl fmt::Display for InnerPattern {
 				}
 				write!(f, "}}")
 			}
-			InnerPattern::TuplePattern(t) => write!(f, "(tuple)"),
+			InnerPattern::TuplePattern(t) => write!(f, "(tuple {t:#?})"),
 			InnerPattern::Float(d) => write!(f, "{d}"),
 			InnerPattern::Integer(i) => write!(f, "{i}"),
 			InnerPattern::Boolean(b) => write!(f, "{b}"),
@@ -320,7 +320,7 @@ impl fmt::Display for RawTerm {
 			RawTerm::String(_) => todo!(),
 			RawTerm::Char(_) => todo!(),
 			RawTerm::Unit => write!(f, "()"),
-			RawTerm::Tuple(t) => write!(f, "(tuple)"),
+			RawTerm::Tuple(t) => write!(f, "(tuple {t:#?})"),
 			RawTerm::StructLiteral(StructLiteral(s)) => {
 				write!(f, "{{")?;
 				match s.as_slice() {
