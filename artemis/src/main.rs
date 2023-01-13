@@ -7,7 +7,7 @@ use std::{
 
 use air::{
 	js,
-	register_allocation::{self, Configuration},
+	register_allocation,
 	x86_64,
 };
 use anyhow::{bail, Result};

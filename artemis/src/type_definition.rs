@@ -1,13 +1,12 @@
 use std::{
 	collections::{hash_map::DefaultHasher, HashMap},
 	fmt,
-	hash::{Hash, Hasher, SipHasher},
+	hash::{Hash, Hasher},
 	rc::Rc,
 };
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use derive_more::From;
-use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
 use variantly::Variantly;
 

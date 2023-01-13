@@ -1,15 +1,14 @@
-use std::{collections::HashMap, f64::EPSILON, rc::Rc};
+use std::rc::Rc;
 
 use anyhow::{bail, Result};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
 	ast::{
-		self, ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Case,
-		Declaration, EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr,
-		InnerPattern, MatchExpr, PartialApplication, Pattern, RawTerm, RawType,
-		StructField, StructFieldLiteral, StructFieldPattern, StructLiteral, StructPattern,
-		Term, TypeAlias,
+		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Case, Declaration,
+		Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
+		PartialApplication, Pattern, RawTerm, StructFieldLiteral, StructFieldPattern,
+		StructLiteral, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,

@@ -1,11 +1,10 @@
-use anyhow::{bail, Result};
-use once_cell::sync::Lazy;
-use smallvec::{smallvec, SmallVec};
+use anyhow::Result;
+use smallvec::SmallVec;
 use variantly::Variantly;
 
 use crate::{
 	ast::{BinaryOperator, UnaryOperator},
-	type_definition::{ActualType2, EnumType2, RawType2, Type2},
+	type_definition::{ActualType2, EnumType2, RawType2},
 };
 
 type SmallString = smallstr::SmallString<[u8; 16]>;

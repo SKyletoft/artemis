@@ -1,20 +1,17 @@
 use anyhow::{bail, Result};
-use once_cell::sync::Lazy;
 use smallvec::{smallvec, SmallVec};
-use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
 use crate::{
 	ast::{
-		BinaryOperator, InnerPattern, Pattern, StructFieldLiteral, StructFieldPattern,
-		StructPattern, TuplePattern, UnaryOperator,
+		BinaryOperator, InnerPattern, Pattern, StructFieldPattern, StructPattern,
+		TuplePattern,
 	},
 	ast2::{
 		self, Argument, Assignment as Ast2Assignment, Declaration as Ast2Declaration,
 		Expr as Ast2Expr, FunctionCall as Ast2FunctionCall,
 		FunctionDefinition as Ast2FunctionDefinition,
-		PartialApplication as Ast2PartialApplication,
 		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
 		Term as Ast2Term,
 	},
@@ -23,8 +20,7 @@ use crate::{
 		TopLevelConstruct, Type, UnOp,
 	},
 	error::Error,
-	split_vec,
-	type_definition::{ActualType2, Context, RawType2, StructField2, StructType2, Type2},
+	type_definition::{Context, RawType2, StructField2, StructType2, Type2},
 };
 
 pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
