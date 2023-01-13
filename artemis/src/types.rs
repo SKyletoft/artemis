@@ -25,8 +25,6 @@ use crate::{
 	},
 };
 
-type SmallString = smallstr::SmallString<[u8; 16]>;
-
 trait Check
 where
 	Self: Sized,
