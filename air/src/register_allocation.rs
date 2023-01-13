@@ -1346,7 +1346,7 @@ fn handle_single_block(
 			)?;
 			BlockEnd::Return(condition)
 		}
-		SimpleBlockEnd::One(o) => BlockEnd::One(o.clone()),
+		SimpleBlockEnd::One(o) => BlockEnd::One(*o),
 		SimpleBlockEnd::Two(target, l, r) => {
 			let condition = get_or_load_condition(
 				target.clone(),
