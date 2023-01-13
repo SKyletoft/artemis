@@ -3,8 +3,6 @@ use std::collections::HashSet;
 use anyhow::{bail, Result};
 use GeneralPurposeRegister::*;
 
-type SmallString = smallstr::SmallString<[u8; 16]>;
-
 use crate::{
 	error::Error,
 	ir::BlockId,

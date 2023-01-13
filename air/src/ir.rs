@@ -1,5 +1,4 @@
 use std::{
-	cmp::Ordering,
 	collections::HashMap,
 	fmt::{self, Write},
 };

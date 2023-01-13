@@ -7,8 +7,6 @@ use crate::ir::{
 	SimpleFunctionCall, SimpleUnOp, Source,
 };
 
-type SmallString = smallstr::SmallString<[u8; 16]>;
-
 #[deprecated]
 pub fn has_been_used_for_the_last_time(
 	s: &Source,
