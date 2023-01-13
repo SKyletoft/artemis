@@ -76,6 +76,7 @@ struct Config {
 	files: Vec<PathBuf>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Paths {
 	mold: String,
 	musl_x86: String,
