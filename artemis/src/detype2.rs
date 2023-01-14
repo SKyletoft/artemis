@@ -66,7 +66,6 @@ impl Detype for Ast2Expr {
 				right,
 				op: BinaryOperator::Dot,
 			} => {
-				dbg!(&left, &right);
 				let (lhs, l_type) = left.detype(ctx)?;
 
 				let Ast2Expr::Leaf(r_box) = right.as_ref() else {
@@ -76,9 +75,29 @@ impl Detype for Ast2Expr {
 					bail!(Error::InternalNonNameDot(line!()))
 				};
 
-				let left_type = todo!();
+				let left_type = match l_type.0.as_slice() {
+					[RawType2::StructType(StructType2(fields))] => fields,
+					_ => bail!(Error::TODOAccessFieldOnEnum(line!())),
+				};
 
-				todo!()
+				let field_idx = left_type
+					.iter()
+					.position(|f| &f.name == name)
+					.ok_or(Error::Internal(line!()))?;
+				let typ = left_type[field_idx].type_name.clone();
+
+				let res = Expr::Term(Term::UnOp(UnOp {
+					op: Op::LoadConst,
+					rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+						lhs: Box::new(lhs),
+						op: Op::Plus,
+						rhs: Box::new(Expr::Term(Term::Literal(
+							field_idx as u64,
+						))),
+					}))),
+				}));
+
+				(res, typ)
 			}
 			Ast2Expr::BinOp { left, right, op } => {
 				let (lhs, l_type) = left.detype(ctx)?;

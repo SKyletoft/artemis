@@ -38,6 +38,7 @@ pub enum Error {
 	NotAStructType(u32),
 	TODONotYetSupportedPatternMatch(u32),
 	InternalNonNameDot(u32),
+	TODOAccessFieldOnEnum(u32),
 }
 
 impl fmt::Display for Error {
