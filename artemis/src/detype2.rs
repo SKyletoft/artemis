@@ -20,7 +20,7 @@ use crate::{
 		TopLevelConstruct, Type, UnOp,
 	},
 	error::Error,
-	type_definition::{Context, RawType2, StructField2, StructType2, Type2},
+	type_definition::{Context, EnumType2, RawType2, StructField2, StructType2, Type2},
 };
 
 pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
@@ -37,7 +37,7 @@ pub fn detype_program(block: Vec<Ast2Expr>) -> Result<Vec<TopLevelConstruct>> {
 trait Detype {
 	type Output;
 
-	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)>;
+	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, EnumType2)>;
 }
 
 impl TryFrom<Expr> for TopLevelConstruct {
@@ -59,7 +59,7 @@ impl TryFrom<Expr> for TopLevelConstruct {
 impl Detype for Ast2Expr {
 	type Output = Expr;
 
-	fn detype(self, ctx: &mut Context) -> Result<(Expr, Type)> {
+	fn detype(self, ctx: &mut Context) -> Result<(Expr, EnumType2)> {
 		let res = match self {
 			Ast2Expr::BinOp {
 				left,
@@ -84,29 +84,29 @@ impl Detype for Ast2Expr {
 				let (lhs, l_type) = left.detype(ctx)?;
 				let (rhs, r_type) = right.detype(ctx)?;
 				if l_type != r_type {
-					if (l_type == Type::Floating) ^ (r_type == Type::Floating) {
-						bail!(Error::InternalMismatchedTypes(line!()));
-					} else {
-						log::trace!("Type issue with mixed signedness");
-					}
+					bail!(Error::InternalMismatchedTypes(line!()));
 				}
-				let op = Op::from((op, l_type));
+				let typ =
+					l_type.get_only().ok_or(Error::MismatchedTypes(line!()))?;
+
+				let op = Op::from((op, typ));
 				let res = Expr::Term(Term::BinOp(BinOp {
 					lhs: Box::new(lhs),
 					op,
 					rhs: Box::new(rhs),
 				}));
 
-				(res, l_type)
+				(res, typ.into())
 			}
 			Ast2Expr::UnOp { op, right } => {
 				let (rhs, typ) = right.detype(ctx)?;
+				let typ = typ.get_only().ok_or(Error::MismatchedTypes(line!()))?;
 				let op = Op::from((op, typ));
 				let res = Expr::Term(Term::UnOp(UnOp {
 					op,
 					rhs: Box::new(rhs),
 				}));
-				(res, typ)
+				(res, typ.into())
 			}
 			Ast2Expr::Leaf(leaf) => {
 				let (res, typ) = leaf.detype(ctx)?;
@@ -120,15 +120,15 @@ impl Detype for Ast2Expr {
 impl Detype for Ast2Term {
 	type Output = Term;
 
-	fn detype(self, ctx: &mut Context) -> Result<(Term, Type)> {
-		let res = match self {
-			Ast2Term::TypeValue(t) => (Term::Literal(t), Type::Unsigned),
-			Ast2Term::Float(f) => (Term::Literal(f.to_bits()), Type::Floating),
-			Ast2Term::Integer(i) => (Term::Literal(i as u64), Default::default()),
-			Ast2Term::Boolean(b) => (Term::Literal(b as u64), Type::Unsigned),
+	fn detype(self, ctx: &mut Context) -> Result<(Term, EnumType2)> {
+		let res: (Term, EnumType2) = match self {
+			Ast2Term::TypeValue(t) => (Term::Literal(t), RawType2::Natural.into()),
+			Ast2Term::Float(f) => (Term::Literal(f.to_bits()), RawType2::Real.into()),
+			Ast2Term::Integer(i) => (Term::Literal(i as u64), RawType2::Integer.into()),
+			Ast2Term::Boolean(b) => (Term::Literal(b as u64), RawType2::Natural.into()),
 			Ast2Term::String(_) => todo!(),
 			Ast2Term::Char(_) => todo!(),
-			Ast2Term::Unit => (Term::Unit, Type::Unsigned),
+			Ast2Term::Unit => (Term::Unit, RawType2::Unit.into()),
 			Ast2Term::Tuple(_) => todo!(),
 			Ast2Term::StructLiteral(s) => s.detype(ctx)?,
 			Ast2Term::Block(ast2::Block(b)) => {
@@ -139,7 +139,7 @@ impl Detype for Ast2Term {
 					.collect::<Result<Vec<_>>>()?
 					.into_iter()
 					.fold(
-						(Vec::with_capacity(len), Type::Unsigned),
+						(Vec::with_capacity(len), RawType2::Unit.into()),
 						|(mut acc, _), (curr, typ)| {
 							acc.push(curr);
 							(acc, typ)
@@ -199,7 +199,7 @@ impl Detype for Ast2Term {
 								function_name,
 								arguments,
 							}),
-							function_ret_type.into(),
+							function_ret_type.clone(),
 						)
 					}
 					None => todo!(),
@@ -252,13 +252,12 @@ impl Detype for Ast2Term {
 				}
 
 				let arguments = args.into_iter().map(|arg| arg.name).collect();
-				let (expr, _) = expr.detype(&mut inner_ctx)?;
+				let (expr, typ) = expr.detype(&mut inner_ctx)?;
 				let f = Function {
 					name,
 					arguments,
 					expr,
 				};
-				let typ = Type::Unsigned;
 				(Term::Expr(Box::new(Expr::Function(Box::new(f)))), typ)
 			}
 			Ast2Term::VarName(n) => {
@@ -269,7 +268,9 @@ impl Detype for Ast2Term {
 						log::trace!("{n:#?}\n{ctx:#?}");
 						Error::InternalCheckedUndefinedVariable(line!())
 					})?
-					.into();
+					.inner_ref()
+					.enum_type
+					.clone();
 				(Term::Variable(n), typ)
 			}
 		};
@@ -280,7 +281,7 @@ impl Detype for Ast2Term {
 impl Detype for StructLiteral2 {
 	type Output = Term;
 
-	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, Type)> {
+	fn detype(self, ctx: &mut Context) -> Result<(Self::Output, EnumType2)> {
 		let StructLiteral2(mut fields) = self;
 		fields.sort_by(|a, b| a.name.cmp(&b.name)); // Sort by key has a lifetime issue?
 
@@ -291,9 +292,10 @@ impl Detype for StructLiteral2 {
 				arguments: vec![Expr::Term(Term::Literal(fields.len() as u64 * 8))],
 			}))],
 		})];
+		let mut typ = Vec::new();
 
-		for (idx, StructFieldLiteral2 { expr, .. }) in fields.into_iter().enumerate() {
-			let (e, _) = expr.detype(ctx)?;
+		for (idx, StructFieldLiteral2 { expr, name }) in fields.into_iter().enumerate() {
+			let (e, type_name) = expr.detype(ctx)?;
 			ops.push(Expr::Term(Term::BinOp(BinOp {
 				lhs: Box::new(Expr::Term(Term::BinOp(BinOp {
 					lhs: Box::new(Expr::Term(Term::Variable("_tmp".into()))),
@@ -303,11 +305,15 @@ impl Detype for StructLiteral2 {
 				op: Op::StoreExclusive,
 				rhs: Box::new(e),
 			})));
+			typ.push(StructField2 { name, type_name });
 		}
 
 		ops.push(Expr::Term(Term::Variable("_tmp".into())));
 
-		Ok((Term::Block(ops), Type::default()))
+		Ok((
+			Term::Block(ops),
+			RawType2::StructType(StructType2(typ)).into(),
+		))
 	}
 }
 

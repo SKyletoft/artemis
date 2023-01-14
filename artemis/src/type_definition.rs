@@ -403,6 +403,12 @@ impl fmt::Display for EnumType2 {
 	}
 }
 
+impl From<&RawType2> for EnumType2 {
+	fn from(r: &RawType2) -> Self {
+		r.clone().into()
+	}
+}
+
 impl From<RawType2> for EnumType2 {
 	fn from(r: RawType2) -> Self {
 		EnumType2(smallvec![r])
