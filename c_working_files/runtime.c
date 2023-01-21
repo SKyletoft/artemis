@@ -25,8 +25,9 @@ int64_t print_z(int64_t a) {
 	return printf("%ld\n", a);
 }
 
-int64_t print_r(double a) {
-	return printf("%lf\n", a);
+int64_t print_r(int64_t a) {
+	double d = *(double*) &a;
+	return printf("%lf\n", d);
 }
 
 int64_t print_b(int64_t a) {
