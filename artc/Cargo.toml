@@ -1,0 +1,18 @@
+[package]
+name = "artc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+air_interface= { path = "../air_interface" }
+air= { path = "../air" }
+artemis = { path = "../artemis" }
+
+clap = { version = "3.2", features = [ "derive" ] }
+log = "0.4"
+simple_logger = { version = "2.1", default-features = false, features = [ "colors" ] }
+anyhow = "1.0"
+pest = "2.4"
+pest_derive = "2.4"

@@ -1,2 +1,2 @@
 [workspace]
-members = [ "artemis", "air" , "gc", "air_interface"]
+members = [ "artemis", "air" , "gc", "air_interface", "artc"]

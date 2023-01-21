@@ -4,15 +4,10 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 
-[[bin]]
-name = "artemis"
-path = "src/main.rs"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 air_interface= { path = "../air_interface" }
-air= { path = "../air" }
 
 rayon = "1.5"
 variantly = "0.2"
@@ -24,8 +19,6 @@ once_cell = "1.10"
 pest = "2.4"
 pest_derive = "2.4"
 log = "0.4"
-simple_logger = { version = "2.1", default-features = false, features = [ "colors" ] }
 backtrace = "0.3"
 derive_more = "0.99"
-clap = { version = "3.2", features = [ "derive" ] }
 itertools = "0.10"
