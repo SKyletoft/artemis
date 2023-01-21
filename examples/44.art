@@ -4,7 +4,7 @@ Foo := {a: ℕ, b: ℝ}
 	foo : Foo = {a: 1, b: 2.0}
 	bar := foo
 	baz @ {a2 @ a, b2 @ b} := bar
-	n @ 2! : ℕ = 2
+	n @ 3! : ℕ = 3
 
 	print_n(a2)
 	print_r(b2)
