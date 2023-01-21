@@ -2,7 +2,7 @@ use std::{mem, slice};
 
 use air::ir::{
 	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
-	SimpleExpression, SimpleFunctionCall, SimpleOp, Source,
+	SimpleExpression, SimpleFunctionCall, SimpleOp, Source, SimpleUnOp,
 };
 use anyhow::{bail, Result};
 use rayon::prelude::*;
@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 use crate::{
 	detype2_types::{
 		BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
-		TopLevelConstruct,
+		TopLevelConstruct, UnOp,
 	},
 	error::Error,
 };
@@ -61,7 +61,7 @@ pub fn simplify_term(
 				Op::And => SimpleOp::And,
 				Op::Or => SimpleOp::Or,
 				Op::Xor => SimpleOp::Xor,
-				Op::Dot => todo!("Structs aren't implemented yet"),
+				// Op::Dot => todo!("Structs aren't implemented yet"),
 				Op::Delta | Op::FDelta | Op::Exp | Op::FExp | Op::Not => {
 					unreachable!("Separate cases above")
 				}

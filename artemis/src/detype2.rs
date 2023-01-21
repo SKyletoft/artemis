@@ -396,10 +396,15 @@ fn flatten_pattern(
 						.map(|x| (idx, x, type_name))
 				},
 			) {
-				let e = Expr::Term(Term::BinOp(BinOp {
-					lhs: Box::new(expr.clone()),
-					op: Op::Dot,
-					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
+				let e = Expr::Term(Term::UnOp(UnOp {
+					op: Op::LoadConst,
+					rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+						lhs: Box::new(expr.clone()),
+						op: Op::Plus,
+						rhs: Box::new(Expr::Term(Term::Literal(
+							idx as u64,
+						))),
+					}))),
 				}));
 				match (field_label, pattern) {
 					(None, None) => todo!(),
@@ -416,10 +421,15 @@ fn flatten_pattern(
 		InnerPattern::TuplePattern(TuplePattern(fields)) => {
 			// TODO: Am I even handling non-labelled fields properly?
 			for (idx, pattern) in fields.iter().enumerate() {
-				let e = Expr::Term(Term::BinOp(BinOp {
-					lhs: Box::new(expr.clone()),
-					op: Op::Dot,
-					rhs: Box::new(Expr::Term(Term::Literal(idx as u64))),
+				let e = Expr::Term(Term::UnOp(UnOp {
+					op: Op::LoadConst,
+					rhs: Box::new(Expr::Term(Term::BinOp(BinOp {
+						lhs: Box::new(expr.clone()),
+						op: Op::Plus,
+						rhs: Box::new(Expr::Term(Term::Literal(
+							idx as u64,
+						))),
+					}))),
 				}));
 
 				let (mut inner_names, mut inner_types, mut inner_exprs) =
