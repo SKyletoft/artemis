@@ -2,7 +2,7 @@ use std::{mem, slice};
 
 use air_interface::{
 	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
-	SimpleExpression, SimpleFunctionCall, SimpleOp, Source, SimpleUnOp,
+	SimpleExpression, SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
 };
 use anyhow::{bail, Result};
 use rayon::prelude::*;
@@ -74,7 +74,7 @@ pub fn simplify_term(
 			};
 			current.block.push(SimpleExpression::UnOp(this));
 			Source::Register(target)
-		},
+		}
 		Term::BinOp(BinOp { op: Op::Not, .. }) => {
 			log::error!("Internal [{}]: Not as binop", line!());
 			bail!(Error::Internal(line!()));

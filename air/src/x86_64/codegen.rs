@@ -245,7 +245,7 @@ fn assemble_block(
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
 				op,
-				rhs
+				rhs,
 			}) => match op {
 				Op::Add => todo!(),
 				Op::Sub => todo!(),

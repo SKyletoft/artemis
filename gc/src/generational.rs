@@ -34,12 +34,8 @@ extern "C" fn alloc(size: usize) -> *mut usize {
 fn allocate(size: usize, stack_end: usize) -> *mut usize {
 	let (bump, idx) = unsafe { (&SHORT_HEAP, SHORT_INDEX) };
 	if idx == SHORT_HEAP_SIZE {
-		let stack = unsafe {
-			slice::from_raw_parts(
-				STACK_START as _,
-				stack_end - STACK_START
-			)
-		};
+		let stack =
+			unsafe { slice::from_raw_parts(STACK_START as _, stack_end - STACK_START) };
 		clear_bump_heap(stack);
 	}
 
@@ -51,9 +47,8 @@ fn allocate(size: usize, stack_end: usize) -> *mut usize {
 }
 
 fn clear_bump_heap(stack: &[usize]) {
-	let bump: HashSet<usize> = unsafe {
-		SHORT_HEAP.as_slice().iter().map(|x| *x.get()).collect()
-	};
+	let bump: HashSet<usize> =
+		unsafe { SHORT_HEAP.as_slice().iter().map(|x| *x.get()).collect() };
 
 	let survivors: Vec<_> = stack
 		.iter()
