@@ -208,7 +208,7 @@ pub struct BinOp {
 pub struct UnOp {
 	pub target: Register,
 	pub op: Op,
-	pub lhs: Register,
+	pub rhs: Register,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -297,18 +297,22 @@ impl fmt::Debug for Expression {
 			Expression::UnOp(UnOp {
 				target,
 				op: Op::StoreMem,
-				lhs,
+				rhs: lhs,
 			}) => {
 				write!(f, "{target} → {lhs}")
 			}
 			Expression::UnOp(UnOp {
 				target,
 				op: Op::Swap,
-				lhs,
+				rhs: lhs,
 			}) => {
 				write!(f, "{target} {} {lhs}", Op::Swap)
 			}
-			Expression::UnOp(UnOp { target, op, lhs }) => {
+			Expression::UnOp(UnOp {
+				target,
+				op,
+				rhs: lhs,
+			}) => {
 				write!(f, "{target} ← {op} {lhs}")
 			}
 			Expression::FunctionCall(FunctionCall {
@@ -610,7 +614,7 @@ fn switch_or_load_value(
 		let swap = Expression::UnOp(UnOp {
 			target: Register::GeneralPurpose(target_position),
 			op: Op::Swap,
-			lhs: Register::GeneralPurpose(idx),
+			rhs: Register::GeneralPurpose(idx),
 		});
 		block.push(swap);
 	} else {
@@ -636,7 +640,7 @@ fn load_value(
 		Source::Value(v) => Expression::UnOp(UnOp {
 			target: register,
 			op: Op::LoadMem,
-			lhs: Register::Literal(v),
+			rhs: Register::Literal(v),
 		}),
 		Source::Register(r) => {
 			let stack_position = stack
@@ -991,7 +995,7 @@ fn merge_moved(
 		block.push(Expression::UnOp(UnOp {
 			target: Register::GeneralPurpose(idx),
 			op: Op::Swap,
-			lhs: Register::GeneralPurpose(right_idx),
+			rhs: Register::GeneralPurpose(right_idx),
 		}));
 		right.swap(idx, right_idx);
 		assert!(state[idx].is_none());
@@ -1036,7 +1040,7 @@ fn load_value_to_branch(
 			block.push(Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(idx),
 				op: Op::LoadMem,
-				lhs: Register::Literal(*v),
+				rhs: Register::Literal(*v),
 			}));
 		}
 		Source::Register(_) => {
@@ -1085,7 +1089,7 @@ fn merge_registers(
 				right_end_block.push(Expression::UnOp(UnOp {
 					target: Register::GeneralPurpose(l),
 					op: Op::Swap,
-					lhs: Register::GeneralPurpose(r),
+					rhs: Register::GeneralPurpose(r),
 				}));
 			}
 			l
@@ -1103,7 +1107,7 @@ fn merge_registers(
 				left_end_block.push(Expression::UnOp(UnOp {
 					target: Register::GeneralPurpose(r),
 					op: Op::Swap,
-					lhs: Register::GeneralPurpose(l),
+					rhs: Register::GeneralPurpose(l),
 				}));
 			}
 			r

@@ -117,9 +117,9 @@ fn find_used_registers(blocks: &[Block]) -> HashSet<GeneralPurposeRegister> {
 	for block in blocks.iter() {
 		for line in block.block.iter() {
 			match line {
-				Expression::UnOp(UnOp { target, lhs, .. }) => {
+				Expression::UnOp(UnOp { target, rhs, .. }) => {
 					add_to_set(*target);
-					add_to_set(*lhs);
+					add_to_set(*rhs);
 				}
 				Expression::BinOp(BinOp {
 					target, lhs, rhs, ..
@@ -245,7 +245,7 @@ fn assemble_block(
 			&Expression::UnOp(UnOp {
 				target: Register::GeneralPurpose(t),
 				op,
-				lhs,
+				rhs
 			}) => match op {
 				Op::Add => todo!(),
 				Op::Sub => todo!(),
@@ -263,7 +263,7 @@ fn assemble_block(
 				Op::Xor => todo!(),
 				Op::Not => todo!(),
 				Op::StoreMem => todo!(),
-				Op::LoadMem => match lhs {
+				Op::LoadMem => match rhs {
 					Register::Literal(v) => assembler.mov_lit(GP[t], v),
 					Register::GeneralPurpose(v) => assembler.mov(GP[t], GP[v]),
 					Register::StackPointer => assembler.mov(GP[t], RSP),
@@ -275,7 +275,7 @@ fn assemble_block(
 				Op::Move => todo!(),
 				Op::Swap => assembler.xchg(
 					GP[t],
-					GP[lhs.general_purpose()
+					GP[rhs.general_purpose()
 						.ok_or(Error::InvalidIR(line!()))?],
 				),
 			},
