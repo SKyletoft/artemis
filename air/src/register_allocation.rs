@@ -12,7 +12,7 @@ use crate::{
 	ir::{
 		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
 		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
-		SimpleFunctionCall, SimpleOp, Source,
+		SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
 	},
 	simplify,
 };
@@ -1199,7 +1199,33 @@ fn handle_single_block(
 
 				new_block.block.push(expr);
 			}
-			SimpleExpression::UnOp(_) => todo!(),
+			SimpleExpression::UnOp(SimpleUnOp { target, op, rhs })
+				if !op.is_floating_point() =>
+			{
+				let lhs_rhs = [rhs.clone()];
+				let rhs_register = get_or_load_and_get_value(
+					rhs.clone(),
+					state,
+					pos,
+					&mut new_block,
+					scope,
+					&lhs_rhs,
+				);
+
+				let target_register =
+					select_and_save_old(pos, state, scope, &mut new_block)?;
+
+				let expr = Expression::UnOp(UnOp {
+					target: target_register,
+					op: op.into(),
+					rhs: rhs_register,
+				});
+
+				state.registers[target_register.general_purpose().unwrap()] =
+					Some(Source::Register(*target));
+
+				new_block.block.push(expr);
+			}
 			SimpleExpression::FunctionCall(SimpleFunctionCall {
 				target,
 				function,
