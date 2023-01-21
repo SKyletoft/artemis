@@ -76,7 +76,6 @@ name = "artc"
 version = "0.1.0"
 dependencies = [
  "air",
- "air_interface",
  "anyhow",
  "artemis",
  "clap",
