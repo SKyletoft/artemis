@@ -165,6 +165,10 @@ pub enum SimpleOp {
 	Or,
 	Xor,
 	Not,
+	LoadMut,
+	LoadConst,
+	StoreExclusive,
+	StoreVolatile,
 }
 
 impl fmt::Display for SimpleOp {
@@ -185,6 +189,10 @@ impl fmt::Display for SimpleOp {
 			SimpleOp::Or => write!(f, "V"),
 			SimpleOp::Xor => write!(f, "⊕"),
 			SimpleOp::Not => write!(f, "¬"),
+			SimpleOp::LoadMut => write!(f, "LM"),
+			SimpleOp::LoadConst => write!(f, "LC"),
+			SimpleOp::StoreExclusive => write!(f, "SE"),
+			SimpleOp::StoreVolatile => write!(f, "SV"),
 		}
 	}
 }

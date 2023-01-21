@@ -137,6 +137,10 @@ fn assemble_expression(expr: &SimpleExpression) -> String {
 				SimpleOp::Abs | SimpleOp::FAbs | SimpleOp::Not => {
 					panic!("Invalid IR")
 				}
+				SimpleOp::LoadMut
+				| SimpleOp::LoadConst
+				| SimpleOp::StoreExclusive
+				| SimpleOp::StoreVolatile => todo!("Memory support"),
 			}
 		}
 		SimpleExpression::FunctionCall(SimpleFunctionCall {

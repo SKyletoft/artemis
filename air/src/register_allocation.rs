@@ -182,6 +182,10 @@ impl From<&SimpleOp> for Op {
 			SimpleOp::Or => Op::Or,
 			SimpleOp::Xor => Op::Xor,
 			SimpleOp::Not => Op::Not,
+			SimpleOp::LoadMut => Op::LoadMem,
+			SimpleOp::LoadConst => Op::LoadMem,
+			SimpleOp::StoreExclusive => Op::StoreMem,
+			SimpleOp::StoreVolatile => Op::StoreMem,
 		}
 	}
 }
