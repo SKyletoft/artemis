@@ -24,7 +24,58 @@ pub fn simplify_term(
 ) -> Result<Source> {
 	let res = match term {
 		Term::Expr(expr) => simplify_expr(expr, current, blocks, ctx)?,
-		Term::UnOp(..) => todo!("unops"),
+		Term::UnOp(UnOp { op, rhs }) => {
+			dbg!(op, rhs);
+			let right = simplify_expr(rhs.as_ref(), current, blocks, ctx)?;
+			let target = ctx.next_register();
+			let simple_operator = match op {
+				Op::Plus => SimpleOp::Add,
+				Op::FPlus => SimpleOp::FAdd,
+				Op::Minus => SimpleOp::Sub,
+				Op::FMinus => SimpleOp::FSub,
+				Op::Times => SimpleOp::Mul,
+				Op::FTimes => SimpleOp::FMul,
+				Op::Div => SimpleOp::Div,
+				Op::UDiv => SimpleOp::UDiv,
+				Op::FDiv => SimpleOp::FDiv,
+				Op::And => SimpleOp::And,
+				Op::Or => SimpleOp::Or,
+				Op::Xor => SimpleOp::Xor,
+				// Op::Dot => todo!("Structs aren't implemented yet"),
+				Op::Delta | Op::FDelta | Op::Exp | Op::FExp | Op::Not => {
+					unreachable!("Separate cases above")
+				}
+
+				Op::GT => todo!(),
+				Op::FGT => todo!(),
+				Op::UGT => todo!(),
+				Op::GTE => todo!(),
+				Op::FGTE => todo!(),
+				Op::UGTE => todo!(),
+				Op::LT => todo!(),
+				Op::FLT => todo!(),
+				Op::ULT => todo!(),
+				Op::LTE => todo!(),
+				Op::FLTE => todo!(),
+				Op::ULTE => todo!(),
+				Op::Eq => todo!(),
+				Op::FEq => todo!(),
+				Op::Neq => todo!(),
+				Op::FNeq => todo!(),
+
+				Op::LoadMut => SimpleOp::LoadMut,
+				Op::LoadConst => SimpleOp::LoadConst,
+				Op::StoreExclusive => SimpleOp::StoreExclusive,
+				Op::StoreVolatile => SimpleOp::StoreVolatile,
+			};
+			let this = SimpleUnOp {
+				target,
+				op: simple_operator,
+				rhs: right,
+			};
+			current.block.push(SimpleExpression::UnOp(this));
+			Source::Register(target)
+		},
 		Term::BinOp(BinOp { op: Op::Not, .. }) => {
 			log::error!("Internal [{}]: Not as binop", line!());
 			bail!(Error::Internal(line!()));
