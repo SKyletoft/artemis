@@ -228,7 +228,7 @@ impl SimpleBinOp {
 pub struct SimpleUnOp {
 	pub target: Register,
 	pub op: SimpleOp,
-	pub lhs: Source,
+	pub rhs: Source,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,8 +254,8 @@ impl fmt::Debug for SimpleExpression {
 				lhs,
 				rhs,
 			}) => write!(f, "{target} ← {lhs} {op} {rhs}"),
-			SimpleExpression::UnOp(SimpleUnOp { target, op, lhs }) => {
-				write!(f, "{target} ← {op} {lhs}")
+			SimpleExpression::UnOp(SimpleUnOp { target, op, rhs }) => {
+				write!(f, "{target} ← {op} {rhs}")
 			}
 			SimpleExpression::FunctionCall(SimpleFunctionCall {
 				target,

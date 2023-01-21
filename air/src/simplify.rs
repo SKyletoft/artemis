@@ -75,7 +75,7 @@ pub fn lines_till_last_use(
 			SimpleExpression::BinOp(SimpleBinOp { lhs, rhs, .. }) => {
 				lhs == s || rhs == s
 			}
-			SimpleExpression::UnOp(SimpleUnOp { lhs, .. }) => lhs == s,
+			SimpleExpression::UnOp(SimpleUnOp { rhs, .. }) => rhs == s,
 			SimpleExpression::FunctionCall(SimpleFunctionCall { args, .. }) => {
 				args.iter().any(|arg| arg == s)
 			}
