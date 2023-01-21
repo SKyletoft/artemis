@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
+use air_interface::BlockId;
 use anyhow::{bail, Result};
 use GeneralPurposeRegister::*;
 
 use crate::{
 	error::Error,
-	ir::BlockId,
 	register_allocation::{
 		BinOp, Block, BlockEnd, CodeConstruct, Expression, FunctionCall, Op, Register, UnOp,
 	},

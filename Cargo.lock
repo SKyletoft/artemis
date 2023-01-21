@@ -40,6 +40,7 @@ dependencies = [
 name = "air"
 version = "0.1.0"
 dependencies = [
+ "air_interface",
  "anyhow",
  "backtrace",
  "derive_more",
@@ -54,6 +55,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "air_interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "smallstr",
+ "smallvec",
+ "variantly",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -64,6 +76,7 @@ name = "artemis"
 version = "0.1.0"
 dependencies = [
  "air",
+ "air_interface",
  "anyhow",
  "backtrace",
  "clap",

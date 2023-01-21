@@ -5,11 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use air::{
-	js,
-	register_allocation,
-	x86_64,
-};
+use air::{js, register_allocation, x86_64};
 use anyhow::{bail, Result};
 use artemis::{detype2, error::Error, ordered, preprocess, simplify, types, GeneratedParser, Rule};
 use clap::Parser as ClapParser;

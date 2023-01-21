@@ -11,6 +11,9 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+air_interface= { path = "../air_interface" }
+air= { path = "../air" }
+
 rayon = "1.5"
 variantly = "0.2"
 smallstr = { version = "0.3", default-features = false, features = [ "union" ] }
@@ -26,4 +29,3 @@ backtrace = "0.3"
 derive_more = "0.99"
 clap = { version = "3.2", features = [ "derive" ] }
 itertools = "0.10"
-air = { path = "../air" }

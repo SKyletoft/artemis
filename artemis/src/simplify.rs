@@ -1,6 +1,6 @@
 use std::{mem, slice};
 
-use air::ir::{
+use air_interface::{
 	Block, BlockEnd, BlockId, Context, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp,
 	SimpleExpression, SimpleFunctionCall, SimpleOp, Source, SimpleUnOp,
 };

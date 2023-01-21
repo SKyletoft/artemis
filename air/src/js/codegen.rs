@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::ir::{
+use air_interface::{
 	Block, BlockEnd, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression, SimpleFunctionCall,
 	SimpleOp, SimpleUnOp, Source,
 };

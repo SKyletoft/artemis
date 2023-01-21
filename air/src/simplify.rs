@@ -1,11 +1,10 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use anyhow::Result;
-
-use crate::ir::{
+use air_interface::{
 	Block, BlockEnd, PhiEdge, PhiNode, SSAConstruct, SimpleBinOp, SimpleExpression,
 	SimpleFunctionCall, SimpleUnOp, Source,
 };
+use anyhow::Result;
 
 #[deprecated]
 pub fn has_been_used_for_the_last_time(

@@ -1,5 +1,10 @@
 use std::{cmp::Ordering, collections::HashSet, fmt, hash::Hash};
 
+use air_interface::{
+	Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
+	Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
+	SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
+};
 use anyhow::Result;
 use derive_more::{Deref, DerefMut};
 use once_cell::sync::Lazy;
@@ -7,15 +12,7 @@ use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 use variantly::Variantly;
 
-use crate::{
-	error::Error,
-	ir::{
-		Block as SimpleBlock, BlockEnd as SimpleBlockEnd, BlockId, PhiNode,
-		Register as SimpleRegister, SSAConstruct, SimpleBinOp, SimpleExpression,
-		SimpleFunctionCall, SimpleOp, SimpleUnOp, Source,
-	},
-	simplify,
-};
+use crate::{error::Error, simplify};
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
 
