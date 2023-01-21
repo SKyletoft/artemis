@@ -25,7 +25,6 @@ pub fn simplify_term(
 	let res = match term {
 		Term::Expr(expr) => simplify_expr(expr, current, blocks, ctx)?,
 		Term::UnOp(UnOp { op, rhs }) => {
-			dbg!(op, rhs);
 			let right = simplify_expr(rhs.as_ref(), current, blocks, ctx)?;
 			let target = ctx.next_register();
 			let simple_operator = match op {
