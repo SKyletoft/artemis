@@ -128,7 +128,7 @@ fn get_stack() -> &'static [usize] {
 #[cfg(test)]
 mod test {
 
-	use crate::*;
+	use crate::naive::*;
 
 	#[inline(never)]
 	fn allocate_in_other_scope() -> *mut u8 {
