@@ -315,7 +315,7 @@ impl fmt::Debug for Expression {
 			Expression::FunctionCall(FunctionCall {
 				function_name,
 				args,
-			}) => write!(f, "RET_REG ← {function_name}[{args}]"),
+			}) => write!(f, "$R ← {function_name}[{args}]"),
 		}
 	}
 }
