@@ -100,6 +100,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "rayon",
+ "simple_logger",
  "smallstr",
  "smallvec",
  "variantly",
