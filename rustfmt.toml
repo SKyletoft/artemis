@@ -1,9 +1,17 @@
 hard_tabs = true
 tab_spaces = 8
+newline_style = "Unix"
+
 reorder_impl_items = true
 reorder_imports = true
+reorder_modules = true
+
 group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+
 condense_wildcard_suffixes = true
 format_strings = false
-imports_granularity = "Crate"
-newline_style = "Unix"
+
+use_field_init_shorthand = true
+hex_literal_case = "Upper"
+fn_call_width=50
