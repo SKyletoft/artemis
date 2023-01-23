@@ -439,10 +439,10 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 								.into_inner()
 								.map(|p| {
 									let res = match p.as_rule() {
-										Rule::expr => Some(Expr::try_from(p)?),
-										Rule::any => None,
-										_ => bail!(Error::ParseError(line!()))
-									};
+									Rule::expr => Some(Expr::try_from(p)?),
+									Rule::any => None,
+									_ => bail!(Error::ParseError(line!())),
+								};
 									Ok(res)
 								})
 								.collect::<Result<_>>()?;

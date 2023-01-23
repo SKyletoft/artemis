@@ -416,7 +416,8 @@ fn select_register(
 			}
 		})
 		.map(|(idx, register)| {
-			let unwrapped_register = register.clone()
+			let unwrapped_register = register
+				.clone()
 				.expect("Any empty register slots should've been found in the above attempt");
 			let reg = simplify::lines_till_last_use(&unwrapped_register, scope, pos);
 			(idx, reg)
@@ -816,9 +817,15 @@ fn allocate_for_blocks_with_end(
 							})
 						));
 						(
-							&mut l.as_mut().ok_or(Error::ReturnedNonExistantBlock(line!()))?.block,
-							&mut r.as_mut().ok_or(Error::ReturnedNonExistantBlock(line!()))?.block,
-						)
+						&mut l
+							.as_mut()
+							.ok_or(Error::ReturnedNonExistantBlock(line!()))?
+							.block,
+						&mut r
+							.as_mut()
+							.ok_or(Error::ReturnedNonExistantBlock(line!()))?
+							.block,
+					)
 					};
 
 				// Clear old tracermation
@@ -902,7 +909,11 @@ fn merge_old_registers(
 		&right_state.registers,
 		&mut state.registers,
 	);
-	merge_untouched(&left_state.stack, &right_state.stack, &mut state.stack);
+	merge_untouched(
+		&left_state.stack,
+		&right_state.stack,
+		&mut state.stack,
+	);
 
 	// And then move stuff that's been moved
 	merge_moved(
@@ -918,7 +929,11 @@ fn merge_old_registers(
 		&right_state.registers,
 		&state.registers,
 	);
-	check_merges(&left_state.stack, &right_state.stack, &state.stack);
+	check_merges(
+		&left_state.stack,
+		&right_state.stack,
+		&state.stack,
+	);
 }
 
 fn check_merges(left: &[Option<Source>], right: &[Option<Source>], state: &[Option<Source>]) {
@@ -1286,7 +1301,7 @@ fn handle_single_block(
 									);
 								}
 							}
-						},
+						}
 						_ => todo!("Handle saving of unprotected non-gp registers"),
 					}
 				}
@@ -1325,7 +1340,7 @@ fn handle_single_block(
 					match reg {
 						&Register::GeneralPurpose(idx) => {
 							state.registers[idx] = None;
-						},
+						}
 						_ => todo!("Handle saving of unprotected non-gp registers"),
 					}
 				}

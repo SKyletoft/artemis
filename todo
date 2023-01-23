@@ -49,4 +49,3 @@ To investigate
 			Implicit removal of the fold start value for () returns?
 		What new greek letter for the `for` keyword
 	Replace all errors with error messages with a unique enum variant (there's a crate for deriving Error apparently)
-

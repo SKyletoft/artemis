@@ -181,7 +181,10 @@ impl Check for Term {
 			RawTerm::Unit => (Term2::Unit, RawType2::Unit.into()),
 			RawTerm::Tuple(t) => {
 				let (tuple, types) = check_expr_array(t.0, &mut ctx.clone())?;
-				(Term2::Tuple(Tuple(tuple)), RawType2::Tuple(types).into())
+				(
+					Term2::Tuple(Tuple(tuple)),
+					RawType2::Tuple(types).into(),
+				)
 			}
 			RawTerm::StructLiteral(l) => {
 				let (lit, typ) = l.check(ctx)?;
@@ -191,7 +194,9 @@ impl Check for Term {
 				let (block, mut types) = check_expr_array(b.0, &mut ctx.clone())?;
 				(
 					Term2::Block(Block(block)),
-					types.pop().expect("A block cannot be empty or else it would parse as unit"),
+					types
+						.pop()
+						.expect("A block cannot be empty or else it would parse as unit"),
 				)
 			}
 			RawTerm::IfExpr(IfExpr {
@@ -375,7 +380,9 @@ impl Check for StructLiteral {
 				.collect::<Result<_>>()?,
 		);
 
-		let typ = EnumType2(smallvec![RawType2::StructType(StructType2(types))]);
+		let typ = EnumType2(smallvec![RawType2::StructType(StructType2(
+			types
+		))]);
 		let lit = StructLiteral2(checked_fields);
 
 		Ok((lit, typ))
@@ -615,7 +622,10 @@ impl Check for TypeAlias {
 			bail!(Error::MutableTypeAlias(line!()));
 		}
 		ctx.types.insert(name, converted_type.clone());
-		Ok((Term2::TypeValue(converted_type.id()), converted_type))
+		Ok((
+			Term2::TypeValue(converted_type.id()),
+			converted_type,
+		))
 	}
 }
 

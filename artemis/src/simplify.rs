@@ -223,8 +223,11 @@ pub fn simplify_term(
 				],
 			});
 
-			blocks[curr_idx].out =
-				BlockEnd::Two(cond_reg, then_start_id.into(), else_start_id.into());
+			blocks[curr_idx].out = BlockEnd::Two(
+				cond_reg,
+				then_start_id.into(),
+				else_start_id.into(),
+			);
 			// Invariant: All branches must make sure the source comes first in `blocks`
 			let next = BlockId::from(blocks.len());
 			let then_id: usize = then_end_id.into();
@@ -247,8 +250,8 @@ pub fn simplify_term(
 			None => todo!("Handle loading of globals"),
 		}?,
 		Term::Tuple(_) => todo!(
-			"Should tuples even exist at this stage? Should they be a stack thing?\n\
-			These are design questions, not implementation"
+			"Should tuples even exist at this stage? Should they be a stack thing?\nThese are \
+			 design questions, not implementation"
 		),
 		Term::FunctionCall(FunctionCall {
 			function_name,

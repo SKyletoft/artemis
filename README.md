@@ -9,4 +9,3 @@ c) Building a garbage collector
 d) Designing a syntax that Loke finds as annoying as possible
 
 The actual language being built is therefore mostly uninteresting.
-

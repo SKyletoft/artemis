@@ -203,9 +203,9 @@ impl Detype for Ast2Term {
 										.enum_type
 										.get_only()?;
 									match raw {
-										RawType2::FunctionType { ret, .. } => Some(ret.as_ref()),
-										_ => None
-									}
+									RawType2::FunctionType { ret, .. } => Some(ret.as_ref()),
+									_ => None,
+								}
 								})
 								.ok_or_else(|| {
 									dbg!(&function_name);
@@ -277,7 +277,10 @@ impl Detype for Ast2Term {
 					arguments,
 					expr,
 				};
-				(Term::Expr(Box::new(Expr::Function(Box::new(f)))), typ)
+				(
+					Term::Expr(Box::new(Expr::Function(Box::new(f)))),
+					typ,
+				)
 			}
 			Ast2Term::VarName(n) => {
 				let typ = ctx
