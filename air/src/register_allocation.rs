@@ -568,7 +568,7 @@ fn get_or_load_and_get_value(
 		save_on_stack(
 			register_set,
 			pos,
-			register_idx as usize,
+			register_idx,
 			block,
 			scope,
 			new_register,
@@ -586,11 +586,11 @@ fn get_or_load_and_get_value(
 	log::trace!(
 		"[{}]: Replacing {:?} with {:?} (saving: {needs_to_be_saved})",
 		line!(),
-		register_set[register_idx as usize],
+		register_set[register_idx],
 		&source
 	);
 
-	register_set[register_idx as usize] = Some(source);
+	register_set[register_idx] = Some(source);
 	new_register
 }
 
@@ -670,7 +670,7 @@ fn select_and_save_old(
 
 	let gp_idx = recommended_register
 		.general_purpose()
-		.ok_or(Error::WrongRegisterType(line!()))? as usize;
+		.ok_or(Error::WrongRegisterType(line!()))?;
 
 	if need_to_save_old_value {
 		save_on_stack(

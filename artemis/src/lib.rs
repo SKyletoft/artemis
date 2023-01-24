@@ -21,11 +21,11 @@ pub mod types;
 #[grammar = "artemis.pest"]
 pub struct GeneratedParser;
 
-fn float_eq(a: f64, b: f64) -> bool {
+pub fn float_eq(a: f64, b: f64) -> bool {
 	(a - b).abs() < EPSILON || (b - a).abs() < EPSILON
 }
 
-fn split_vec<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
+pub fn split_vec<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
 	let mut l_vec = Vec::with_capacity(v.len());
 	let mut r_vec = Vec::with_capacity(v.len());
 	for (l, r) in v.into_iter() {

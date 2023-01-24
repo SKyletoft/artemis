@@ -56,7 +56,7 @@ fn clear_bump_heap(stack: &[usize]) {
 		.filter(|(_, x)| bump.contains(x))
 		.collect();
 
-	for survivor in survivors.iter() {
+	for _survivor in survivors.iter() {
 		allocate_heap(&[]);
 	}
 	dbg!(&survivors);

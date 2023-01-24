@@ -493,7 +493,7 @@ impl EnumType2 {
 					.map(|f| &mut f.type_name)
 					.for_each(EnumType2::default_literals),
 				RawType2::EnumType(e) => e.default_literals(),
-				RawType2::FunctionType { args, ret } => todo!(),
+				RawType2::FunctionType { .. } => todo!(),
 				_ => {}
 			}
 		}

@@ -250,8 +250,8 @@ pub fn simplify_term(
 			None => todo!("Handle loading of globals"),
 		}?,
 		Term::Tuple(_) => todo!(
-			"Should tuples even exist at this stage? Should they be a stack thing?\nThese are \
-			 design questions, not implementation"
+			"Should tuples even exist at this stage? Should they be a stack thing?\n\
+			 These are design questions, not implementation"
 		),
 		Term::FunctionCall(FunctionCall {
 			function_name,

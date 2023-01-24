@@ -17,7 +17,7 @@ use crate::{
 	},
 	detype2_types::{
 		BinOp, Declaration, Expr, Function, FunctionCall, IfExpr, Op, Term,
-		TopLevelConstruct, Type, UnOp,
+		TopLevelConstruct, UnOp,
 	},
 	error::Error,
 	type_definition::{Context, EnumType2, RawType2, StructField2, StructType2, Type2},

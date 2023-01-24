@@ -116,7 +116,7 @@ pub unsafe extern "C" fn reset_stack_start() -> usize {
 fn get_stack() -> &'static [usize] {
 	let start = unsafe { STACK_START };
 	let end = get_stack_pointer!();
-	let len = (start - end + mem::size_of::<usize>()) as usize / mem::size_of::<usize>();
+	let len = (start - end + mem::size_of::<usize>()) / mem::size_of::<usize>();
 	assert_eq!((start - end) % 8, 0);
 
 	// Safety: Yeah, I don't trust this yet. It assumes the stack is contiguous and that STACK_START was initialised properly
@@ -126,6 +126,7 @@ fn get_stack() -> &'static [usize] {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod test {
 
 	use crate::naive::*;
