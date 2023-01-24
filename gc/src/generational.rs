@@ -41,7 +41,7 @@ fn allocate(size: usize, stack_end: usize) -> *mut usize {
 
 	unsafe {
 		let next = &bump[SHORT_INDEX];
-		SHORT_INDEX += 1;
+		SHORT_INDEX += size;
 		next.get()
 	}
 }
