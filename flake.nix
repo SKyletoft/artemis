@@ -33,7 +33,7 @@
 						'';
 					};
 
-					artemis-wrapped = pkgs.writeShellScriptBin "artemis" ''
+					artemis-wrapped = pkgs.writeShellScriptBin "artc" ''
 						export MOLD="${pkgs.mold}/bin/mold"
 						export MUSL_x86="${pkgs_x86.musl}/lib"
 						export MUSL_ARM="${pkgs_arm.musl}/lib"
@@ -41,7 +41,7 @@
 						export GNU_AS="${pkgs_arm.gcc}/bin/as"
 						export ARTEMIS_RUNTIME_x86="${self.packages.x86_64-linux.artemis-runtime}"
 						export ARTEMIS_RUNTIME_ARM="${self.packages.aarch64-linux.artemis-runtime}"
-						${packages.artemis-unwrapped}/bin/artemis $@
+						${packages.artemis-unwrapped}/bin/artc $@
 					'';
 
 					default = packages.artemis-wrapped;
