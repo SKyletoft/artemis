@@ -180,7 +180,7 @@ fn assemble_block(
 				Op::Or => assembler.or(GP[l], GP[r]),
 				Op::Xor => assembler.xor(GP[l], GP[r]),
 				Op::Not => todo!(),
-				Op::StoreMem => todo!(),
+				Op::StoreMem => assembler.mov_to_index(GP[t], GP[l], GP[r]),
 				Op::LoadMem => todo!(),
 				Op::Move => todo!(),
 				Op::Div | Op::UDiv => unreachable!("Covered by outer pattern"),
