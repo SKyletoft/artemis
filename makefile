@@ -8,4 +8,7 @@ clean:
 	make clean -C c_working_files 
 	-rm a.out a.out.S *.o
 
-.PHONY: clean
+ex1:
+	RUST_LOG=debug cargo run -- examples/1.art  --target=c
+
+.PHONY: clean ex1
