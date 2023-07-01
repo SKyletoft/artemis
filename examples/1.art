@@ -10,7 +10,7 @@ main: λ(x: ℕ) → ℕ = (
 	n : λ() → ℕ = f[4ℝ]
 	n' := n()
 
-	t_func(t) × t_func(t')
+	t_func⟨T⟩(t) × t_func⟨T⟩(t')
 )
 
 f: λ(x: ℝ) → ℝ =
