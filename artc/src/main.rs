@@ -240,6 +240,7 @@ fn main() -> ExitCode {
 
 	let compiler_err = compile(config, paths);
 	if let Err(e) = compiler_err {
+		log::debug!("{e:#?}");
 		log::error!("{e}");
 		ExitCode::FAILURE
 	} else {
