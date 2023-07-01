@@ -10,8 +10,8 @@ special    =  {
 	"∂" | "∅"
 }
 
-large_metric_prefix = { "D" | "da"| "h" | "k" | "M" | "G" | "T" | "P" | "E" | "Z" | "Y" }
-small_metric_prefix = { "d" | "c" | "m" | "μ" | "u" | "n" | "p" | "f" | "a" | "z" | "y" }
+large_metric_prefix = { "D" | "h" | "k" | "M" | "G" | "T" | "P" | "E" | "Z" | "Y" | "R" | "Q" }
+small_metric_prefix = { "d" | "c" | "m" | "μ" | "u" | "n" | "p" | "f" | "a" | "z" | "y" | "r" | "q" }
 metrix_prefix       = { small_metric_prefix | large_metric_prefix }
 binary_prefix       = { "ki" | "Mi" | "Gi" | "Ti" | "Pi" | "Ei" | "Zi" | "Yi" }
 prefix              = { metrix_prefix | binary_prefix }
