@@ -1,10 +1,10 @@
-λpart_one (nums: [ℕ]) → ℕ =
+part_one: λ(nums: [ℕ]) → ℕ =
 	nums
 	|> zip[nums |> drop[1]]
 	|> filter[λ(x,y) = x > y]
 	|> count
 
-λpart_two (nums: [ℕ]) → ℕ =
+part_two: λ(nums: [ℕ]) → ℕ =
 	nums
 	|> zip[nums |> drop[1]]
 	|> zip[nums |> drop[2]]

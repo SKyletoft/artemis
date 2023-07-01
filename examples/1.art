@@ -1,1 +1,101 @@
-λmain () = ()
+// --------------------- ARTEMIS ---------------------
+
+T := {n: ℕ} | {r: ℝ}
+T' : Type = {n: ℕ}
+Ti : Interface = {n: ℕ} | {r: ℝ}
+
+main: λ(x: ℕ) → ℕ = (
+	t : T = {n: 1ℕ}
+	t' : T' = {n: 2ℕ}
+	n : λ() → ℕ = f[4ℝ]
+	n' := n()
+
+	t_func(t) × t_func(t')
+)
+
+f: λ(x: ℝ) → ℝ =
+	x + 2ℝ
+
+g: λ(x: ℝ, y: ℝ) → ℝ =
+	x × y
+
+/*
+h: ℤ → ℤ → ℤ =
+	λ(x, y) x + y
+*/
+
+t_func: ⟨Ty: Ti⟩ λ(t: Ty) → ℕ = case t of
+	{n} | n > 2ℕ → n
+	{n} → n + 2ℕ
+	{r} → (
+		x := y := 1E2_ℤ
+		n := r @ ℕ
+		n + 1ℕ
+	)
+
+// ------------------------ C ------------------------
+
+/*
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef uint64_t N;
+typedef int64_t Z;
+typedef double R;
+
+typedef struct {
+	N tag;
+	union {
+		N n;
+		R r;
+	};
+} T;
+
+N __art_main(N x);
+R __art_f(R x);
+R __art_g(R x, R y);
+N __art_T_t(T t);
+int main(int argc, char **argv);
+
+N __art_main(N x) {
+	return x * __art_f((T) {
+		.tag = 1,
+		.r = 2.0,
+	});
+}
+
+R __art_f(R x) {
+	return x + 2.0;
+}
+
+R __art_g(R x, R y) {
+	return x * y;
+}
+
+N __art_T_t_func(T t) {
+	if (t.tag == 0 && t.n > 2) {
+		return t.n;
+	else if (t.tag == 0) {
+		return t.n + 2ULL;
+	} else if (t.tag == 1) {
+		Z y = 100LL;
+		Z x = y;
+		N n = (N) t.r;
+		return n + 1ULL;
+	}
+	exit(-1);
+}
+
+int main(int argc, char **argv) {
+	if (argc != 2) {
+		puts("Input error");
+		exit(-1);
+	}
+	N n = atoi(argv[1]);
+	N ret = __art_main(n);
+	printf("%lu\n", ret);
+}
+
+*/

@@ -1,15 +1,15 @@
-type Pair = (ℤ, ℤ)
+Pair := (ℤ, ℤ)
 
-λsolve_one (input: [String]) → ℤ = (
+solve_one: λ(input: [String]) → ℤ = (
 	(a, b) := input
 		|> map[match_line]
 		|> fold[add_pair]
 	a × b
 )
 
-λadd_pair ((a, b): Pair, (c, d): Pair) → Pair = (a + c, b + d)
+add_pair: λ((a, b): Pair, (c, d): Pair) → Pair = (a + c, b + d)
 
-λmatch_line (input: String) → Pair = case input
+match_line: λ(input: String) → Pair = case input
 	// Sugar for subarrays?
 	['f', 'o', 'r', 'w', 'a', 'r', 'd', ' ', rest @ ..]      → ( parse_z(rest), 0)
 	['b', 'a', 'c', 'k', 'w', 'a', 'r', 'd', ' ', rest @ ..] → (-parse_z(rest), 0)
