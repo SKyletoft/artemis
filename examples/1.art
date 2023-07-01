@@ -28,8 +28,8 @@ t_func: ⟨Ty: Ti⟩ λ(t: Ty) → ℕ = case t of
 	{n} | n > 2ℕ → n
 	{n} → n + 2ℕ
 	{r} → (
-		x := y := 1E2_ℤ
-		n := r @ ℕ
+		x := y := 1hℤ
+		n := r @ℕ
 		n + 1ℕ
 	)
 
