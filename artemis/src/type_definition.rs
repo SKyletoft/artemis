@@ -33,7 +33,7 @@ impl Context {
 
 	pub fn join(&mut self, other: Context) {
 		for (key, val) in other.variables.into_iter() {
-			self.variables.insert(key, val.default_literals());
+			self.variables.insert(key, val);
 		}
 		for (key, val) in other.types.into_iter() {
 			self.types.insert(key, val);
@@ -176,19 +176,6 @@ impl ActualType2 {
 		}
 	}
 
-	pub fn default_literals(self) -> Self {
-		match self {
-			s @ ActualType2::Declared(_) => s,
-			ActualType2::Inferred(mut types) => {
-				Rc::get_mut(&mut types)
-					.expect("This can't happen, right?")
-					.enum_type
-					.default_literals();
-				ActualType2::Inferred(types)
-			}
-		}
-	}
-
 	pub fn inner_ref(&self) -> &Type2 {
 		match self {
 			ActualType2::Declared(t) => t,
@@ -243,22 +230,17 @@ impl Type2 {
 
 		Ok(res)
 	}
-
-	pub fn default_literals(mut self) -> Self {
-		self.enum_type.default_literals();
-		self
-	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Variantly, Hash)]
 pub enum RawType2 {
-	Natural,
 	Real,
+	Natural,
 	Integer,
-	NumberLiteral,
 	Bool,
 	Any,
 	Type,
+	Interface,
 	Unit,
 	Tuple(Vec<EnumType2>),
 	StructType(StructType2),
@@ -275,10 +257,10 @@ impl fmt::Display for RawType2 {
 			RawType2::Natural => write!(f, "ℕ"),
 			RawType2::Real => write!(f, "ℝ"),
 			RawType2::Integer => write!(f, "ℤ"),
-			RawType2::NumberLiteral => write!(f, "ComptimeInt"),
 			RawType2::Bool => write!(f, "𝔹"),
 			RawType2::Any => write!(f, "∀"),
 			RawType2::Type => write!(f, "𝕋"),
+			RawType2::Interface => write!(f, "Iterface"),
 			RawType2::Unit => write!(f, "()"),
 			RawType2::Tuple(_) => todo!(),
 			RawType2::StructType(StructType2(fields)) => {
@@ -320,7 +302,10 @@ impl RawType2 {
 			RawType::StructNameOrAlias(name) => Self::EnumType(Box::new(
 				ctx.types
 					.get(name)
-					.ok_or(Error::UndefinedTypeAlias(line!()))?
+					.ok_or_else(|| {
+						log::debug!("{ctx:#?}\n{name}");
+						Error::UndefinedTypeAlias(line!())}
+					)?
 					.clone(),
 			)),
 			RawType::Natural => Self::Natural,
@@ -336,21 +321,6 @@ impl RawType2 {
 			}
 		};
 		Ok(res)
-	}
-
-	pub fn int_eq(&self, rhs: &Self) -> bool {
-		match (self, rhs) {
-			(Self::NumberLiteral, Self::Integer)
-			| (Self::NumberLiteral, Self::Natural)
-			| (Self::Integer, Self::NumberLiteral)
-			| (Self::Natural, Self::NumberLiteral) => true,
-			(Self::StructType(StructType2(a)), Self::StructType(StructType2(b))) => {
-				a.iter().zip(b.iter()).all(|(a, b)| {
-					a.name == b.name && a.type_name.contains(&b.type_name)
-				})
-			}
-			(a, b) => a == b,
-		}
 	}
 
 	pub fn id(&self) -> u64 {
@@ -433,7 +403,7 @@ impl EnumType2 {
 
 	/// Check that all types in the right enum are in the left enum
 	pub fn contains(&self, rhs: &EnumType2) -> bool {
-		rhs.0.iter().all(|x| self.0.iter().any(|y| y.int_eq(x)))
+		rhs.0.iter().all(|x| self.0.iter().any(|y| x == y))
 	}
 
 	pub fn try_from_ast(ast: &EnumType, ctx: &Context) -> Result<Self> {
@@ -479,24 +449,6 @@ impl EnumType2 {
 		let mut hasher = DefaultHasher::new();
 		self.hash(&mut hasher);
 		hasher.finish()
-	}
-
-	pub fn default_literals(&mut self) {
-		for t in self.0.iter_mut() {
-			match t {
-				RawType2::NumberLiteral => *t = RawType2::Natural,
-				RawType2::Tuple(ts) => {
-					ts.iter_mut().for_each(EnumType2::default_literals)
-				}
-				RawType2::StructType(StructType2(fs)) => fs
-					.iter_mut()
-					.map(|f| &mut f.type_name)
-					.for_each(EnumType2::default_literals),
-				RawType2::EnumType(e) => e.default_literals(),
-				RawType2::FunctionType { .. } => todo!(),
-				_ => {}
-			}
-		}
 	}
 
 	pub fn get_field(&self, name: &str) -> Result<EnumType2> {

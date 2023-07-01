@@ -75,6 +75,7 @@ pub enum Expr {
 pub enum Term {
 	TypeValue(u64),
 	Float(f64),
+	Natural(u64),
 	Integer(i64),
 	Boolean(bool),
 	String(SmallString),

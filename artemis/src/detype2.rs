@@ -143,6 +143,7 @@ impl Detype for Ast2Term {
 		let res: (Term, EnumType2) = match self {
 			Ast2Term::TypeValue(t) => (Term::Literal(t), RawType2::Natural.into()),
 			Ast2Term::Float(f) => (Term::Literal(f.to_bits()), RawType2::Real.into()),
+			Ast2Term::Natural(n) => (Term::Literal(n), RawType2::Natural.into()),
 			Ast2Term::Integer(i) => (Term::Literal(i as u64), RawType2::Integer.into()),
 			Ast2Term::Boolean(b) => (Term::Literal(b as u64), RawType2::Natural.into()),
 			Ast2Term::String(_) => todo!(),

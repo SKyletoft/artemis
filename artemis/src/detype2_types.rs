@@ -117,6 +117,13 @@ pub enum Op {
 	LoadConst,
 	StoreExclusive,
 	StoreVolatile,
+	NatIntCast,
+	NatRealCast,
+	IntNatCast,
+	IntRealCast,
+	RealNatCast,
+	RealIntCast,
+	Id,
 }
 
 impl From<(UnaryOperator, &RawType2)> for Op {
@@ -126,6 +133,13 @@ impl From<(UnaryOperator, &RawType2)> for Op {
 			(UnaryOperator::Not, _) => Op::Not,
 			(UnaryOperator::Sub, RawType2::Real) => Op::FMinus,
 			(UnaryOperator::Sub, _) => Op::Minus,
+			(UnaryOperator::NatCast, RawType2::Real) => Op::NatRealCast,
+			(UnaryOperator::NatCast, RawType2::Integer) => Op::NatIntCast,
+			(UnaryOperator::IntCast, RawType2::Real) => Op::IntRealCast,
+			(UnaryOperator::IntCast, RawType2::Natural) => Op::IntNatCast,
+			(UnaryOperator::RealCast, RawType2::Natural) => Op::RealNatCast,
+			(UnaryOperator::RealCast, RawType2::Integer) => Op::RealIntCast,
+			_ => Op::Id,
 		}
 	}
 }
@@ -189,7 +203,6 @@ impl From<&EnumType2> for Type {
 			[RawType2::Natural] => Type::Unsigned,
 			[RawType2::Real] => Type::Floating,
 			[RawType2::Integer] => Type::Signed,
-			[RawType2::NumberLiteral] => Default::default(),
 			_ => Default::default(),
 		}
 	}

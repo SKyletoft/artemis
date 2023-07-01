@@ -243,6 +243,15 @@ pub enum Expr {
 	Leaf(Box<Term>),
 }
 
+impl Default for Expr {
+	fn default() -> Self {
+		Expr::Leaf(Box::new(Term {
+			raw_term: RawTerm::Unit,
+			type_ascription: None,
+		}))
+	}
+}
+
 impl fmt::Display for Expr {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
@@ -265,6 +274,15 @@ impl From<RawTerm> for Expr {
 			raw_term,
 			type_ascription: None,
 		}))
+	}
+}
+
+impl Expr {
+	pub fn leaf_ref(&self) -> Option<&Term> {
+		match self {
+			Expr::Leaf(l) => Some(&l),
+			_ => None,
+		}
 	}
 }
 
@@ -292,6 +310,7 @@ impl fmt::Display for Term {
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawTerm {
 	Float(f64),
+	Natural(u64),
 	Integer(i64),
 	Boolean(bool),
 	String(SmallString),
@@ -315,6 +334,7 @@ impl fmt::Display for RawTerm {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
 			RawTerm::Float(d) => write!(f, "{d}"),
+			RawTerm::Natural(n) => write!(f, "{n}"),
 			RawTerm::Integer(i) => write!(f, "{i}"),
 			RawTerm::Boolean(b) => write!(f, "{b}"),
 			RawTerm::String(_) => todo!(),
@@ -452,6 +472,9 @@ impl fmt::Display for BinaryOperator {
 pub enum UnaryOperator {
 	Not,
 	Sub,
+	NatCast,
+	IntCast,
+	RealCast,
 }
 
 impl fmt::Display for UnaryOperator {
@@ -459,6 +482,9 @@ impl fmt::Display for UnaryOperator {
 		match self {
 			UnaryOperator::Not => write!(f, "¬"),
 			UnaryOperator::Sub => write!(f, "-"),
+			UnaryOperator::NatCast => write!(f, "@ℕ"),
+			UnaryOperator::IntCast => write!(f, "@ℤ"),
+			UnaryOperator::RealCast => write!(f, "@ℝ"),
 		}
 	}
 }
@@ -476,7 +502,7 @@ impl fmt::Display for Argument {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionDefinition {
 	pub(crate) name: SmallString,
 	pub(crate) args: ArgumentList,
@@ -484,10 +510,10 @@ pub struct FunctionDefinition {
 	pub(crate) expr: Expr,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ReturnType(pub(crate) Option<EnumType>);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ArgumentList(pub(crate) SmallVec<[Argument; 1]>);
 
 impl fmt::Display for ArgumentList {
@@ -525,7 +551,7 @@ impl fmt::Display for StructField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructType(pub(crate) Vec<StructField>);
 
-#[derive(Debug, Clone, PartialEq, From)]
+#[derive(Debug, Clone, PartialEq, From, Default)]
 pub struct EnumType(pub(crate) SmallVec<[RawType; 1]>);
 
 impl fmt::Display for EnumType {

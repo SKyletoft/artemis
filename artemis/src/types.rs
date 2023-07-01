@@ -6,7 +6,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
 	ast::{
 		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Case, Declaration,
-		Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
+		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
 		PartialApplication, Pattern, RawTerm, StructFieldLiteral, StructFieldPattern,
 		StructLiteral, StructPattern, Term, TypeAlias,
 	},
@@ -35,6 +35,9 @@ where
 
 pub fn check_and_infer(program: Vec<Expr>) -> Result<Vec<Expr2>> {
 	let mut ctx = Context::with_builtins();
+	for e in program.iter() {
+		get_from_top_level(e, &mut ctx)?;
+	}
 	program.into_iter()
 		.map(|e| check_top_level(e, &mut ctx))
 		.collect()
@@ -52,6 +55,46 @@ fn check_top_level(e: Expr, ctx: &mut Context) -> Result<Expr2> {
 	let (res, _) = term.check(ctx)?;
 
 	Ok(Expr2::Leaf(Box::new(res)))
+}
+
+fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
+	let term = e
+		.leaf_ref()
+		.ok_or(Error::ForbiddenExprAtTopLevel(line!()))?;
+	match &term.raw_term {
+		RawTerm::FunctionDefinition(FunctionDefinition {
+			name, args, return_type, ..
+		}) => {
+			let func_type = func_type(args, return_type, ctx)?;
+			ctx.variables.insert(name.clone(), func_type.into());
+		}
+		RawTerm::Declaration(Declaration { pattern: Pattern { label: None, inner: InnerPattern::Var(n), .. }, type_name, .. }) => {
+			let actual_type = match type_name {
+				ActualType::Declared(d) => ActualType2::try_from_ast_type(d, ctx)?,
+				ActualType::Inferred => {
+					log::debug!("{:#?}", term.raw_term);
+					bail!(Error::RequireTypeAtTopLevel(line!()))
+				}
+			};
+			ctx.variables.insert(n.clone(), actual_type);
+		}
+		RawTerm::Declaration(_) => todo!("Top level pattern matching is todo for noTop level pattern matching is todo for noww"),
+		RawTerm::TypeAlias(TypeAlias { name, mutable: false, type_name }) => {
+			ctx.types.insert(name.clone(), EnumType2::try_from_ast(type_name, ctx)?);
+		}
+		_ => bail!(Error::ForbiddenExprAtTopLevel(line!())),
+	}
+	Ok(())
+}
+
+fn func_type(args: &ArgumentList, return_type: &EnumType, ctx: &Context) -> Result<RawType2> {
+	let args =
+		args.0.iter()
+			.map(|arg| Type2::try_from_ast(&arg.type_name, ctx).map(|t| t.enum_type))
+			.collect::<Result<_>>()?;
+	let ret = EnumType2::try_from_ast(return_type, ctx)?.into();
+
+	Ok(RawType2::FunctionType { args, ret })
 }
 
 impl Check for FunctionDefinition {
@@ -83,17 +126,7 @@ impl Check for FunctionDefinition {
 			bail!(Error::MismatchedTypes(line!()));
 		}
 
-		let func_type = {
-			let args =
-				args.0.iter()
-					.map(|arg| {
-						Type2::try_from_ast(&arg.type_name, ctx)
-							.map(|t| t.enum_type)
-					})
-					.collect::<Result<_>>()?;
-			let ret = EnumType2::try_from_ast(&return_type, ctx)?.into();
-			RawType2::FunctionType { args, ret }
-		};
+		let func_type = func_type(&args, &return_type, ctx)?;
 
 		// And build the result
 		let res = FunctionDefinition2 {
@@ -174,7 +207,8 @@ impl Check for Term {
 
 		let (term, typ): (Term2, EnumType2) = match raw_term {
 			RawTerm::Float(f) => (Term2::Float(f), RawType2::Real.into()),
-			RawTerm::Integer(i) => (Term2::Integer(i), RawType2::NumberLiteral.into()),
+			RawTerm::Natural(n) => (Term2::Natural(n), RawType2::Natural.into()),
+			RawTerm::Integer(i) => (Term2::Integer(i), RawType2::Integer.into()),
 			RawTerm::Boolean(b) => (Term2::Boolean(b), RawType2::Bool.into()),
 			RawTerm::String(_) => todo!(),
 			RawTerm::Char(_) => todo!(),
@@ -326,6 +360,7 @@ impl Check for Declaration {
 		} = self;
 
 		let (expr, typ) = expr.check(ctx)?;
+
 		let actual_type = match type_name {
 			ActualType::Declared(d) => ActualType2::try_from_ast_type(&d, ctx)?,
 			ActualType::Inferred => ActualType2::Inferred(Rc::new(Type2 {
@@ -346,10 +381,12 @@ impl Check for Declaration {
 			bail!(Error::MismatchedTypes(line!()));
 		}
 
+		let type_name = actual_type.or(typ.clone());
+
 		Ok((
 			Declaration2 {
 				pattern,
-				type_name: actual_type.or(typ.clone()).default_literals(),
+				type_name,
 				expr,
 			},
 			typ,
@@ -572,22 +609,7 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 		}
 		InnerPattern::TuplePattern(_) => todo!(),
 		InnerPattern::Float(_) => todo!(),
-		InnerPattern::Integer(_) => {
-			let matches = typ.0.iter().any(|x| {
-				matches!(
-					x,
-					RawType2::Natural
-						| RawType2::Integer | RawType2::NumberLiteral
-				)
-			});
-			if !matches {
-				bail!(Error::PatternDoesntMatch(line!()));
-			}
-			// Any pattern with a literal needs to be irrefutable
-			if !*irrefutable {
-				bail!(Error::UnprovedIrrefutablePattern(line!()));
-			}
-		}
+		InnerPattern::Integer(_) => todo!(),
 		InnerPattern::Boolean(_) => todo!(),
 		InnerPattern::String(_) => todo!(),
 		InnerPattern::Char(_) => todo!(),

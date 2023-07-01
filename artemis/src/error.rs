@@ -12,6 +12,7 @@ pub enum Error {
 
 	TypeNonFunctionAsFunction(u32),
 	ForbiddenExprAtTopLevel(u32),
+	RequireTypeAtTopLevel(u32),
 	MismatchedTypes(u32),
 	InternalUnhandledTypeAliasConversion(u32),
 	UndefinedTypeAlias(u32),

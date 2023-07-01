@@ -66,6 +66,14 @@ pub fn simplify_term(
 				Op::LoadConst => SimpleOp::LoadConst,
 				Op::StoreExclusive => SimpleOp::StoreExclusive,
 				Op::StoreVolatile => SimpleOp::StoreVolatile,
+
+				Op::NatIntCast => todo!(),
+				Op::NatRealCast => todo!(),
+				Op::IntNatCast => todo!(),
+				Op::IntRealCast => todo!(),
+				Op::RealNatCast => todo!(),
+				Op::RealIntCast => todo!(),
+				Op::Id => todo!(),
 			};
 			let this = SimpleUnOp {
 				target,
@@ -137,6 +145,14 @@ pub fn simplify_term(
 				Op::LoadConst => SimpleOp::LoadConst,
 				Op::StoreExclusive => SimpleOp::StoreExclusive,
 				Op::StoreVolatile => SimpleOp::StoreVolatile,
+
+				Op::NatIntCast => todo!(),
+				Op::NatRealCast => todo!(),
+				Op::IntNatCast => todo!(),
+				Op::IntRealCast => todo!(),
+				Op::RealNatCast => todo!(),
+				Op::RealIntCast => todo!(),
+				Op::Id => todo!(),
 			};
 			let this = SimpleBinOp {
 				target,

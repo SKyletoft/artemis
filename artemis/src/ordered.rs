@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use anyhow::{bail, Result};
 use once_cell::sync::Lazy;
 use pest::{
@@ -44,7 +42,11 @@ static PRATT: Lazy<PrattParser<Rule>> = Lazy::new(|| {
 		.op(Op::infix(Rule::exp, Assoc::Left))
 		.op(Op::infix(Rule::dot, Assoc::Left)
 			| Op::postfix(Rule::call)
-			| Op::postfix(Rule::application))
+			| Op::postfix(Rule::application)
+			| Op::postfix(Rule::apply_generics)
+			| Op::postfix(Rule::nat_cast)
+			| Op::postfix(Rule::int_cast)
+			| Op::postfix(Rule::real_cast))
 });
 
 impl TryFrom<Pair<'_, Rule>> for Type {
@@ -430,49 +432,66 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 				let right = subexpr?.into();
 				Ok(Expr::UnOp { op, right })
 			})
-			.map_postfix(|f, args| {
-				let func = f?;
-				let res =
-					match args.as_rule() {
-						Rule::application => {
-							let args = args
-								.into_inner()
-								.map(|p| {
-									let res = match p.as_rule() {
-									Rule::expr => Some(Expr::try_from(p)?),
-									Rule::any => None,
-									_ => bail!(Error::ParseError(line!())),
-								};
-									Ok(res)
-								})
-								.collect::<Result<_>>()?;
-							let raw_term = RawTerm::PartialApplication(
-								PartialApplication { func, args },
-							);
-							Term {
-								raw_term,
-								type_ascription: None,
-							}
-						}
-						Rule::call => {
-							let args = args
-								.into_inner()
-								.map(Expr::try_from)
-								.collect::<Result<_>>()?;
-							let raw_term = RawTerm::FunctionCall(
-								FunctionCall { func, args },
-							);
-							Term {
-								raw_term,
-								type_ascription: None,
-							}
-						}
-						r => {
-							log::error!("{:#?}", r);
-							bail!(Error::ParseError(line!()))
-						}
+			.map_postfix(|l, op| match op.as_rule() {
+				Rule::application => {
+					let func = l?;
+					let args = op
+						.into_inner()
+						.map(|p| {
+							let res = match p.as_rule() {
+								Rule::expr => {
+									Some(Expr::try_from(p)?)
+								}
+								Rule::any => None,
+								_ => bail!(Error::ParseError(
+									line!()
+								)),
+							};
+							Ok(res)
+						})
+						.collect::<Result<_>>()?;
+					let raw_term =
+						RawTerm::PartialApplication(PartialApplication {
+							func,
+							args,
+						});
+					let term = Term {
+						raw_term,
+						type_ascription: None,
 					};
-				Ok(Expr::Leaf(Box::new(res)))
+					Ok(Expr::Leaf(Box::new(term)))
+				}
+				Rule::call => {
+					let func = l?;
+					let args = op
+						.into_inner()
+						.map(Expr::try_from)
+						.collect::<Result<_>>()?;
+					let raw_term =
+						RawTerm::FunctionCall(FunctionCall { func, args });
+					let term = Term {
+						raw_term,
+						type_ascription: None,
+					};
+					Ok(Expr::Leaf(Box::new(term)))
+				}
+				Rule::apply_generics => todo!("apply_generics"),
+				Rule::int_cast => Ok(Expr::UnOp {
+					op: UnaryOperator::IntCast,
+					right: l?.into(),
+				}),
+				Rule::nat_cast => Ok(Expr::UnOp {
+					op: UnaryOperator::NatCast,
+					right: l?.into(),
+				}),
+				Rule::real_cast => Ok(Expr::UnOp {
+					op: UnaryOperator::RealCast,
+					right: l?.into(),
+				}),
+				r => {
+					log::error!("{:#?}", r);
+					bail!(Error::ParseError(line!()))
+				}
 			})
 			.map_infix(|lhs, pair, rhs| match pair.as_rule() {
 				Rule::lpipe => {
@@ -514,8 +533,98 @@ impl TryFrom<Pair<'_, Rule>> for RawTerm {
 		assert_eq!(pair.as_rule(), Rule::raw_term);
 		let inner = inner(pair)?;
 		let res = match inner.as_rule() {
-			Rule::float => RawTerm::Float(inner.as_str().parse()?),
-			Rule::integer => RawTerm::Integer(inner.as_str().parse()?),
+			Rule::float => {
+				let s = inner.as_str();
+				let n = &s[..s.len() - "ℕ".len()];
+				let end = n[n.len() - 1..].as_bytes()[0];
+				let parse = || {
+					n[..n.len() - 1]
+						.parse::<f64>()
+						.expect("Expected valid number from parse")
+				};
+				let float = match end {
+					b'd' => -10f64 * parse(),
+					b'c' => 10f64.powi(-2) * parse(),
+					b'm' => 10f64.powi(-3) * parse(),
+					// b'μ' => 10f64.powi(-6) * parse(),
+					b'u' => 10f64.powi(-6) * parse(),
+					b'n' => 10f64.powi(-9) * parse(),
+					b'p' => 10f64.powi(-12) * parse(),
+					b'f' => 10f64.powi(-15) * parse(),
+					b'a' => 10f64.powi(-18) * parse(),
+					b'z' => 10f64.powi(-21) * parse(),
+					b'y' => 10f64.powi(-24) * parse(),
+					b'r' => 10f64.powi(-27) * parse(),
+					b'q' => 10f64.powi(-30) * parse(),
+					b'D' => 10f64 * parse(),
+					b'h' => 10f64.powi(2) * parse(),
+					b'k' => 10f64.powi(3) * parse(),
+					b'M' => 10f64.powi(6) * parse(),
+					b'G' => 10f64.powi(9) * parse(),
+					b'T' => 10f64.powi(12) * parse(),
+					b'P' => 10f64.powi(15) * parse(),
+					b'E' => 10f64.powi(18) * parse(),
+					b'Z' => 10f64.powi(21) * parse(),
+					b'Y' => 10f64.powi(24) * parse(),
+					b'R' => 10f64.powi(27) * parse(),
+					b'Q' => 10f64.powi(30) * parse(),
+					_ => n.parse().expect("Expected valid number from parse"),
+				};
+				RawTerm::Float(float)
+			}
+			Rule::natural => {
+				let s = inner.as_str();
+				let n = &s[..s.len() - "ℕ".len()];
+				let end = n[n.len() - 1..].as_bytes()[0];
+				let parse = || {
+					n[..n.len() - 1]
+						.parse::<u64>()
+						.expect("Expected valid number from parse")
+				};
+				let nat = match end {
+					b'D' => 10u64 * parse(),
+					b'h' => 10u64.pow(2) * parse(),
+					b'k' => 10u64.pow(3) * parse(),
+					b'M' => 10u64.pow(6) * parse(),
+					b'G' => 10u64.pow(9) * parse(),
+					b'T' => 10u64.pow(12) * parse(),
+					b'P' => 10u64.pow(15) * parse(),
+					b'E' => 10u64.pow(18) * parse(),
+					b'Z' => 10u64.pow(21) * parse(),
+					b'Y' => 10u64.pow(24) * parse(),
+					b'R' => 10u64.pow(27) * parse(),
+					b'Q' => 10u64.pow(30) * parse(),
+					_ => n.parse().expect("Expected valid number from parse"),
+				};
+				RawTerm::Natural(nat)
+			}
+			Rule::integer => {
+				// TODO: Handle metric prefixes
+				let s = inner.as_str();
+				let n = &s[..s.len() - "ℤ".len()];
+				let end = n[n.len() - 1..].as_bytes()[0];
+				let parse = || {
+					n[..n.len() - 1]
+						.parse::<i64>()
+						.expect("Expected valid number from parse")
+				};
+				let int = match end {
+					b'D' => 10i64 * parse(),
+					b'h' => 10i64.pow(2) * parse(),
+					b'k' => 10i64.pow(3) * parse(),
+					b'M' => 10i64.pow(6) * parse(),
+					b'G' => 10i64.pow(9) * parse(),
+					b'T' => 10i64.pow(12) * parse(),
+					b'P' => 10i64.pow(15) * parse(),
+					b'E' => 10i64.pow(18) * parse(),
+					b'Z' => 10i64.pow(21) * parse(),
+					b'Y' => 10i64.pow(24) * parse(),
+					b'R' => 10i64.pow(27) * parse(),
+					b'Q' => 10i64.pow(30) * parse(),
+					_ => n.parse().expect("Expected valid number from parse"),
+				};
+				RawTerm::Integer(int)
+			}
 			Rule::boolean => RawTerm::Boolean(inner.as_str().parse()?),
 			Rule::string => RawTerm::String(inner.as_str().into()),
 			Rule::char => todo!(),
@@ -621,22 +730,35 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::function_definition);
-		let span = pair.as_span();
 		log::trace!("[{}] {}", line!(), pair.as_str());
-		let inner = pair.into_inner().collect::<SmallVec<[_; 4]>>();
+		let inner = pair
+			.into_inner()
+			.map(|p| (p.clone(), p.as_rule()))
+			.collect::<SmallVec<[_; 4]>>();
 		log::trace!("[{}] {:#?}", line!(), &inner);
+
+		let name_f = |name: &Pair<Rule>| name.as_str().into();
+		let args_f = |args: &Pair<Rule>| ArgumentList::try_from(args.clone());
+		let return_type_f = |type_name: &Pair<Rule>| {
+			ReturnType::try_from(type_name.clone())
+				.map(|x| x.0.unwrap_or(EnumType(smallvec![RawType::Unit])))
+		};
+		let expr_f = |expr: &Pair<Rule>| Expr::try_from(expr.clone());
+
+		#[rustfmt::skip]
 		let res = match inner.as_slice() {
-			[_, args, type_name, expr] => {
-				let name = {
-					let mut s = SmallString::new();
-					write!(&mut s, "lambda_{}_{}", span.start(), span.end())?;
-					s
-				};
-				let args = ArgumentList::try_from(args.clone())?;
-				let return_type = ReturnType::try_from(type_name.clone())?
-					.0
-					.unwrap_or_else(|| EnumType(smallvec![RawType::Unit]));
-				let expr = Expr::try_from(expr.clone())?;
+			[
+				(name, Rule::var_name),
+				(_, Rule::generics),
+				(_, Rule::fn_keyword),
+				(args, Rule::argument_list),
+				(type_name, Rule::return_type),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let args = args_f(args)?;
+				let return_type = return_type_f(type_name)?;
+				let expr = expr_f(expr)?;
 
 				FunctionDefinition {
 					name,
@@ -645,13 +767,17 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 					expr,
 				}
 			}
-			[_, name, args, type_name, expr] => {
-				let name = name.as_str().into();
-				let args = ArgumentList::try_from(args.clone())?;
-				let return_type = ReturnType::try_from(type_name.clone())?
-					.0
-					.unwrap_or_else(|| EnumType(smallvec![RawType::Unit]));
-				let expr = Expr::try_from(expr.clone())?;
+			[
+				(name, Rule::var_name),
+				(_, Rule::fn_keyword),
+				(args, Rule::argument_list),
+				(type_name, Rule::return_type),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let args = args_f(args)?;
+				let return_type = return_type_f(type_name)?;
+				let expr = expr_f(expr)?;
 
 				FunctionDefinition {
 					name,
@@ -660,7 +786,110 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 					expr,
 				}
 			}
-			_ => bail!(Error::ParseError(line!())),
+			[
+				(name, Rule::var_name),
+				(_, Rule::generics),
+				(_, Rule::fn_keyword),
+				(type_name, Rule::return_type),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let return_type = return_type_f(type_name)?;
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					return_type,
+					expr,
+					..Default::default()
+				}
+			}
+			[
+				(name, Rule::var_name),
+				(_, Rule::fn_keyword),
+				(type_name, Rule::return_type),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let return_type = return_type_f(type_name)?;
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					return_type,
+					expr,
+					..Default::default()
+				}
+			}
+			[
+				(name, Rule::var_name),
+				(_, Rule::generics),
+				(_, Rule::fn_keyword),
+				(args, Rule::argument_list),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let args = args_f(args)?;
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					args,
+					expr,
+					..Default::default()
+				}
+			}
+			[
+				(name, Rule::var_name),
+				(_, Rule::fn_keyword),
+				(args, Rule::argument_list),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let args = args_f(args)?;
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					args,
+					expr,
+					..Default::default()
+				}
+			}
+			[
+				(name, Rule::var_name),
+				(_, Rule::generics),
+				(_, Rule::fn_keyword),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					expr,
+					..Default::default()
+				}
+			}
+			[
+				(name, Rule::var_name),
+				(_, Rule::fn_keyword),
+				(expr, Rule::expr)
+			] => {
+				let name = name_f(name);
+				let expr = expr_f(expr)?;
+
+				FunctionDefinition {
+					name,
+					expr,
+					..Default::default()
+				}
+			}
+			_ => {
+				let x = inner.iter().map(|(_, a)| a).collect::<Vec<_>>();
+				dbg!(x);
+				bail!(Error::ParseError(line!()))
+			}
 		};
 		Ok(res)
 	}
