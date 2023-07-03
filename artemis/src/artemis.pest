@@ -210,7 +210,7 @@ argument_list = {
 	argument ~ ws ~
 	("," ~ ws ~ argument ~ ws)* ~ ","? ~ ws
 }
-block = { "(" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";")+ ~ ws ~ expr)*) ~ ws ~ ")" }
+block = { "(" ~ ws ~ (expr ~ (("\n" | "\r\n" | ";" | ";")+ ~ ws ~ expr)*) ~ ws ~ ")" }
 
 struct_field = { var_name ~ ws ~ ":" ~ ws ~ enum_type }
 struct_type = {
