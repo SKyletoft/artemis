@@ -524,6 +524,96 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 			.parse(pair.into_inner())
 	}
 }
+fn parse_real(s: &str) -> Result<f64, anyhow::Error> {
+	let n = &s[..s.len() - "ℕ".len()];
+	let end = n[n.len() - 1..].as_bytes()[0];
+	let parse = || {
+		n[..n.len() - 1]
+			.parse::<f64>()
+			.expect("Expected valid number from parse")
+	};
+	let float = match end {
+		b'd' => -10f64 * parse(),
+		b'c' => 10f64.powi(-2) * parse(),
+		b'm' => 10f64.powi(-3) * parse(),
+		// b'μ' => 10f64.powi(-6) * parse(),
+		b'u' => 10f64.powi(-6) * parse(),
+		b'n' => 10f64.powi(-9) * parse(),
+		b'p' => 10f64.powi(-12) * parse(),
+		b'f' => 10f64.powi(-15) * parse(),
+		b'a' => 10f64.powi(-18) * parse(),
+		b'z' => 10f64.powi(-21) * parse(),
+		b'y' => 10f64.powi(-24) * parse(),
+		b'r' => 10f64.powi(-27) * parse(),
+		b'q' => 10f64.powi(-30) * parse(),
+		b'D' => 10f64 * parse(),
+		b'h' => 10f64.powi(2) * parse(),
+		b'k' => 10f64.powi(3) * parse(),
+		b'M' => 10f64.powi(6) * parse(),
+		b'G' => 10f64.powi(9) * parse(),
+		b'T' => 10f64.powi(12) * parse(),
+		b'P' => 10f64.powi(15) * parse(),
+		b'E' => 10f64.powi(18) * parse(),
+		b'Z' => 10f64.powi(21) * parse(),
+		b'Y' => 10f64.powi(24) * parse(),
+		b'R' => 10f64.powi(27) * parse(),
+		b'Q' => 10f64.powi(30) * parse(),
+		_ => n.parse().expect("Expected valid number from parse"),
+	};
+	Ok(float)
+}
+
+fn parse_nat(s: &str) -> Result<u64, anyhow::Error> {
+	let n = &s[..s.len() - "ℕ".len()];
+	let end = n[n.len() - 1..].as_bytes()[0];
+	let parse = || {
+		n[..n.len() - 1]
+			.parse::<u64>()
+			.expect("Expected valid number from parse")
+	};
+	let nat = match end {
+		b'D' => 10u64 * parse(),
+		b'h' => 10u64.pow(2) * parse(),
+		b'k' => 10u64.pow(3) * parse(),
+		b'M' => 10u64.pow(6) * parse(),
+		b'G' => 10u64.pow(9) * parse(),
+		b'T' => 10u64.pow(12) * parse(),
+		b'P' => 10u64.pow(15) * parse(),
+		b'E' => 10u64.pow(18) * parse(),
+		b'Z' => 10u64.pow(21) * parse(),
+		b'Y' => 10u64.pow(24) * parse(),
+		b'R' => 10u64.pow(27) * parse(),
+		b'Q' => 10u64.pow(30) * parse(),
+		_ => n.parse().expect("Expected valid number from parse"),
+	};
+	Ok(nat)
+}
+
+fn parse_int(s: &str) -> Result<i64, anyhow::Error> {
+	let n = &s[..s.len() - "ℤ".len()];
+	let end = n[n.len() - 1..].as_bytes()[0];
+	let parse = || {
+		n[..n.len() - 1]
+			.parse::<i64>()
+			.expect("Expected valid number from parse")
+	};
+	let int = match end {
+		b'D' => 10i64 * parse(),
+		b'h' => 10i64.pow(2) * parse(),
+		b'k' => 10i64.pow(3) * parse(),
+		b'M' => 10i64.pow(6) * parse(),
+		b'G' => 10i64.pow(9) * parse(),
+		b'T' => 10i64.pow(12) * parse(),
+		b'P' => 10i64.pow(15) * parse(),
+		b'E' => 10i64.pow(18) * parse(),
+		b'Z' => 10i64.pow(21) * parse(),
+		b'Y' => 10i64.pow(24) * parse(),
+		b'R' => 10i64.pow(27) * parse(),
+		b'Q' => 10i64.pow(30) * parse(),
+		_ => n.parse().expect("Expected valid number from parse"),
+	};
+	Ok(int)
+}
 
 impl TryFrom<Pair<'_, Rule>> for RawTerm {
 	type Error = anyhow::Error;
@@ -534,95 +624,15 @@ impl TryFrom<Pair<'_, Rule>> for RawTerm {
 		let inner = inner(pair)?;
 		let res = match inner.as_rule() {
 			Rule::float => {
-				let s = inner.as_str();
-				let n = &s[..s.len() - "ℕ".len()];
-				let end = n[n.len() - 1..].as_bytes()[0];
-				let parse = || {
-					n[..n.len() - 1]
-						.parse::<f64>()
-						.expect("Expected valid number from parse")
-				};
-				let float = match end {
-					b'd' => -10f64 * parse(),
-					b'c' => 10f64.powi(-2) * parse(),
-					b'm' => 10f64.powi(-3) * parse(),
-					// b'μ' => 10f64.powi(-6) * parse(),
-					b'u' => 10f64.powi(-6) * parse(),
-					b'n' => 10f64.powi(-9) * parse(),
-					b'p' => 10f64.powi(-12) * parse(),
-					b'f' => 10f64.powi(-15) * parse(),
-					b'a' => 10f64.powi(-18) * parse(),
-					b'z' => 10f64.powi(-21) * parse(),
-					b'y' => 10f64.powi(-24) * parse(),
-					b'r' => 10f64.powi(-27) * parse(),
-					b'q' => 10f64.powi(-30) * parse(),
-					b'D' => 10f64 * parse(),
-					b'h' => 10f64.powi(2) * parse(),
-					b'k' => 10f64.powi(3) * parse(),
-					b'M' => 10f64.powi(6) * parse(),
-					b'G' => 10f64.powi(9) * parse(),
-					b'T' => 10f64.powi(12) * parse(),
-					b'P' => 10f64.powi(15) * parse(),
-					b'E' => 10f64.powi(18) * parse(),
-					b'Z' => 10f64.powi(21) * parse(),
-					b'Y' => 10f64.powi(24) * parse(),
-					b'R' => 10f64.powi(27) * parse(),
-					b'Q' => 10f64.powi(30) * parse(),
-					_ => n.parse().expect("Expected valid number from parse"),
-				};
-				RawTerm::Float(float)
+				let real = parse_real(inner.as_str())?;
+				RawTerm::Float(real)
 			}
 			Rule::natural => {
-				let s = inner.as_str();
-				let n = &s[..s.len() - "ℕ".len()];
-				let end = n[n.len() - 1..].as_bytes()[0];
-				let parse = || {
-					n[..n.len() - 1]
-						.parse::<u64>()
-						.expect("Expected valid number from parse")
-				};
-				let nat = match end {
-					b'D' => 10u64 * parse(),
-					b'h' => 10u64.pow(2) * parse(),
-					b'k' => 10u64.pow(3) * parse(),
-					b'M' => 10u64.pow(6) * parse(),
-					b'G' => 10u64.pow(9) * parse(),
-					b'T' => 10u64.pow(12) * parse(),
-					b'P' => 10u64.pow(15) * parse(),
-					b'E' => 10u64.pow(18) * parse(),
-					b'Z' => 10u64.pow(21) * parse(),
-					b'Y' => 10u64.pow(24) * parse(),
-					b'R' => 10u64.pow(27) * parse(),
-					b'Q' => 10u64.pow(30) * parse(),
-					_ => n.parse().expect("Expected valid number from parse"),
-				};
+				let nat = parse_nat(inner.as_str())?;
 				RawTerm::Natural(nat)
 			}
 			Rule::integer => {
-				// TODO: Handle metric prefixes
-				let s = inner.as_str();
-				let n = &s[..s.len() - "ℤ".len()];
-				let end = n[n.len() - 1..].as_bytes()[0];
-				let parse = || {
-					n[..n.len() - 1]
-						.parse::<i64>()
-						.expect("Expected valid number from parse")
-				};
-				let int = match end {
-					b'D' => 10i64 * parse(),
-					b'h' => 10i64.pow(2) * parse(),
-					b'k' => 10i64.pow(3) * parse(),
-					b'M' => 10i64.pow(6) * parse(),
-					b'G' => 10i64.pow(9) * parse(),
-					b'T' => 10i64.pow(12) * parse(),
-					b'P' => 10i64.pow(15) * parse(),
-					b'E' => 10i64.pow(18) * parse(),
-					b'Z' => 10i64.pow(21) * parse(),
-					b'Y' => 10i64.pow(24) * parse(),
-					b'R' => 10i64.pow(27) * parse(),
-					b'Q' => 10i64.pow(30) * parse(),
-					_ => n.parse().expect("Expected valid number from parse"),
-				};
+				let int = parse_int(inner.as_str())?;
 				RawTerm::Integer(int)
 			}
 			Rule::boolean => RawTerm::Boolean(inner.as_str().parse()?),
