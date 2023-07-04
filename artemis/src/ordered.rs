@@ -742,6 +742,12 @@ impl TryFrom<Pair<'_, Rule>> for Argument {
 
 				Argument { name, type_name }
 			}
+			[type_name] => {
+				let name = "_dropped".into();
+				let type_name = Type::try_from(type_name.clone())?;
+
+				Argument { name, type_name }
+			}
 			_ => bail!(Error::ParseError(line!())),
 		};
 		Ok(res)

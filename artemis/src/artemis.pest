@@ -191,13 +191,13 @@ binary_operator = _{
 unary_operator  = _{ not | negate }
 
 fn_keyword       = { "\\" | "λ" | "fn" }
-argument         = { var_name ~ ws ~ ":" ~ ws ~ type_name }
+argument         = { (var_name ~ ws ~ ":" ~ ws)? ~ type_name }
 generic_argument = { type_name ~ ws ~ ":" ~ ws ~ type_name }
 
 arrow = { "→" | "->" }
 
-function_definition = {
-	var_name ~ ws ~ ":" ~ ws ~
+function_definition = { var_name ~ ws ~ ":" ~ ws ~ lambda_definition }
+lambda_definition = {
 	generics? ~ ws ~ fn_keyword ~ ws ~ "(" ~ ws ~ argument_list? ~ ws ~ ")" ~ ws ~
 	return_type? ~ ws ~ "=" ~ ws ~ expr
 }
