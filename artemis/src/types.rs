@@ -108,7 +108,7 @@ impl Check for FunctionDefinition {
 			expr,
 		} = self;
 		// Type conversions  to get rid of aliases
-		let ret_type = EnumType2::try_from_ast(&return_type, ctx)?;
+		let expected_ret_type = EnumType2::try_from_ast(&return_type, ctx)?;
 		let new_args = argument2_try_from_ast(&args, ctx)?;
 
 		// Setup context for the function body
@@ -122,8 +122,9 @@ impl Check for FunctionDefinition {
 		let (new_expr, actual_ret_type) = expr.check(ctx)?;
 
 		// Check that the return type is correct
-		if !ret_type.contains(&actual_ret_type) {
-			log::error!("{ret_type} ≠ {actual_ret_type}");
+		if !expected_ret_type.contains(&actual_ret_type) {
+			log::debug!("{ctx}");
+			log::error!("{name}: {expected_ret_type} ≠ {actual_ret_type}");
 			bail!(Error::MismatchedTypes(line!()));
 		}
 
@@ -133,7 +134,7 @@ impl Check for FunctionDefinition {
 		let res = FunctionDefinition2 {
 			name,
 			args: new_args,
-			return_type: ret_type,
+			return_type: expected_ret_type,
 			expr: new_expr,
 		};
 		Ok((res, func_type.try_into()?))
