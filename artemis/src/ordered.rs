@@ -348,6 +348,7 @@ impl TryFrom<Pair<'_, Rule>> for InnerPattern {
 				if inner.as_str() == "_" {
 					InnerPattern::Any
 				} else {
+					log::debug!("{}", inner.as_str());
 					bail!(Error::ParseError(line!()))
 				}
 			}

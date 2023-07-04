@@ -118,6 +118,7 @@ impl Check for FunctionDefinition {
 		}
 
 		// Check the function body
+		log::trace!("{expr:#?}");
 		let (new_expr, actual_ret_type) = expr.check(ctx)?;
 
 		// Check that the return type is correct

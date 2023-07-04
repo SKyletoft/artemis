@@ -318,8 +318,8 @@ impl RawType2 {
 					.get(name)
 					.ok_or_else(|| {
 						log::debug!("{ctx:#?}\n{name}");
-						Error::UndefinedTypeAlias(line!())}
-					)?
+						Error::UndefinedTypeAlias(line!())
+					})?
 					.clone(),
 			)),
 			RawType::Natural => Self::Natural,
