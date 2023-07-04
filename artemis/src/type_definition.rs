@@ -24,6 +24,22 @@ pub struct Context {
 	pub(crate) globals: HashMap<SmallString, ActualType2>,
 }
 
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	    writeln!(f, "Context: {{\n\tvariables: [")?;
+	    for (key, typ) in self.variables.iter() {
+		    writeln!(f, "\t\t{key}: {typ}")?;
+	    }
+	    writeln!(f, "\t],\n\ttypes: [")?;
+	    for (key, typ) in self.types.iter() {
+		    writeln!(f, "\t\t{key}: {typ}")?;
+	    }
+	    writeln!(f, "\t],\n\tglobals: [")?;
+	    for (key, typ) in self.globals.iter() {
+		    writeln!(f, "\t\t{key}: {typ}")?;
+	    }
+	    write!(f, "\t]\n}}")
+    }
 }
 
 impl Context {
