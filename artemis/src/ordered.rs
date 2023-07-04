@@ -258,10 +258,13 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 
 	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::pattern);
-		let inner = pair.into_inner().collect::<SmallVec<[_; 3]>>();
+		let inner = pair
+			.into_inner()
+			.map(|x| (x.clone(), x.as_rule()))
+			.collect::<SmallVec<[_; 3]>>();
 
 		let res = match inner.as_slice() {
-			[label, pattern, _] => {
+			[(label, Rule::var_name), (pattern, Rule::inner_pattern), _] => {
 				let label = Some(label.as_str().into());
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = true;
@@ -272,7 +275,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[label, pattern] if pattern.as_rule() == Rule::inner_pattern => {
+			[(label, Rule::var_name), (pattern, Rule::inner_pattern)] => {
 				let label = Some(label.as_str().into());
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = false;
@@ -283,7 +286,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[pattern, _] if pattern.as_rule() == Rule::inner_pattern => {
+			[(pattern, Rule::inner_pattern), _] => {
 				let label = None;
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = true;
@@ -294,7 +297,7 @@ impl TryFrom<Pair<'_, Rule>> for Pattern {
 					irrefutable,
 				}
 			}
-			[pattern] if pattern.as_rule() == Rule::inner_pattern => {
+			[(pattern, Rule::inner_pattern)] => {
 				let label = None;
 				let inner = InnerPattern::try_from(pattern.clone())?;
 				let irrefutable = false;
