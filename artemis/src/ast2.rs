@@ -32,12 +32,6 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PartialApplication {
-	pub(crate) func: Expr,
-	pub(crate) args: Vec<Option<Expr>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
 	pub(crate) condition: Expr,
 	pub(crate) then_branch: Expr,
@@ -87,7 +81,6 @@ pub enum Term {
 	IfExpr(IfExpr),
 	MatchExpr(MatchExpr),
 	FunctionCall(FunctionCall),
-	PartialApplication(PartialApplication),
 	Declaration(Declaration),
 	Assignment(Assignment),
 	FunctionDefinition(FunctionDefinition),

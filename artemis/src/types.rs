@@ -7,14 +7,14 @@ use crate::{
 	ast::{
 		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Case, Declaration,
 		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
-		PartialApplication, Pattern, RawTerm, StructFieldLiteral, StructFieldPattern,
+		Pattern, RawTerm, StructFieldLiteral, StructFieldPattern,
 		StructLiteral, StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,
 		Declaration as Declaration2, Expr as Expr2, FunctionCall as FunctionCall2,
 		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2,
-		MatchExpr as MatchExpr2, PartialApplication as PartialApplication2,
+		MatchExpr as MatchExpr2,
 		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
 		Term as Term2, Tuple,
 	},
@@ -284,10 +284,6 @@ impl Check for Term {
 				let (fun, typ) = fun.check(ctx)?;
 				(Term2::FunctionCall(fun), typ)
 			}
-			RawTerm::PartialApplication(fun) => {
-				let (fun, typ) = fun.check(ctx)?;
-				(Term2::PartialApplication(fun), typ)
-			}
 			RawTerm::Declaration(def) => {
 				let (decl, typ) = def.check(ctx)?;
 				(Term2::Declaration(decl), typ)
@@ -296,6 +292,7 @@ impl Check for Term {
 				let (assign, typ) = assignment.check(ctx)?;
 				(Term2::Assignment(assign), typ)
 			}
+			RawTerm::Lambda(_) => todo!(),
 			RawTerm::FunctionDefinition(fn_def) => {
 				if ctx.variables.contains_key(fn_def.name.as_str()) {
 					bail!(Error::DuplicateFunctionDefinition(line!()))
@@ -484,21 +481,6 @@ impl Check for FunctionCall {
 
 		let res = FunctionCall2 { func, args };
 		Ok((res, ret.as_ref().clone()))
-	}
-}
-
-impl Check for PartialApplication {
-	type Output = PartialApplication2;
-
-	fn check(self, ctx: &mut Context) -> Result<(PartialApplication2, EnumType2)> {
-		let PartialApplication { func, args } = self;
-		let (func, typ) = func.check(ctx)?;
-		let args = args
-			.into_iter()
-			.map(|o| o.map(|e| e.check(ctx).map(|(a, _)| a)).transpose())
-			.collect::<Result<Vec<_>>>()?;
-		let res = PartialApplication2 { func, args };
-		Ok((res, typ))
 	}
 }
 

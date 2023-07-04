@@ -10,9 +10,10 @@ use crate::{
 	ast::{
 		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Block, Case,
 		Declaration, EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr,
-		InnerPattern, MatchExpr, PartialApplication, Pattern, RawTerm, RawType, ReturnType,
-		StructField, StructFieldLiteral, StructFieldPattern, StructLiteral, StructPattern,
-		StructType, Term, Tuple, TuplePattern, Type, TypeAlias, UnaryOperator,
+		InnerPattern, Lambda, MatchExpr, Pattern, RawTerm, RawType,
+		ReturnType, StructField, StructFieldLiteral, StructFieldPattern, StructLiteral,
+		StructPattern, StructType, Term, Tuple, TuplePattern, Type, TypeAlias,
+		UnaryOperator,
 	},
 	error::Error,
 	Rule,
@@ -446,67 +447,73 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 				let right = subexpr?.into();
 				Ok(Expr::UnOp { op, right })
 			})
-			.map_postfix(|l, op| match op.as_rule() {
-				Rule::application => {
-					let func = l?;
-					let args = op
-						.into_inner()
-						.map(|p| {
-							let res = match p.as_rule() {
-								Rule::expr => {
-									Some(Expr::try_from(p)?)
+			.map_postfix(
+				|l, op| -> std::result::Result<Expr, anyhow::Error> {
+					match op.as_rule() {
+						Rule::application => {
+							let func = l?;
+							let mut fake_args = 0;
+							let args = op
+								.into_inner()
+								.map(|p| {
+									let res = match p.as_rule() {
+								Rule::expr => Expr::try_from(p)?,
+								Rule::any => {
+									fake_args += 1;
+									let name = format!("_arg_{fake_args}").into();
+									RawTerm::VarName(name).into()
 								}
-								Rule::any => None,
-								_ => bail!(Error::ParseError(
-									line!()
-								)),
+								_ => bail!(Error::ParseError(line!())),
 							};
-							Ok(res)
-						})
-						.collect::<Result<_>>()?;
-					let raw_term =
-						RawTerm::PartialApplication(PartialApplication {
-							func,
-							args,
-						});
-					let term = Term {
-						raw_term,
-						type_ascription: None,
-					};
-					Ok(Expr::Leaf(Box::new(term)))
-				}
-				Rule::call => {
-					let func = l?;
-					let args = op
-						.into_inner()
-						.map(Expr::try_from)
-						.collect::<Result<_>>()?;
-					let raw_term =
-						RawTerm::FunctionCall(FunctionCall { func, args });
-					let term = Term {
-						raw_term,
-						type_ascription: None,
-					};
-					Ok(Expr::Leaf(Box::new(term)))
-				}
-				Rule::apply_generics => todo!("apply_generics"),
-				Rule::int_cast => Ok(Expr::UnOp {
-					op: UnaryOperator::IntCast,
-					right: l?.into(),
-				}),
-				Rule::nat_cast => Ok(Expr::UnOp {
-					op: UnaryOperator::NatCast,
-					right: l?.into(),
-				}),
-				Rule::real_cast => Ok(Expr::UnOp {
-					op: UnaryOperator::RealCast,
-					right: l?.into(),
-				}),
-				r => {
-					log::error!("{:#?}", r);
-					bail!(Error::ParseError(line!()))
-				}
-			})
+									Ok(res)
+								})
+								.collect::<Result<_>>()?;
+							let raw_term = RawTerm::FunctionCall(
+								FunctionCall { func, args },
+							);
+							let lambda = RawTerm::Lambda(Lambda {
+								args: todo!(),
+								captures: todo!(),
+								return_type: todo!(),
+								expr: raw_term.into(),
+							});
+							Ok::<Expr, _>(lambda.into())
+						}
+						Rule::call => {
+							let func = l?;
+							let args = op
+								.into_inner()
+								.map(Expr::try_from)
+								.collect::<Result<_>>()?;
+							let raw_term = RawTerm::FunctionCall(
+								FunctionCall { func, args },
+							);
+							let term = Term {
+								raw_term,
+								type_ascription: None,
+							};
+							Ok(Expr::Leaf(Box::new(term)))
+						}
+						Rule::apply_generics => todo!("apply_generics"),
+						Rule::int_cast => Ok(Expr::UnOp {
+							op: UnaryOperator::IntCast,
+							right: l?.into(),
+						}),
+						Rule::nat_cast => Ok(Expr::UnOp {
+							op: UnaryOperator::NatCast,
+							right: l?.into(),
+						}),
+						Rule::real_cast => Ok(Expr::UnOp {
+							op: UnaryOperator::RealCast,
+							right: l?.into(),
+						}),
+						r => {
+							log::error!("{:#?}", r);
+							bail!(Error::ParseError(line!()))
+						}
+					}
+				},
+			)
 			.map_infix(|lhs, pair, rhs| match pair.as_rule() {
 				Rule::lpipe => {
 					let func = lhs?;

@@ -104,12 +104,6 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PartialApplication {
-	pub(crate) func: Expr,
-	pub(crate) args: Vec<Option<Expr>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct IfExpr {
 	pub(crate) condition: Expr,
 	pub(crate) then_branch: Expr,
@@ -324,7 +318,7 @@ pub enum RawTerm {
 	IfExpr(IfExpr),
 	MatchExpr(MatchExpr),
 	FunctionCall(FunctionCall),
-	PartialApplication(PartialApplication),
+	Lambda(Lambda),
 	Declaration(Declaration),
 	Assignment(Assignment),
 	FunctionDefinition(FunctionDefinition),
@@ -380,25 +374,6 @@ impl fmt::Display for RawTerm {
 				}
 				write!(f, ")")
 			}
-			RawTerm::PartialApplication(PartialApplication { func, args }) => {
-				write!(f, "{func}[")?;
-				let print_arg =
-					|f: &mut fmt::Formatter, arg: &Option<Expr>| match arg {
-						Some(a) => write!(f, "{a}"),
-						None => write!(f, "_"),
-					};
-				match args.as_slice() {
-					[] => write!(f, "")?,
-					[x] => print_arg(f, x)?,
-					[x, xs @ ..] => {
-						print_arg(f, x)?;
-						for x in xs.iter() {
-							print_arg(f, x)?;
-						}
-					}
-				}
-				write!(f, "]")
-			}
 			RawTerm::Declaration(Declaration {
 				pattern,
 				type_name,
@@ -407,6 +382,7 @@ impl fmt::Display for RawTerm {
 				write!(f, "{pattern} : {type_name} = {expr}")
 			}
 			RawTerm::Assignment(_) => todo!(),
+			RawTerm::Lambda(_) => todo!(),
 			RawTerm::FunctionDefinition(FunctionDefinition {
 				name,
 				args,
@@ -508,6 +484,14 @@ impl fmt::Display for Argument {
 pub struct FunctionDefinition {
 	pub(crate) name: SmallString,
 	pub(crate) args: ArgumentList,
+	pub(crate) return_type: EnumType,
+	pub(crate) expr: Expr,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Lambda {
+	pub(crate) args: ArgumentList,
+	pub(crate) captures: Vec<SmallString>,
 	pub(crate) return_type: EnumType,
 	pub(crate) expr: Expr,
 }

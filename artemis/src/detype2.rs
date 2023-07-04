@@ -227,7 +227,6 @@ impl Detype for Ast2Term {
 
 				(term, typ)
 			}
-			Ast2Term::PartialApplication(_) => todo!(),
 			Ast2Term::Declaration(Ast2Declaration {
 				pattern,
 				expr,
