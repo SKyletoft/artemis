@@ -9,6 +9,6 @@ clean:
 	-rm a.out a.out.S *.o
 
 ex1:
-	RUST_LOG=debug cargo run -- examples/1.art  --target=c
+	RUST_LOG=trace cargo run -- examples/1.art  --target=c
 
 .PHONY: clean ex1
