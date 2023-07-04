@@ -66,7 +66,7 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 			name, args, return_type, ..
 		}) => {
 			let func_type = func_type(args, return_type, ctx)?;
-			ctx.variables.insert(name.clone(), func_type.into());
+			ctx.globals.insert(name.clone(), func_type.into());
 		}
 		RawTerm::Declaration(Declaration {
 			pattern:
@@ -85,7 +85,7 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 					bail!(Error::RequireTypeAtTopLevel(line!()))
 				}
 			};
-			ctx.variables.insert(n.clone(), actual_type);
+			ctx.globals.insert(n.clone(), actual_type);
 		}
 		RawTerm::Declaration(_) => todo!("Top level pattern matching is todo for now"),
 		RawTerm::TypeAlias(TypeAlias {
@@ -312,10 +312,15 @@ impl Check for Term {
 			}
 			RawTerm::TypeAlias(ta) => ta.check(ctx)?,
 			RawTerm::VarName(n) => {
-				let typ = ctx.variables.get(&n).ok_or_else(|| {
-					log::error!("Undefined variable: {n}");
-					Error::UndefinedVariable(line!())
-				})?;
+				let typ = ctx
+					.variables
+					.get(&n)
+					.or_else(|| ctx.globals.get(&n))
+					.ok_or_else(|| {
+						log::debug!("{ctx}");
+						log::error!("Undefined variable: {n}");
+						Error::UndefinedVariable(line!())
+					})?;
 				let typ = match typ {
 					ActualType2::Declared(t) => t.enum_type.clone(),
 					ActualType2::Inferred(t) => t.enum_type.clone(),
