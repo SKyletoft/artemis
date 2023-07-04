@@ -68,7 +68,16 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 			let func_type = func_type(args, return_type, ctx)?;
 			ctx.variables.insert(name.clone(), func_type.into());
 		}
-		RawTerm::Declaration(Declaration { pattern: Pattern { label: None, inner: InnerPattern::Var(n), .. }, type_name, .. }) => {
+		RawTerm::Declaration(Declaration {
+			pattern:
+				Pattern {
+					label: None,
+					inner: InnerPattern::Var(n),
+					..
+				},
+			type_name,
+			..
+		}) => {
 			let actual_type = match type_name {
 				ActualType::Declared(d) => ActualType2::try_from_ast_type(d, ctx)?,
 				ActualType::Inferred => {
@@ -78,9 +87,16 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 			};
 			ctx.variables.insert(n.clone(), actual_type);
 		}
-		RawTerm::Declaration(_) => todo!("Top level pattern matching is todo for noTop level pattern matching is todo for noww"),
-		RawTerm::TypeAlias(TypeAlias { name, mutable: false, type_name }) => {
-			ctx.types.insert(name.clone(), EnumType2::try_from_ast(type_name, ctx)?);
+		RawTerm::Declaration(_) => todo!("Top level pattern matching is todo for now"),
+		RawTerm::TypeAlias(TypeAlias {
+			name,
+			mutable: false,
+			type_name,
+		}) => {
+			ctx.types.insert(
+				name.clone(),
+				EnumType2::try_from_ast(type_name, ctx)?,
+			);
 		}
 		_ => bail!(Error::ForbiddenExprAtTopLevel(line!())),
 	}
