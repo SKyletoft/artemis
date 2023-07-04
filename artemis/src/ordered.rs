@@ -325,8 +325,18 @@ impl TryFrom<Pair<'_, Rule>> for InnerPattern {
 				InnerPattern::StructPattern(StructPattern::try_from(inner)?)
 			}
 			Rule::tuple_pattern => todo!(),
-			Rule::float => InnerPattern::Float(inner.as_str().parse()?),
-			Rule::integer => InnerPattern::Integer(inner.as_str().parse()?),
+			Rule::float => {
+				let real = parse_real(inner.as_str())?;
+				InnerPattern::Float(real)
+			}
+			Rule::natural => {
+				let nat = parse_nat(inner.as_str())?;
+				InnerPattern::Natural(nat)
+			}
+			Rule::integer => {
+				let int = parse_int(inner.as_str())?;
+				InnerPattern::Integer(int)
+			}
 			Rule::boolean => todo!(),
 			Rule::string => todo!(),
 			Rule::char => todo!(),

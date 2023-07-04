@@ -609,6 +609,7 @@ fn enum_type_matches_pattern(typ: &EnumType2, pat: &Pattern, mutable: bool) -> R
 		}
 		InnerPattern::TuplePattern(_) => todo!(),
 		InnerPattern::Float(_) => todo!(),
+		InnerPattern::Natural(_) => todo!(),
 		InnerPattern::Integer(_) => todo!(),
 		InnerPattern::Boolean(_) => todo!(),
 		InnerPattern::String(_) => todo!(),

@@ -451,6 +451,7 @@ fn flatten_pattern(
 
 		// Value patterns are only there for matching, not binding
 		InnerPattern::Float(_)
+		| InnerPattern::Natural(_)
 		| InnerPattern::Integer(_)
 		| InnerPattern::Boolean(_)
 		| InnerPattern::String(_)

@@ -156,6 +156,7 @@ pub enum InnerPattern {
 	StructPattern(StructPattern),
 	TuplePattern(TuplePattern),
 	Float(f64),
+	Natural(u64),
 	Integer(i64),
 	Boolean(bool),
 	String(SmallString),
@@ -186,6 +187,7 @@ impl fmt::Display for InnerPattern {
 			}
 			InnerPattern::TuplePattern(t) => write!(f, "(tuple {t:#?})"),
 			InnerPattern::Float(d) => write!(f, "{d}"),
+			InnerPattern::Natural(n) => write!(f, "{n}"),
 			InnerPattern::Integer(i) => write!(f, "{i}"),
 			InnerPattern::Boolean(b) => write!(f, "{b}"),
 			InnerPattern::String(s) => write!(f, "\"{s}\""),
