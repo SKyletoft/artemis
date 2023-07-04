@@ -21,6 +21,9 @@ type SmallString = smallstr::SmallString<[u8; 16]>;
 pub struct Context {
 	pub(crate) variables: HashMap<SmallString, ActualType2>,
 	pub(crate) types: HashMap<SmallString, EnumType2>,
+	pub(crate) globals: HashMap<SmallString, ActualType2>,
+}
+
 }
 
 impl Context {
@@ -28,6 +31,7 @@ impl Context {
 		Self {
 			variables: HashMap::new(),
 			types: HashMap::new(),
+			globals: HashMap::new(),
 		}
 	}
 
@@ -49,7 +53,8 @@ impl Context {
 	pub fn with_builtins() -> Self {
 		// TODO: Turn this function into a prelude in the standard library
 		let mut ret = Context::default();
-		ret.variables.insert(
+
+		ret.globals.insert(
 			"print_n".into(),
 			RawType2::FunctionType {
 				args: RawType2::Natural.into(),
@@ -57,7 +62,7 @@ impl Context {
 			}
 			.into(),
 		);
-		ret.variables.insert(
+		ret.globals.insert(
 			"print_z".into(),
 			RawType2::FunctionType {
 				args: RawType2::Integer.into(),
@@ -65,7 +70,7 @@ impl Context {
 			}
 			.into(),
 		);
-		ret.variables.insert(
+		ret.globals.insert(
 			"print_r".into(),
 			RawType2::FunctionType {
 				args: RawType2::Real.into(),
@@ -73,7 +78,7 @@ impl Context {
 			}
 			.into(),
 		);
-		ret.variables.insert(
+		ret.globals.insert(
 			"print_b".into(),
 			RawType2::FunctionType {
 				args: RawType2::Bool.into(),
