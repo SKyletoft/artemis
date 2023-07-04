@@ -251,6 +251,18 @@ pub enum RawType2 {
 	},
 }
 
+impl From<RawType2> for Vec<EnumType2> {
+	fn from(val: RawType2) -> Self {
+		vec![val.into()]
+	}
+}
+
+impl From<RawType2> for Box<EnumType2> {
+	fn from(val: RawType2) -> Self {
+		Box::new(val.into())
+	}
+}
+
 impl fmt::Display for RawType2 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
