@@ -10,10 +10,9 @@ use crate::{
 	ast::{
 		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Block, Case,
 		Declaration, EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr,
-		InnerPattern, Lambda, MatchExpr, Pattern, RawTerm, RawType,
-		ReturnType, StructField, StructFieldLiteral, StructFieldPattern, StructLiteral,
-		StructPattern, StructType, Term, Tuple, TuplePattern, Type, TypeAlias,
-		UnaryOperator,
+		InnerPattern, Lambda, MatchExpr, Pattern, RawTerm, RawType, ReturnType,
+		StructField, StructFieldLiteral, StructFieldPattern, StructLiteral, StructPattern,
+		StructType, Term, Tuple, TuplePattern, Type, TypeAlias, UnaryOperator,
 	},
 	error::Error,
 	Rule,
@@ -448,36 +447,41 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 				Ok(Expr::UnOp { op, right })
 			})
 			.map_postfix(
-				|l, op| -> std::result::Result<Expr, anyhow::Error> {
+				|l, op| -> Result<Expr, anyhow::Error> {
 					match op.as_rule() {
 						Rule::application => {
 							let func = l?;
 							let mut fake_args = 0;
-							let args = op
+							let call_args = op
 								.into_inner()
 								.map(|p| {
 									let res = match p.as_rule() {
-								Rule::expr => Expr::try_from(p)?,
-								Rule::any => {
-									fake_args += 1;
-									let name = format!("_arg_{fake_args}").into();
-									RawTerm::VarName(name).into()
-								}
-								_ => bail!(Error::ParseError(line!())),
-							};
+										Rule::expr => Expr::try_from(p)?,
+										Rule::any => {
+											fake_args += 1;
+											let name = format!("_arg_{fake_args}").into();
+											RawTerm::VarName(name).into()
+										}
+										_ => bail!(Error::ParseError(line!())),
+									};
 									Ok(res)
 								})
 								.collect::<Result<_>>()?;
-							let raw_term = RawTerm::FunctionCall(
-								FunctionCall { func, args },
-							);
+							let lambda_args = (0..fake_args)
+								.map(|_| todo!())
+								.collect::<SmallVec<_>>()
+								.into();
+							let return_type = ActualType::Inferred;
+							let expr = RawTerm::FunctionCall(
+								FunctionCall { func, args: call_args },
+							).into();
 							let lambda = RawTerm::Lambda(Lambda {
-								args: todo!(),
-								captures: todo!(),
-								return_type: todo!(),
-								expr: raw_term.into(),
-							});
-							Ok::<Expr, _>(lambda.into())
+								args: lambda_args,
+								captures: Vec::new(),
+								return_type,
+								expr,
+							}).into();
+							Ok::<Expr, _>(lambda)
 						}
 						Rule::call => {
 							let func = l?;
@@ -762,162 +766,139 @@ impl TryFrom<Pair<'_, Rule>> for Argument {
 	}
 }
 
-impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
+impl TryFrom<Pair<'_, Rule>> for Lambda {
 	type Error = anyhow::Error;
 
-	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
-		assert_eq!(pair.as_rule(), Rule::function_definition);
+	fn try_from(pair: Pair<'_, Rule>) -> std::result::Result<Self, Self::Error> {
+		assert_eq!(pair.as_rule(), Rule::lambda_definition);
 		log::trace!("[{}] {}", line!(), pair.as_str());
 		let inner = pair
 			.into_inner()
 			.map(|p| (p.clone(), p.as_rule()))
-			.collect::<SmallVec<[_; 4]>>();
+			.collect::<SmallVec<[_; 5]>>();
 		log::trace!("[{}] {:#?}", line!(), &inner);
 
-		let name_f = |name: &Pair<Rule>| name.as_str().into();
 		let args_f = |args: &Pair<Rule>| ArgumentList::try_from(args.clone());
 		let return_type_f = |type_name: &Pair<Rule>| {
 			ReturnType::try_from(type_name.clone())
-				.map(|x| x.0.unwrap_or(EnumType(smallvec![RawType::Unit])))
+				.map(|x| x.0.unwrap_or(EnumType(smallvec![RawType::Unit])).into())
 		};
 		let expr_f = |expr: &Pair<Rule>| Expr::try_from(expr.clone());
 
 		#[rustfmt::skip]
 		let res = match inner.as_slice() {
 			[
-				(name, Rule::var_name),
 				(_, Rule::generics),
 				(_, Rule::fn_keyword),
 				(args, Rule::argument_list),
 				(type_name, Rule::return_type),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let args = args_f(args)?;
 				let return_type = return_type_f(type_name)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					args,
 					return_type,
 					expr,
+					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::fn_keyword),
 				(args, Rule::argument_list),
 				(type_name, Rule::return_type),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let args = args_f(args)?;
 				let return_type = return_type_f(type_name)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					args,
 					return_type,
 					expr,
+					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::generics),
 				(_, Rule::fn_keyword),
 				(type_name, Rule::return_type),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let return_type = return_type_f(type_name)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					return_type,
 					expr,
 					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::fn_keyword),
 				(type_name, Rule::return_type),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let return_type = return_type_f(type_name)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					return_type,
 					expr,
 					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::generics),
 				(_, Rule::fn_keyword),
 				(args, Rule::argument_list),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let args = args_f(args)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					args,
 					expr,
 					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::fn_keyword),
 				(args, Rule::argument_list),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let args = args_f(args)?;
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					args,
 					expr,
 					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::generics),
 				(_, Rule::fn_keyword),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					expr,
 					..Default::default()
 				}
 			}
 			[
-				(name, Rule::var_name),
 				(_, Rule::fn_keyword),
 				(expr, Rule::expr)
 			] => {
-				let name = name_f(name);
 				let expr = expr_f(expr)?;
 
-				FunctionDefinition {
-					name,
+				Lambda {
 					expr,
 					..Default::default()
 				}
@@ -927,6 +908,35 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 				dbg!(x);
 				bail!(Error::ParseError(line!()))
 			}
+		};
+		Ok(res)
+	}
+}
+
+impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
+	type Error = anyhow::Error;
+
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error>  {
+		assert_eq!(pair.as_rule(), Rule::function_definition);
+		log::trace!("[{}] {}", line!(), pair.as_str());
+		let inner = pair
+			.into_inner()
+			.map(|p| (p.clone(), p.as_rule()))
+			.collect::<SmallVec<[_; 2]>>();
+		log::trace!("[{}] {:#?}", line!(), &inner);
+
+		let res = match inner.as_slice() {
+			[(name, Rule::var_name), (lambda, Rule::lambda_definition)] => {
+				let name = name.as_str().into();
+				let Lambda { args, return_type, expr, .. } = Lambda::try_from(lambda.clone())?;
+				let return_type = match return_type {
+					ActualType::Declared(t) => t.enum_type,
+					ActualType::Inferred => RawType::Unit.into(),
+				};
+
+				FunctionDefinition { name, args, return_type, expr }
+			}
+			_ => bail!(Error::ParseError(line!())),
 		};
 		Ok(res)
 	}

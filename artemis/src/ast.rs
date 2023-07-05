@@ -2,7 +2,7 @@ use std::fmt;
 
 use anyhow::Result;
 use derive_more::From;
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -22,9 +22,19 @@ impl fmt::Display for Type {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Variantly)]
+impl From<EnumType> for Type {
+	fn from(enum_type: EnumType) -> Self {
+		Self {
+			mutable: false,
+			enum_type,
+		}
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Variantly, Default)]
 pub enum ActualType {
 	Declared(Type),
+	#[default]
 	Inferred,
 }
 
@@ -34,6 +44,18 @@ impl fmt::Display for ActualType {
 			ActualType::Declared(t) => write!(f, "{t}"),
 			ActualType::Inferred => write!(f, "_"),
 		}
+	}
+}
+
+impl From<Type> for ActualType {
+	fn from(value: Type) -> Self {
+		ActualType::Declared(value.into())
+	}
+}
+
+impl From<EnumType> for ActualType {
+	fn from(value: EnumType) -> Self {
+		ActualType::Declared(value.into())
 	}
 }
 
@@ -490,16 +512,16 @@ pub struct FunctionDefinition {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Lambda {
-	pub(crate) args: ArgumentList,
 	pub(crate) captures: Vec<SmallString>,
-	pub(crate) return_type: EnumType,
+	pub(crate) args: ArgumentList,
+	pub(crate) return_type: ActualType,
 	pub(crate) expr: Expr,
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, From)]
 pub struct ReturnType(pub(crate) Option<EnumType>);
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, From)]
 pub struct ArgumentList(pub(crate) SmallVec<[Argument; 1]>);
 
 impl fmt::Display for ArgumentList {
@@ -539,6 +561,12 @@ pub struct StructType(pub(crate) Vec<StructField>);
 
 #[derive(Debug, Clone, PartialEq, From, Default)]
 pub struct EnumType(pub(crate) SmallVec<[RawType; 1]>);
+
+impl From<RawType> for EnumType {
+    fn from(value: RawType) -> Self {
+		EnumType(smallvec![value])
+    }
+}
 
 impl fmt::Display for EnumType {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
