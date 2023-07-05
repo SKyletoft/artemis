@@ -7,16 +7,15 @@ use crate::{
 	ast::{
 		ActualType, Argument, ArgumentList, Assignment, BinaryOperator, Case, Declaration,
 		EnumType, Expr, FunctionCall, FunctionDefinition, IfExpr, InnerPattern, MatchExpr,
-		Pattern, RawTerm, StructFieldLiteral, StructFieldPattern,
-		StructLiteral, StructPattern, Term, TypeAlias,
+		Pattern, RawTerm, StructFieldLiteral, StructFieldPattern, StructLiteral,
+		StructPattern, Term, TypeAlias,
 	},
 	ast2::{
 		Argument as Argument2, Assignment as Assignment2, Block, Case as Case2,
 		Declaration as Declaration2, Expr as Expr2, FunctionCall as FunctionCall2,
 		FunctionDefinition as FunctionDefinition2, IfExpr as IfExpr2,
-		MatchExpr as MatchExpr2,
-		StructFieldLiteral as StructFieldLiteral2, StructLiteral as StructLiteral2,
-		Term as Term2, Tuple,
+		MatchExpr as MatchExpr2, StructFieldLiteral as StructFieldLiteral2,
+		StructLiteral as StructLiteral2, Term as Term2, Tuple,
 	},
 	error::Error,
 	split_vec,
@@ -63,7 +62,10 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 		.ok_or(Error::ForbiddenExprAtTopLevel(line!()))?;
 	match &term.raw_term {
 		RawTerm::FunctionDefinition(FunctionDefinition {
-			name, args, return_type, ..
+			name,
+			args,
+			return_type,
+			..
 		}) => {
 			let func_type = func_type(args, return_type, ctx)?;
 			ctx.globals.insert(name.clone(), func_type.into());

@@ -446,14 +446,13 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 				let right = subexpr?.into();
 				Ok(Expr::UnOp { op, right })
 			})
-			.map_postfix(
-				|l, op| -> Result<Expr, anyhow::Error> {
-					match op.as_rule() {
-						Rule::application => {
-							let func = l?;
-							let mut fake_args = 0;
-							let call_args = op
-								.into_inner()
+			.map_postfix(|l, op| -> Result<Expr, anyhow::Error> {
+				match op.as_rule() {
+					Rule::application => {
+						let func = l?;
+						let mut fake_args = 0;
+						let call_args =
+							op.into_inner()
 								.map(|p| {
 									let res = match p.as_rule() {
 										Rule::expr => Expr::try_from(p)?,
@@ -467,57 +466,61 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 									Ok(res)
 								})
 								.collect::<Result<_>>()?;
-							let lambda_args = (0..fake_args)
-								.map(|_| todo!())
-								.collect::<SmallVec<_>>()
-								.into();
-							let return_type = ActualType::Inferred;
-							let expr = RawTerm::FunctionCall(
-								FunctionCall { func, args: call_args },
-							).into();
-							let lambda = RawTerm::Lambda(Lambda {
-								args: lambda_args,
-								captures: Vec::new(),
-								return_type,
-								expr,
-							}).into();
-							Ok::<Expr, _>(lambda)
-						}
-						Rule::call => {
-							let func = l?;
-							let args = op
-								.into_inner()
-								.map(Expr::try_from)
-								.collect::<Result<_>>()?;
-							let raw_term = RawTerm::FunctionCall(
-								FunctionCall { func, args },
-							);
-							let term = Term {
-								raw_term,
-								type_ascription: None,
-							};
-							Ok(Expr::Leaf(Box::new(term)))
-						}
-						Rule::apply_generics => todo!("apply_generics"),
-						Rule::int_cast => Ok(Expr::UnOp {
-							op: UnaryOperator::IntCast,
-							right: l?.into(),
-						}),
-						Rule::nat_cast => Ok(Expr::UnOp {
-							op: UnaryOperator::NatCast,
-							right: l?.into(),
-						}),
-						Rule::real_cast => Ok(Expr::UnOp {
-							op: UnaryOperator::RealCast,
-							right: l?.into(),
-						}),
-						r => {
-							log::error!("{:#?}", r);
-							bail!(Error::ParseError(line!()))
-						}
+						let lambda_args = (0..fake_args)
+							.map(|_| todo!())
+							.collect::<SmallVec<_>>()
+							.into();
+						let return_type = ActualType::Inferred;
+						let expr = RawTerm::FunctionCall(FunctionCall {
+							func,
+							args: call_args,
+						})
+						.into();
+						let lambda = RawTerm::Lambda(Lambda {
+							args: lambda_args,
+							captures: Vec::new(),
+							return_type,
+							expr,
+						})
+						.into();
+						Ok::<Expr, _>(lambda)
 					}
-				},
-			)
+					Rule::call => {
+						let func = l?;
+						let args = op
+							.into_inner()
+							.map(Expr::try_from)
+							.collect::<Result<_>>()?;
+						let raw_term =
+							RawTerm::FunctionCall(FunctionCall {
+								func,
+								args,
+							});
+						let term = Term {
+							raw_term,
+							type_ascription: None,
+						};
+						Ok(Expr::Leaf(Box::new(term)))
+					}
+					Rule::apply_generics => todo!("apply_generics"),
+					Rule::int_cast => Ok(Expr::UnOp {
+						op: UnaryOperator::IntCast,
+						right: l?.into(),
+					}),
+					Rule::nat_cast => Ok(Expr::UnOp {
+						op: UnaryOperator::NatCast,
+						right: l?.into(),
+					}),
+					Rule::real_cast => Ok(Expr::UnOp {
+						op: UnaryOperator::RealCast,
+						right: l?.into(),
+					}),
+					r => {
+						log::error!("{:#?}", r);
+						bail!(Error::ParseError(line!()))
+					}
+				}
+			})
 			.map_infix(|lhs, pair, rhs| match pair.as_rule() {
 				Rule::lpipe => {
 					let func = lhs?;
@@ -780,8 +783,9 @@ impl TryFrom<Pair<'_, Rule>> for Lambda {
 
 		let args_f = |args: &Pair<Rule>| ArgumentList::try_from(args.clone());
 		let return_type_f = |type_name: &Pair<Rule>| {
-			ReturnType::try_from(type_name.clone())
-				.map(|x| x.0.unwrap_or(EnumType(smallvec![RawType::Unit])).into())
+			ReturnType::try_from(type_name.clone()).map(|x| {
+				x.0.unwrap_or(EnumType(smallvec![RawType::Unit])).into()
+			})
 		};
 		let expr_f = |expr: &Pair<Rule>| Expr::try_from(expr.clone());
 
@@ -916,7 +920,7 @@ impl TryFrom<Pair<'_, Rule>> for Lambda {
 impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 	type Error = anyhow::Error;
 
-	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error>  {
+	fn try_from(pair: Pair<'_, Rule>) -> Result<Self, Self::Error> {
 		assert_eq!(pair.as_rule(), Rule::function_definition);
 		log::trace!("[{}] {}", line!(), pair.as_str());
 		let inner = pair
@@ -928,13 +932,23 @@ impl TryFrom<Pair<'_, Rule>> for FunctionDefinition {
 		let res = match inner.as_slice() {
 			[(name, Rule::var_name), (lambda, Rule::lambda_definition)] => {
 				let name = name.as_str().into();
-				let Lambda { args, return_type, expr, .. } = Lambda::try_from(lambda.clone())?;
+				let Lambda {
+					args,
+					return_type,
+					expr,
+					..
+				} = Lambda::try_from(lambda.clone())?;
 				let return_type = match return_type {
 					ActualType::Declared(t) => t.enum_type,
 					ActualType::Inferred => RawType::Unit.into(),
 				};
 
-				FunctionDefinition { name, args, return_type, expr }
+				FunctionDefinition {
+					name,
+					args,
+					return_type,
+					expr,
+				}
 			}
 			_ => bail!(Error::ParseError(line!())),
 		};

@@ -2,7 +2,7 @@ use std::fmt;
 
 use anyhow::Result;
 use derive_more::From;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use variantly::Variantly;
 
 type SmallString = smallstr::SmallString<[u8; 16]>;
@@ -563,9 +563,9 @@ pub struct StructType(pub(crate) Vec<StructField>);
 pub struct EnumType(pub(crate) SmallVec<[RawType; 1]>);
 
 impl From<RawType> for EnumType {
-    fn from(value: RawType) -> Self {
+	fn from(value: RawType) -> Self {
 		EnumType(smallvec![value])
-    }
+	}
 }
 
 impl fmt::Display for EnumType {
