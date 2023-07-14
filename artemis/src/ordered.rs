@@ -467,7 +467,10 @@ impl TryFrom<Pair<'_, Rule>> for Expr {
 								})
 								.collect::<Result<_>>()?;
 						let lambda_args = (0..fake_args)
-							.map(|_| todo!())
+							.map(|n| Argument {
+								name: format!("_arg_{n}").into(),
+								type_name: ActualType::Inferred,
+							})
 							.collect::<SmallVec<_>>()
 							.into();
 						let return_type = ActualType::Inferred;
@@ -753,13 +756,13 @@ impl TryFrom<Pair<'_, Rule>> for Argument {
 		let res = match inner.as_slice() {
 			[name, type_name] => {
 				let name = name.as_str().into();
-				let type_name = Type::try_from(type_name.clone())?;
+				let type_name = Type::try_from(type_name.clone())?.into();
 
 				Argument { name, type_name }
 			}
 			[type_name] => {
 				let name = "_dropped".into();
-				let type_name = Type::try_from(type_name.clone())?;
+				let type_name = Type::try_from(type_name.clone())?.into();
 
 				Argument { name, type_name }
 			}

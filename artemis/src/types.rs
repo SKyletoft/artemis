@@ -108,7 +108,10 @@ fn get_from_top_level(e: &Expr, ctx: &mut Context) -> Result<()> {
 fn func_type(args: &ArgumentList, return_type: &EnumType, ctx: &Context) -> Result<RawType2> {
 	let args =
 		args.0.iter()
-			.map(|arg| Type2::try_from_ast(&arg.type_name, ctx).map(|t| t.enum_type))
+			.map(|arg| {
+				ActualType2::try_from_ast(&arg.type_name, ctx)
+					.map(|t| t.enum_type)
+			})
 			.collect::<Result<_>>()?;
 	let ret = EnumType2::try_from_ast(return_type, ctx)?.into();
 

@@ -234,7 +234,7 @@ impl Type2 {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Variantly, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Variantly)]
 pub enum RawType2 {
 	Real,
 	Natural,
@@ -376,7 +376,7 @@ impl StructField2 {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, From, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
 pub struct EnumType2(pub(crate) SmallVec<[RawType2; 1]>);
 
 impl fmt::Display for EnumType2 {

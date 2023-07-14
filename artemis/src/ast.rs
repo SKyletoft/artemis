@@ -492,7 +492,7 @@ impl fmt::Display for UnaryOperator {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Argument {
 	pub(crate) name: SmallString,
-	pub(crate) type_name: Type,
+	pub(crate) type_name: ActualType,
 }
 
 impl fmt::Display for Argument {
@@ -559,7 +559,7 @@ impl fmt::Display for StructField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructType(pub(crate) Vec<StructField>);
 
-#[derive(Debug, Clone, PartialEq, From, Default)]
+#[derive(Debug, Clone, PartialEq, Default, From)]
 pub struct EnumType(pub(crate) SmallVec<[RawType; 1]>);
 
 impl From<RawType> for EnumType {

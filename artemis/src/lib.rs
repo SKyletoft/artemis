@@ -32,3 +32,16 @@ pub fn split_vec<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
 	}
 	(l_vec, r_vec)
 }
+
+pub fn split_iter<T, U, I>(i: I) -> (Vec<T>, Vec<U>)
+where
+	I: Iterator<Item = (T, U)>,
+{
+	let mut l_vec = Vec::with_capacity(i.size_hint().0);
+	let mut r_vec = Vec::with_capacity(i.size_hint().0);
+	for (l, r) in i {
+		l_vec.push(l);
+		r_vec.push(r);
+	}
+	(l_vec, r_vec)
+}

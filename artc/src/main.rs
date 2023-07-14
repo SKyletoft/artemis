@@ -91,22 +91,13 @@ fn compile(config: Config, paths: Paths) -> Result<()> {
 		bail!(Error::NoInputFiles(line!()));
 	}
 
-	let assembly_path = {
-		let base = if config.assembly {
-			"."
-		} else {
-			&config.working_files
-		};
-		format!("{base}/{}.S", &config.output)
+	let base = if config.object {
+		"."
+	} else {
+		&config.working_files
 	};
-	let object_path = {
-		let base = if config.object {
-			"."
-		} else {
-			&config.working_files
-		};
-		format!("{base}/{}.o", &config.output)
-	};
+	let assembly_path = format!("{base}/{}.S", &config.output);
+	let object_path = format!("{base}/{}.o", &config.output);
 
 	let sources = config
 		.files
