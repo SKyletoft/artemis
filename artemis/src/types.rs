@@ -110,7 +110,7 @@ fn func_type(args: &ArgumentList, return_type: &EnumType, ctx: &Context) -> Resu
 		args.0.iter()
 			.map(|arg| {
 				ActualType2::try_from_ast(&arg.type_name, ctx)
-					.map(|t| t.enum_type)
+					.map(|t| t.enum_type().clone())
 			})
 			.collect::<Result<_>>()?;
 	let ret = EnumType2::try_from_ast(return_type, ctx)?.into();
@@ -134,7 +134,7 @@ impl Check for FunctionDefinition {
 
 		// Setup context for the function body
 		for Argument { name, type_name } in args.0.iter().cloned() {
-			let desugared_type = ActualType2::try_from_ast_type(&type_name, ctx)?;
+			let desugared_type = ActualType2::try_from_ast_type(&type_name.declared().unwrap(), ctx)?;
 			ctx.variables.insert(name, desugared_type);
 		}
 
@@ -674,7 +674,11 @@ fn argument2_try_from_ast(args: &ArgumentList, ctx: &Context) -> Result<SmallVec
 	args.0.iter()
 		.map(|Argument { name, type_name }| {
 			let name = name.clone();
-			let type_name = Type2::try_from_ast(type_name, ctx)?;
+			let t = match type_name {
+				ActualType::Declared(t) => t.clone(),
+				_ => panic!("TODO"),
+			};
+			let type_name = Type2::try_from_ast(&t, ctx)?;
 
 			Ok(Argument2 { name, type_name })
 		})
