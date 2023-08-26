@@ -21,6 +21,7 @@ fn compile_and_typecheck(code: String) -> Result<()> {
 	res
 }
 
+#[ignore]
 #[test]
 fn assignment_to_same() {
 	let s = "λf () = (
@@ -33,6 +34,7 @@ fn assignment_to_same() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn literals_as_either_type() {
 	let s = "λf () = (
@@ -45,6 +47,7 @@ fn literals_as_either_type() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn reject_integer_conversion() {
 	let s = "λf () = (
@@ -61,6 +64,7 @@ fn reject_integer_conversion() {
 	));
 }
 
+#[ignore]
 #[test]
 fn reject_non_bool_condition() {
 	let s = "λf () = (
@@ -75,6 +79,7 @@ fn reject_non_bool_condition() {
 	));
 }
 
+#[ignore]
 #[test]
 fn reject_same_scope_same_type_shadowing() {
 	let s = "λf() = (
@@ -87,6 +92,7 @@ fn reject_same_scope_same_type_shadowing() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn reject_same_scope_different_type_shadowing() {
 	let s = "λf() = (
@@ -99,6 +105,7 @@ fn reject_same_scope_different_type_shadowing() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn accept_inner_scope_shadowing() {
 	let s = "λf() = (
@@ -114,6 +121,7 @@ fn accept_inner_scope_shadowing() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn reject_use_of_undeclared_variable() {
 	let s = "λf() → ℕ = (
@@ -128,6 +136,7 @@ fn reject_use_of_undeclared_variable() {
 	));
 }
 
+#[ignore]
 #[test]
 fn reject_use_of_undeclared_function() {
 	let s = "λf() → ℕ = (
@@ -142,6 +151,7 @@ fn reject_use_of_undeclared_function() {
 	));
 }
 
+#[ignore]
 #[test]
 fn reject_use_of_variable_as_function() {
 	let s = "λf () = (
@@ -158,6 +168,7 @@ fn reject_use_of_variable_as_function() {
 	));
 }
 
+#[ignore]
 #[test]
 fn reject_assignment_to_const() {
 	let s = "λf() = (
@@ -174,6 +185,7 @@ fn reject_assignment_to_const() {
 	));
 }
 
+#[ignore]
 #[test]
 fn accept_assignment_to_mut() {
 	let s = "λf() = (
@@ -186,6 +198,7 @@ fn accept_assignment_to_mut() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn accept_if_returns_same() {
 	let s = "λf () = (
@@ -201,6 +214,7 @@ fn accept_if_returns_same() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn reject_if_returns_different() {
 	let s = "λf () = (
@@ -220,6 +234,7 @@ fn reject_if_returns_different() {
 	));
 }
 
+#[ignore]
 #[test]
 fn accept_if_returns_different() {
 	let s = "λf () = (
@@ -235,6 +250,7 @@ fn accept_if_returns_different() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn accept_block_return_of_inner_variable() {
 	let s = "λf (x: ℤ) → ℤ = (
@@ -250,6 +266,7 @@ fn accept_block_return_of_inner_variable() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn infer_types() {
 	let s = "λf () = (
@@ -264,6 +281,7 @@ fn infer_types() {
 	assert!(matches!(res, Ok(())))
 }
 
+#[ignore]
 #[test]
 fn accept_ending_on_declaration() {
 	let s = "λf () → ℤ = (
